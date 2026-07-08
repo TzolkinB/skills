@@ -2,18 +2,23 @@
 
 This doc exists because a feature list ("Sentinel has 6 skills") doesn't show engineering judgment, and a working plugin doesn't explain itself. This is the *why* behind Sentinel — the part that's actually useful on a resume or in an interview, and the part I'd want to remember myself six months from now.
 
-## Why 6 separate skills instead of one big prompt
+## Why separate skills instead of one big prompt
 
-Each skill answers exactly one question:
+Each skill answers exactly one question — eight atomic skills plus one orchestrator:
 
 | Skill | Question it answers |
 |---|---|
 | `test-plan` | What *should* be tested, before any code exists? |
 | `qa-review` | Is this code testable at all? |
 | `coverage-review` | Of what's testable, what's actually covered? |
+| `audit-test` | Would this *passing* test fail if the code it covers broke? |
+| `prune-tests` | Which existing tests cost more than they protect? |
+| `threat-model` | If this change is wrong, what breaks in production and would anyone notice? |
 | `debug-test` | When a Playwright test is failing — what's the root cause and how do I fix it? |
 | `bug-report` | How do I hand this off cleanly? |
 | `sentinel` | What's the net verdict across all of the above? |
+
+`threat-model` and `bug-report` are core-but-independent — real skills, but deliberately *not* in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability.
 
 A single mega-prompt would blur these questions together — you'd get one wall of text instead of being able to run `/qa-review` mid-code-review and `/debug-test` when a Playwright test is actively failing. Splitting them means each one stays sharp for its one job, and they compose instead of overlapping. This is the same reason you don't write one function that validates, saves, and emails — single responsibility applies to prompts too.
 
@@ -43,7 +48,7 @@ Testability and code quality are orthogonal — ugly code can be perfectly testa
 
 ## Tradeoffs, honestly
 
-- **No automated tool execution.** Every skill reads and reasons, but none of them run your actual test suite or linter. That's a conscious scope limit — plugging in real execution (via `Bash`) is the natural next step, but it also means the report is only as good as what gets read, not what gets run.
+- **Execution is scoped, not blanket.** Most skills read and reason without running your suite — the report is only as good as what gets read. Two skills deliberately cross that line where reasoning alone can't produce ground truth: `debug-test` runs the failing test to route it, and `audit-test` applies a targeted mutation and runs a single test to *prove* false confidence rather than assert it (see [ADR-0001](docs/adr/0001-audit-test-proves-by-execution.md)). Execution stays surgical — one test at a time, on a clean tree, always reverted — never a full suite or mutation campaign.
 - **Judgment over rules.** Severity labels (HIGH/MEDIUM/LOW) are inherently subjective. This is deliberate — a rigid rules engine would either be too strict to be useful or too lax to catch real gaps. The cost is that verdicts can vary run to run.
 - **English output, not structured data.** Reports are markdown, not JSON. Good for reading in a PR or Slack, not (yet) for piping into other tooling. Fine for a personal framework; would need rework for team-wide CI integration.
 
