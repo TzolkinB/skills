@@ -12,6 +12,8 @@
     "skills/test-plan",
     "skills/coverage-review",
     "skills/qa-review",
+    "skills/audit-test",
+    "skills/prune-tests",
     "skills/threat-model",
     "skills/bug-report",
     "skills/debug-test",

@@ -40,3 +40,18 @@ A structured list of what could go wrong with a change and its consequences — 
 
 ### Silent Failure
 A failure that produces no error, no crash, no alert — just wrong behavior nobody notices until something downstream breaks or a user complains. Generally worse than a loud failure (a crash), because loud failures get fixed fast; silent ones can run in production for a long time.
+
+### False-Confidence Test
+A passing test that wouldn't fail even if the code it covers broke — so it looks like protection but guards nothing. The umbrella term for what `audit-test` hunts. Proven false-confidence means a mutation was actually applied and the test stayed green; likely means it was only reasoned about.
+
+### Overmocking
+Replacing so many real collaborators with fakes that the test only verifies the fakes, not the code. Classic tell: the test asserts a method *was called* (`expect(save).toHaveBeenCalled()`) instead of asserting the real outcome happened (the record is actually rejected/saved). Break the real logic and the test still passes, because it never touched it.
+
+### Pseudo-Tested
+Code that has a test naming it, but the code can be changed arbitrarily — even deleted — without the test failing. The execution-proven, worst case of false confidence: the "test" is decoration.
+
+### Implementation-Coupled Test
+A test that asserts *how* the code works (internal call sequence, private data shape) rather than *what* it guarantees. It breaks on harmless refactors (false alarm) yet can pass while the real guarantee is broken (false confidence) — the worst of both.
+
+### Characterization Test
+A test written to pin down the *current* behavior of code — even quirky or undocumented behavior — so that a later refactor can't change it silently. Not false confidence: it's a deliberate safety net, and `audit-test` labels it as one rather than condemning it.
