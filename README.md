@@ -54,7 +54,7 @@ Orthogonal to "is the code clean?"
 Independent of testability or coverage — asks what actually breaks in production if this is wrong:
 - What does this change touch (data, external systems, downstream dependents)?
 - Failure mode, blast radius, detectability, reversibility
-- Ranked by impact, not by how likely you think it is
+- Ranked by impact weighted by how long a failure would go unnoticed — not by how likely you think it is (a silent failure outranks a loud one)
 
 Doesn't run anything, doesn't prescribe a rollback plan it can't verify — flags reversibility as an open question, not an answer. Deliberately separate from `qa-review`; call it whenever you want the "what could go wrong" view without waiting on a full testability pass.
 
