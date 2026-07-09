@@ -64,3 +64,9 @@ A test that runs but adds no confidence something else doesn't already provide �
 
 ### Out-of-Sync (Stale) Test
 A test that has drifted from the code it names — its title or comments describe one behavior while its assertions check another, or it validates a response shape or status code the code no longer produces. Dangerous precisely because it still *passes*: it looks like protection while guarding something that no longer exists. Worse than having no test there at all, because the green checkmark tells you not to look.
+
+### Mutation Campaign
+An exhaustive mutation-testing run: a tool automatically inserts many small bugs (mutants) across *all* of the source, runs the suite against each, and reports which mutants the tests "killed." This is what dedicated frameworks like StrykerJS do. `audit-test` deliberately *avoids* the campaign — it mutates one flagged test's code, one mutation at a time, bounded by its triage funnel — because the campaign needs a per-runner plugin, config, and a green runnable suite, and takes minutes-to-hours rather than a handful of single-test runs.
+
+### Mutation Score
+The headline number a mutation campaign produces: the percentage of inserted mutants the test suite killed. It is a codebase-wide *evidence* artifact (the stronger cousin of line coverage — see Coverage — line vs behavioral), not a per-test judgment. `audit-test` produces no score by design — it answers "would *this one test* fail if its code broke, and what should it assert?", which is judgment about a specific test, not a suite-wide grade. A high mutation score still says nothing about *which* surviving mutant matters or how to fix the test that let it live; that translation is the judgment layer a score can't give.
