@@ -37,6 +37,16 @@ For `audit-test`: **Proven** false-confidence (a mutation was run and the test s
 _Avoid_: numeric confidence scores (e.g. "87% confident") — reserve those for a future evidence
 pipeline with defined inputs.
 
+**Sacred path**:
+A path (code or test) the user marks as critical for a `/sentinel` run, via `--sacred=<glob>`, so that
+Sentinel abandons its gradient there and applies binary rigor: a *proven* false-confidence finding or an
+unhandled boundary on that path forces an **un-overridable FAIL**. It's the one place Sentinel refuses
+CAUTION — and only ever on proven evidence, never a reasoned-only (Likely) finding. Off sacred paths the
+gradient stands.
+_Avoid_: sacred regression (J-Rig's term for the release-blocking test case — related idea, different
+mechanism; ours keys off `audit-test`/`coverage-review` findings, not a designated failing case),
+critical path (ambiguous — that's a workflow/perf term).
+
 **Test debt**:
 The accumulated cost of low-value, redundant, over-mocked, and stale tests that make a suite
 slower, noisier, and less trustworthy without adding confidence. It is a property of the suite's

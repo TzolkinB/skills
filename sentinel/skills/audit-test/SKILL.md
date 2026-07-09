@@ -1,7 +1,7 @@
 ---
 name: audit-test
 description: Audit a passing test for false confidence — would it still pass if the code it covers broke? — and prove the answer by running a targeted mutation, not by reasoning alone
-argument-hint: "[test name, test file, or test + its code]"
+argument-hint: "[test name, test file, test + its code, or a directory/glob/--changed for batch]"
 allowed-tools: [Read, Bash, Glob]
 ---
 
@@ -19,7 +19,8 @@ Whether the mutation was behaviorally meaningful stays a visible human judgment 
    - **a single named test** → deep-audit that one test.
    - **a test file** → triage every test in it, deep-audit only the flagged ones.
    - **a test *and* its code** (both paths given) → deep-audit, code-aware. This is the first-class mode — full confidence needs the code.
-   - **a directory / glob, or nothing** → `Glob` for `**/*.{spec,test}.*` and triage across the suite. *(Batch is the fast-follow; if the suite is large, ask the user to narrow scope.)*
+   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run **Batch mode** (see below): triage every test, deep-audit only the ones that smell. `Glob` a directory/glob for `**/*.{spec,test}.*`; for `--changed`, list test files changed against the merge-base (`git diff --name-only main...HEAD` — the three-dot form diffs against the merge-base — filtered to test files). This is the mode `/sentinel` calls over a branch's changed tests.
+   - **nothing** → default the glob to the whole suite (`**/*.{spec,test}.*`) and run Batch mode.
 2. Read the test(s) fully. If code paths are given, read those too.
 3. **Triage (cheap, static).** For each test, state its **behavior contract** in one sentence ("what real behavior would break if this failed?") and smell-check it against the failure taxonomy below. Only tests that smell suspicious advance — this keeps runtime to a handful of single-test runs.
 4. **Deep audit (per flagged test).** Reason out the single most plausible code change that *should* make this test fail. Then prove it:
@@ -37,6 +38,18 @@ Reuses `/sentinel`'s three states, scoped to a single test:
 - 🔴 **Proven false-confidence** — mutation ran, test stayed green. Factual, execution-proven.
 - 🟡 **Likely false-confidence** — reasoned only; code wasn't runnable, so this is the thought experiment, not proof.
 - 🟢 **Holds up** — the mutation made it fail as it should, or no plausible green-surviving change exists.
+
+## Batch / directory mode
+
+Batch mode is the same audit, fanned out over a set of test files, with the triage funnel doing the cost control. It's how `/sentinel` consumes this skill.
+
+1. **Resolve the file set** from the target (directory/glob/`--changed`/whole-suite — see Step 1). If the set is empty, say so and stop; there is nothing to audit.
+2. **Triage every test statically** (Step 3). This is cheap and reads-only — no mutations yet. Only tests that smell suspicious advance.
+3. **Deep-audit only the flagged tests** (Step 4), one at a time, honoring the Safety rule — never more than one live mutation across the whole batch, and revert between each.
+4. **Cost guard.** The funnel normally keeps deep audits to a handful. If more than ~15 tests flag, or the resolved set is large enough that even triage is heavy, report the counts and ask the user to narrow scope rather than grinding through the whole suite — deep-audit the highest-smell tests first and say plainly which ones you did **not** get to. (See the Notes: cost stays a handful of single-test runs by design.)
+5. **Report the tally plus flagged-only** (see Output Format's batch block). Each flagged entry names both the test **and its file path**, so a caller — e.g. `/sentinel` mapping findings to sacred paths — can locate every finding without re-triaging. Greens are omitted unless `--all` is passed.
+
+Batch mode judges tests exactly as single-test mode does; it does **not** know or care about sacred paths or branch verdicts — that's the caller's synthesis. Its job is a clean per-test verdict with a locatable file path.
 
 ## Failure taxonomy ("How it fails")
 
@@ -63,18 +76,18 @@ Single-test / flagged-test entry:
 For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code couldn't be run.
 For a 🟢 verdict, state briefly what made it fail (or why no green-surviving change exists).
 
-**Batch mode** shows flagged-only plus a tally — never the full green list, which just re-creates the noise this tool exists to cut:
+**Batch mode** shows flagged-only plus a tally — never the full green list, which just re-creates the noise this tool exists to cut. Each line carries the test's **file path** so a caller can locate it:
 
 ```
 Audited 47 · 42 hold up · 5 flagged
 
-🔴 "rejects overlapping bookings" — overmocked (proof: removed guard, still green)
-🔴 "charges the card" — focal unit never invoked
-🟡 "sends confirmation email" — likely incidental (env not runnable, reasoned only)
+🔴 "rejects overlapping bookings" (booking.spec.ts) — overmocked (proof: removed guard, still green)
+🔴 "charges the card" (payment.spec.ts) — focal unit never invoked
+🟡 "sends confirmation email" (email.spec.ts) — likely incidental (env not runnable, reasoned only)
 ...
 ```
 
-Single-test mode always shows its verdict, including 🟢. (A `--all` flag to show every green in batch mode is a possible later add.)
+Single-test mode always shows its verdict, including 🟢. In batch mode, `--all` additionally lists the tests that held up; without it, greens are omitted so the report stays flagged-only.
 
 ## Explain Mode (`--explain`)
 
