@@ -8,11 +8,10 @@ Sentinel is built and ready at:
 ```
 sentinel/
 ├── .claude-plugin/plugin.json
-├── skills/[6 skill directories]
+├── skills/[9 skill directories]
 ├── README.md
 ├── ARCHITECTURE.md
-├── index.html
-└── .gitignore
+└── docs/
 ```
 
 ## Step 1: Test locally first
@@ -47,7 +46,7 @@ Per the build guide: run it against at least 3 of your own repos before calling 
 ```bash
 cd /path/to/sentinel
 
-git remote add origin https://github.com/kim-qa/sentinel.git
+git remote add origin https://github.com/TzolkinB/skills.git
 git branch -M main
 git push -u origin main
 ```
@@ -57,12 +56,13 @@ git push -u origin main
 - Repo Settings → Pages
 - Source: Deploy from branch
 - Select: main / root
-- Landing page live at: `https://kim-qa.github.io/sentinel/`
+- Landing page live at: `https://tzolkinb.github.io/skills/`
 
 ## Step 5: Install from GitHub
 
-```bash
-claude plugin install github:kim-qa/sentinel
+```
+/plugin marketplace add TzolkinB/skills
+/plugin install sentinel@skills
 ```
 
 ## Step 6: Publish & share
@@ -84,7 +84,7 @@ claude plugin install github:kim-qa/sentinel
 
 ### Landing page doesn't render
 - Check GitHub Pages is enabled in Settings
-- URL is: `https://kim-qa.github.io/sentinel/`
+- URL is: `https://tzolkinb.github.io/skills/`
 - If custom domain: update in Settings
 
 ## Questions?
