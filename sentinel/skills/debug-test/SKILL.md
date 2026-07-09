@@ -1,7 +1,7 @@
 ---
 name: debug-test
-description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs.
-argument-hint: "[test file path or test name]"
+description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs. Also has a flake mode that detects, quarantines, and routes flaky tests.
+argument-hint: "[test file path or test name] [--flake]"
 allowed-tools: [Read, Bash]
 ---
 
@@ -9,21 +9,25 @@ allowed-tools: [Read, Bash]
 
 When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. No describing required. Scoped to Playwright; for non-Playwright failures invoke diagnosing-bugs directly.
 
+A flaky test is a special case with its own disposition. Most teams `.skip()` or delete it — silent capitulation that throws away a real signal, because the flaky test usually guards real behavior. The differentiator here is to **detect + quarantine + route the cause to a fix**, not to rebuild a test runner: the frameworks already provide burn mechanisms, so this skill consumes them and adds the judgment layer on top. See **Flake Mode** and [ADR-0010](../../docs/adr/0010-debug-test-flake-mode.md).
+
 ## Steps
 
 ### 0. Locate the test
 Get the test file path or test name from $ARGUMENTS.
 - If a file path: read it directly
 - If a test name: `grep -r "$ARGUMENTS" tests/ --include="*.spec.*" -l`
+- If `--flake` is present → go straight to **Flake Mode** (below). Use this when the complaint is "it's flaky," not "it's failing."
 
 ### 1. Flakiness check first
-Before anything else — if the test is known to fail intermittently, run it 3×:
+Before single-run analysis, rule out non-determinism using the framework's **own** burn mechanism — never a hand-rolled loop. With Playwright, `--repeat-each` runs the same test N times in one invocation:
 ```bash
-for i in 1 2 3; do npx playwright test "$TEST_NAME" --reporter=line 2>&1; done
+npx playwright test "$TEST_NAME" --repeat-each=5 --reporter=line 2>&1
 ```
-If it fails on some runs but not others → skip to **Step 6 (Flakiness)**. Do not proceed with single-run analysis on a non-deterministic failure.
+- **Mixed pass/fail across the repeats → confirmed flaky.** Go to **Flake Mode** — do not run single-run diagnosis on a non-deterministic failure.
+- **Fails every repeat (N/N) → a real, deterministic failure**, not flake. Continue below.
 
-Otherwise run once and capture full output:
+Otherwise (a plain failing test) run once and capture full output:
 ```bash
 npx playwright test "$TEST_NAME" --reporter=line 2>&1
 ```
@@ -86,13 +90,30 @@ Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skill
   3. Test sets up state but never invokes the code under test (false positive)
   4. Code logic regression — behavior changed, test not updated
 
-### 6. Flakiness
-Run `/qa-review` on both the test file and the production code file under test. Focus on:
-- `Date.now()`, `new Date()`, `Math.random()` — non-deterministic values
-- Uncontrolled `setTimeout` or timers
-- Network calls without interception (`page.route` / mock missing)
-- Shared state across tests (missing `beforeEach` reset)
-- Race conditions in async setup or teardown
+## Flake Mode
+
+Reached from Step 0 (`--flake`) or Step 1 (mixed pass/fail on the repeats). The job is **detect → quarantine → route the cause** — never rebuild a runner, never silently skip or delete. Do **not** claim a cause as fact: v1 is honest that detection + quarantine is the mechanical, reliable part, and cause is a *suggestion* handed to a human-reviewable skill.
+
+### F1. Measure the flake rate (framework-native burn — no custom loop)
+Use the burn mechanism the framework already ships:
+- **Playwright:** `npx playwright test "$TEST_NAME" --repeat-each=10 --reporter=line` — count failures over the 10 runs. Or, if the project runs with retries, parse the JSON reporter's `status: "flaky"` (emitted when a test fails then passes on retry): `npx playwright test "$TEST_NAME" --retries=2 --reporter=json` and read `status`.
+- **Cypress:** shell out to `@cypress/grep`'s burn — `npx cypress run --env grep="$TEST_NAME",burn=10`.
+
+Flake rate = failures / runs. `0/N` → not actually flaky (stop, say so). `N/N` → deterministic failure, not flake → go back to Step 2. Anything in between → **confirmed flaky**; record the rate (e.g. "3/10").
+
+### F2. Quarantine — non-blocking, never deleted
+Recommend moving the test out of the blocking lane while keeping the signal:
+- Tag it (`test.describe`/`test` annotation, e.g. `@flaky`, or a dedicated quarantine project in `playwright.config`) so CI stops blocking on it but still runs and reports it.
+- Open/keep a tracking note referencing the flake rate.
+- **Never propose `.skip()`-and-forget or deletion.** A flaky test usually guards real behavior; dropping it lets a real regression ship unnoticed with invisible coverage loss. (Deleting *with justification* is `prune-tests`' job, only after a cause is confirmed — not a disposition you reach for here.)
+
+### F3. Route the suspected cause (a suggestion, not a verdict)
+Read the test + the code under test, then hand off — always phrased as "suspected → routed to X to confirm":
+- **Source non-determinism** (`Date.now()`/`new Date()`/`Math.random()`, uncontrolled timers, races, network calls without interception, shared state / missing `beforeEach` reset) → **`/qa-review`** on the test *and* the production code.
+- **Over-mocked / timing-coupled** (asserts on mocks, or only passes on lucky timing) → **`/audit-test`** to prove whether it ever tested anything; if it comes back proven false-confidence → **`/prune-tests`** to remove it *with justification*.
+- **Genuinely redundant** (duplicates another test's coverage) → **`/prune-tests`**.
+
+Cause classification is inherently hard to infer from repeat runs, so present it as a ranked hypothesis routed to the skill that can actually confirm it — never as this skill's verdict. Detection and quarantine are the reliable output; the route is a lead.
 
 ## Output Format
 
@@ -147,8 +168,27 @@ Top hypotheses for Phase 3:
 Proceeding with diagnosing-bugs Phase 2...
 ```
 
+### Flake Mode
+```
+## debug-test (flake): [Test Name]
+
+### Flake rate
+3/10 runs failed  (npx playwright test "[name]" --repeat-each=10)
+
+### Disposition → Quarantine (non-blocking)
+Tag `@flaky` / move to the quarantine project — keeps running and reporting, stops blocking CI.
+NOT skipped, NOT deleted — the signal is preserved.
+
+### Suspected cause → routed (to confirm, not a verdict)
+Suspected: source non-determinism — `Date.now()` in pricing.js:12, no `page.route` mock on /rates
+→ Routed to `/qa-review` (test + code) to confirm.
+[or: → `/audit-test` if over-mocked/timing-coupled; → `/prune-tests` if redundant]
+```
+
 ## Notes
-- Scoped to Playwright. For Jest/Vitest/pytest failures, invoke diagnosing-bugs directly.
+- Scoped to Playwright (flake mode also supports Cypress `@cypress/grep --burn`). For Jest/Vitest/pytest failures, invoke diagnosing-bugs directly.
 - The Playwright healer requires `npx playwright init-agents` in the repo. If missing, skip to Step 5.
+- **Flake mode consumes the framework's own burn (`--repeat-each`, `flaky` status, `--burn`) — it never builds a re-run engine.** Detection + quarantine are the reliable output; the cause is a routed suggestion, never this skill's verdict.
+- **Quarantine, never silently skip or delete.** A flaky test usually guards real behavior; deletion *with justification* is `prune-tests`' job after a cause is confirmed.
 - `--explain` is not supported — this skill is procedural, not pedagogical.
 - 80% of quick-heuristic catches are one of three things: missing `await`, mock set up but function never called, assertion that can never fail.
