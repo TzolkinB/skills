@@ -23,6 +23,27 @@ Don't write up feedback that hasn't happened yet. An empty log is more credible 
 2. Open an issue describing the gap you hit
 3. PRs welcome, especially ones that come with a real example of what broke without the fix
 
+## Changelog: append to `## [Unreleased]` in your PR
+
+Sentinel keeps a per-plugin changelog at [`CHANGELOG.md`](./CHANGELOG.md) in
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Any PR that changes
+user-facing behavior must add a bullet under the `## [Unreleased]` section, using the
+appropriate `Added` / `Changed` / `Deprecated` / `Removed` / `Fixed` / `Security`
+subheading. Do not invent a version number or a date — that happens at release time.
+
+Releases are lightweight (see
+[`docs/adr/0008-release-discipline.md`](./docs/adr/0008-release-discipline.md)): the
+authoritative version is the `version` field in `.claude-plugin/plugin.json`, and a
+maintainer cuts a release with:
+
+```
+scripts/release.sh <new-version>   # e.g. scripts/release.sh 0.2.0
+```
+
+That moves the `## [Unreleased]` entries under a new dated version heading and bumps
+`plugin.json`. There is no npm publish — a "release" is just that version bump landing
+on the default branch, consumed via a marketplace update.
+
 ## Required checks
 
 Every pull request must pass the **`validate`** GitHub Actions workflow before it
