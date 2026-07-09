@@ -58,4 +58,4 @@ Testability and code quality are orthogonal — ugly code can be perfectly testa
 
 ## What I'd change if this became a team tool instead of a personal one
 
-Add real test-runner integration (so `coverage-review` reads actual coverage output, not just static analysis), make verdicts configurable per-team risk tolerance, and emit structured output alongside the markdown report so it can gate CI, not just inform a human.
+Make verdicts configurable per-team risk tolerance, and emit structured output alongside the markdown report so it can gate CI, not just inform a human. (`coverage-review` now already *reads* real coverage output when a project emits it, falling back to static inference otherwise — see [ADR-0009](docs/adr/0009-coverage-review-prefers-real-instrumentation.md) — so the remaining team-tool gap is generating coverage on demand, not consuming it.)

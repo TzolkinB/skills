@@ -1,6 +1,6 @@
 ---
 name: coverage-review
-description: Review test coverage and flag untested paths, edge cases, and assertion gaps
+description: Review test coverage and flag untested paths, edge cases, and assertion gaps — reads real coverage instrumentation when present, falls back to static analysis
 argument-hint: "[test file path] [code file path]"
 allowed-tools: [Read, Bash]
 ---
@@ -9,29 +9,39 @@ allowed-tools: [Read, Bash]
 
 A test suite that makes green lights doesn't protect you. Coverage review asks: "What could break that these tests wouldn't catch?" It's the anti-AI-makes-it-pass tool.
 
+**Which lines executed** is a fact a coverage tool already measures better than any reasoning can — so when instrumentation is present, read it as ground truth instead of re-deriving it. But a line that *executed* is not a line that was *verified*: the skill's real value is the judgment on top — assertion quality and the edge cases nobody wrote a test for. So it prefers real coverage data when it exists and falls back to static inference when it doesn't, but the judgment layer runs the same either way. It never *requires* instrumentation — most AI-generated repos have none, and a hard setup barrier would defeat the point.
+
 ## Steps
 
-1. Read the test file (first argument)
-2. Read the code being tested (second argument)
-3. Identify what the tests actually verify (not what they claim to)
-4. List code paths, conditions, and edge cases in the source
-5. Flag every path NOT covered by an assertion
-6. Flag assertions that are too loose (e.g., `expect(result).toBeDefined()`)
-7. Flag untested error paths, boundary conditions, state transitions
-8. Summarize gaps in order of risk
-9. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
+1. Read the test file (first argument) and the code being tested (second argument).
+2. **Determine the coverage source — prefer real, fall back to static.** Before reasoning about which lines run, look for coverage instrumentation the project already produces:
+   - **JS/TS** (nyc / istanbul / c8 / jest / vitest): `coverage/lcov.info`, `coverage/coverage-final.json`, `coverage/clover.xml`, or a config that emits it (`.nycrc*`, `collectCoverage` in a jest/vitest config, `c8` in `package.json`).
+   - **Java** (JaCoCo): `jacoco.xml`, `target/site/jacoco/`, `build/reports/jacoco/`.
+   - Look with Bash, e.g. `ls coverage/ 2>/dev/null; find . -path '*/node_modules' -prune -o \( -name 'coverage-final.json' -o -name 'lcov.info' -o -name 'jacoco*.xml' \) -print 2>/dev/null`.
+   - **Found → instrumentation mode.** Read the report and extract the *real* executed / not-executed lines and branches for the code file under review. Treat this as ground truth — don't re-derive or second-guess which lines ran.
+   - **Not found → static mode.** Infer coverage by reading the test and matching it against the source (the original behavior). **Never ask the user to set up coverage and never block on its absence** — most AI-generated repos have none, and degrading gracefully is the point.
+3. **State the mode** at the top of the report (`Coverage source: instrumentation (lcov)` or `Coverage source: static inference`) so the reader knows how authoritative the line-level numbers are — measured fact vs. reasoned estimate.
+4. Identify what the tests actually verify (not what they claim to).
+5. List code paths, conditions, and edge cases in the source. In instrumentation mode, anchor "not covered" to the real uncovered lines/branches from the report; in static mode, reason them out.
+6. Flag every path NOT covered by an assertion.
+7. Flag assertions that are too loose (e.g., `expect(result).toBeDefined()`). **This runs identically in both modes** — instrumentation proves a line *executed*, never that anything *verified* it, so assertion-quality and edge-case judgment is exactly the value a coverage number can't give. A line at 100% coverage with a loose assertion is still a gap.
+8. Flag untested error paths, boundary conditions, state transitions.
+9. Summarize gaps in order of risk.
+10. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
 
 ## Output Format
 
 ```
 ## Coverage Review: [Code File]
+**Coverage source:** instrumentation (lcov) — 84% lines / 71% branches
+<!-- or: **Coverage source:** static inference (no coverage output found) -->
 
 ### Covered Behaviors
 - Happy path (POST /api/book returns 201)
 - Valid input validation (rejects invalid dates)
 
 ### GAPS (Not Tested)
-- [ ] **HIGH RISK** Error handling: what if database write fails? (Line 42, no catch block tests)
+- [ ] **HIGH RISK** Error handling: what if database write fails? (Line 42 — uncovered per lcov, no catch-block test)
 - [ ] **MEDIUM** Edge case: booking at exactly midnight boundary
 - [ ] **LOW** Logging calls (not asserted)
 
@@ -67,8 +77,11 @@ Keep it concept-level. The gap list already says *what's* missing; this says *wh
 
 ## Notes
 
+- **Prefer real, fall back to static.** If the project already emits coverage (lcov/istanbul/c8/jacoco), read it as ground truth for *which lines ran*; otherwise infer statically. Always name the mode. Instrumentation is never a prerequisite — the skill works with zero config.
+- Even in instrumentation mode, don't stop at the number — a covered line with a loose assertion is still a gap. The executed/verified distinction is the whole point (see GLOSSARY: Coverage — line vs behavioral).
 - Don't just count lines covered; look at logic branches
 - A test that runs code but doesn't assert anything is worthless
 - Flag any `catch` block that isn't tested
 - Boundary conditions: 0, 1, -1, max, null, undefined, empty string, [], {}
 - State transitions: before/after state, side effects
+- This reads coverage reports; it does **not** run your suite to generate them. If no report exists, it stays in static mode rather than kicking off a coverage run.
