@@ -22,3 +22,15 @@ Don't write up feedback that hasn't happened yet. An empty log is more credible 
 1. Try the skills on your own code first
 2. Open an issue describing the gap you hit
 3. PRs welcome, especially ones that come with a real example of what broke without the fix
+
+## Required checks
+
+Every pull request must pass the **`validate`** GitHub Actions workflow before it
+can merge. It runs `claude plugin validate` across the repo — the root
+marketplace manifest plus each plugin — and fails on any invalid manifest or
+malformed skill/agent/command frontmatter. Run it locally before pushing:
+
+```
+claude plugin validate .          # marketplace manifest
+claude plugin validate ./sentinel # a plugin (manifest + skill frontmatter)
+```
