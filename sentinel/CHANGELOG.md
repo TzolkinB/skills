@@ -24,6 +24,12 @@ release heading.
   router, not one of the nine, and never joins the `/sentinel` chain (issue #8).
 - Release discipline: `CHANGELOG.md`, a per-plugin semver source of truth, and a
   `scripts/release.sh` release script (ADR 0008).
+- ADR 0009: `coverage-review` consumes line-coverage as evidence, it does not produce it —
+  positions `test-coverage-analyzer` / NYC / JaCoCo as a route into `coverage-review`, not a
+  rival, mirroring the Stryker seam in ADR 0004.
+- ADR 0010: scope decision for the market analysis's two open gaps — live-execution stays out
+  (delegated across `debug-test`'s healer / `diagnosing-bugs` routing seam), temporal memory is
+  in-scope-by-philosophy but deferred behind a defined seam.
 
 ## [0.1.0] - 2026-07-09
 
