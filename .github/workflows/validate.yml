@@ -1,0 +1,54 @@
+name: validate
+
+# Runs `claude plugin validate` across the whole repo so a broken marketplace
+# manifest, plugin manifest, or malformed skill/agent/command frontmatter can
+# never merge green. This is the primary structural gate for the marketplace.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: claude plugin validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Claude Code
+        # Pinned so this merge gate is reproducible and an upstream release
+        # can't silently change validation or break every PR. Bump deliberately.
+        run: npm install -g @anthropic-ai/claude-code@2.1.205
+
+      - name: Validate marketplace manifest
+        run: claude plugin validate .
+
+      # `claude plugin validate .` only checks the root marketplace manifest; it
+      # does not recurse into each plugin. Validate every plugin directory too so
+      # a bad plugin.json or malformed skill frontmatter fails the check.
+      - name: Validate each plugin
+        run: |
+          set -euo pipefail
+          fail=0
+          found=0
+          while IFS= read -r manifest; do
+            found=1
+            dir="$(dirname "$(dirname "$manifest")")"
+            echo "::group::Validating plugin: ${dir}"
+            claude plugin validate "$dir" || fail=1
+            echo "::endgroup::"
+          done < <(find . -path ./node_modules -prune -o -name plugin.json -path '*/.claude-plugin/plugin.json' -print)
+          if [ "$found" -eq 0 ]; then
+            echo "No plugin manifests found under any .claude-plugin/ directory" >&2
+            exit 1
+          fi
+          exit "$fail"
