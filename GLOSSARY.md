@@ -55,3 +55,12 @@ A test that asserts *how* the code works (internal call sequence, private data s
 
 ### Characterization Test
 A test written to pin down the *current* behavior of code — even quirky or undocumented behavior — so that a later refactor can't change it silently. Not false confidence: it's a deliberate safety net, and `audit-test` labels it as one rather than condemning it.
+
+### Test Debt
+The accumulated drag of tests that cost more than they protect — redundant, over-mocked, or stale ones that pile up (especially fast under AI-assisted development). Like technical debt, it doesn't show up as a single broken thing; it makes the whole suite slower to run, noisier to read, and less trustworthy without adding any real safety. `prune-tests` is the skill that looks across the suite and proposes paying it down.
+
+### Low-Value / Redundant Test
+A test that runs but adds no confidence something else doesn't already provide — a duplicate of another test's assertions, a timing/performance check sitting in a normal unit suite, or a test that really just checks the framework or ORM rather than your own behavior. It isn't *wrong*, it's just weight: deleting it loses no protection. Distinct from a false-confidence test, which looks like it protects something but doesn't.
+
+### Out-of-Sync (Stale) Test
+A test that has drifted from the code it names — its title or comments describe one behavior while its assertions check another, or it validates a response shape or status code the code no longer produces. Dangerous precisely because it still *passes*: it looks like protection while guarding something that no longer exists. Worse than having no test there at all, because the green checkmark tells you not to look.
