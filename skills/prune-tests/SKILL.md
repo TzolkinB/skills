@@ -77,7 +77,7 @@ If the suite is already lean, say so plainly and list only "Keep" — do not man
 
 ## Apply Mode (`--apply`)
 
-Default output is a proposal only. `--apply` performs the removals/merges/rewrites — this is **destructive**, so it inherits the same safety rule as `audit-test` (see [ADR-0001](../../docs/adr/0001-audit-test-proves-by-execution.md) and [ADR-0002](../../docs/adr/0002-prune-tests-proposes-before-deleting.md)):
+Default output is a proposal only. `--apply` performs the removals/merges/rewrites — this is **destructive**, so it inherits the same safety rule as `audit-test` (see [ADR-0001](../../docs/adr/0001-audit-test-proves-by-execution.md) and [ADR-0003](../../docs/adr/0003-prune-tests-proposes-before-deleting.md)):
 
 1. Refuse to run unless `git status` reports a **clean tree** (or the user points to a scratch copy). Print the reason and stop otherwise.
 2. Show the full proposal and require explicit confirmation before touching any file.
