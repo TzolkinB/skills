@@ -14,7 +14,7 @@ Built by a QA professional who got tired of:
 
 ## What You Get
 
-Six QA-focused skills that work together or standalone:
+Nine QA-focused skills — eight atomic skills you run standalone, plus the `/sentinel` orchestrator that composes them into one verdict:
 
 ### `/test-plan`
 Generates a real test plan from a feature description:
@@ -33,6 +33,22 @@ Reads your test file and code. Flags:
 - Boundary conditions you forgot
 
 The opposite of "make it pass."
+
+### `/audit-test`
+Interrogates a *passing* test: would it actually fail if the code it covers broke?
+- Proposes the single code change most likely to expose a false-confidence test
+- Runs that targeted mutation and checks whether the test stays green (proof), or reasons it out when the code can't be run (fallback)
+- Labels findings as **Proven** vs **Likely** false-confidence — never an invented score
+
+Distinct from `coverage-review` (finds *missing* coverage) — this hunts tests that exist but protect nothing.
+
+### `/prune-tests`
+Looks across the whole suite for tests that cost more than they protect:
+- Low-value / redundant tests that duplicate confidence something else already provides
+- Over-mocked tests that verify fakes instead of behavior
+- Out-of-sync (stale) tests whose name or intent no longer matches what they assert
+
+Proposes before it deletes; `--apply` edits or removes flagged tests and reruns the affected ones to confirm. The subtractive counterpart to `coverage-review`.
 
 ### `/bug-report`
 Converts a messy failure into a structured bug report:
@@ -67,8 +83,10 @@ Automatically diagnose a failing Playwright test — no describing required:
 
 Scoped to Playwright. For non-Playwright failures, invoke diagnosing-bugs directly.
 
+> **Requires external tools** — Playwright, and Matt Pocock's `diagnosing-bugs` skill for logic-bug diagnosis. See [Dependencies](#dependencies) below.
+
 ### `/sentinel`
-The full orchestration: runs all skills on your branch and outputs:
+The orchestrator — the only skill that does no original analysis of its own. It composes the shippability skills (`/test-plan`, `/coverage-review`, `/qa-review`, and `/debug-test` on any failing tests) across your branch and reduces their output to one decision:
 - Test plan coverage
 - Layer distribution snapshot (`unit/component/integration/e2e`)
 - Assertion quality audit
@@ -76,21 +94,54 @@ The full orchestration: runs all skills on your branch and outputs:
 - Risk summary
 - Verdict: 🟢 PASS / 🟡 CAUTION / 🔴 FAIL
 
+`/threat-model` and `/bug-report` are deliberately *not* in the `/sentinel` chain — they answer questions (what breaks in production; how to hand off) that are orthogonal to shippability. `/sentinel` is a layer above the atomic skills, not a peer of them.
+
+## Dependencies
+
+Most Sentinel skills are self-contained — they statically read your code and tests and need nothing beyond Claude Code. **`/debug-test` is the exception:** it orchestrates external tools, so install these before you rely on it.
+
+| Needed by | Tool | Install | If missing |
+|-----------|------|---------|------------|
+| `/debug-test` (all of it) | **Playwright** | already in your project (`npx playwright test`) | Skill can't run — it is Playwright-scoped |
+| `/debug-test` auto-heal (locator/timing failures) | **Playwright agents** | `npx playwright init-agents` (once per repo) | Falls through to `diagnosing-bugs` instead of self-healing |
+| `/debug-test` logic diagnosis | **Matt Pocock's `diagnosing-bugs` skill** | `npx skills@latest add mattpocock/skills` | Deep bug diagnosis has no terminal route — `/debug-test` stalls after triage |
+
+`diagnosing-bugs` is the load-bearing one: when Playwright agents aren't set up, locator failures also route to it, so `/debug-test` leans on it for anything past a clean auto-heal. Installing Matt Pocock's skills alongside Sentinel is recommended — the two are designed to compose: **build with Matt's skills, verify with Sentinel.**
+
+Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/sentinel`) needs only Claude Code.
+
+## Privacy — what each skill reads, runs, and routes externally
+
+Sentinel is local-first. No skill sends your code to any third-party service, and nothing here calls a network API on your behalf. The table below spells out exactly what each skill touches so you can run it on private code with confidence.
+
+| Skill | Reads | Runs (executes) | Routes externally |
+|-------|-------|-----------------|-------------------|
+| `/test-plan` | A feature description you provide | Nothing | Nothing |
+| `/coverage-review` | Your test file + code file | Nothing | Nothing |
+| `/audit-test` | The passing test + the code it covers | A single targeted mutation + one test run, on a clean git tree (always revertible) | Nothing |
+| `/prune-tests` | The test suite | Read-only by default; `--apply` edits/removes flagged tests and reruns the affected ones locally | Nothing |
+| `/qa-review` | The code under review | Nothing | Nothing |
+| `/threat-model` | The change / diff | Nothing | Nothing |
+| `/bug-report` | A failure description you provide | Nothing | Nothing |
+| `/debug-test` | The failing Playwright test + code | Runs the Playwright test locally | **Yes** — routes to the Playwright healer agent and to Matt Pocock's `diagnosing-bugs` skill (both run locally in your session; see [Dependencies](#dependencies)) |
+| `/sentinel` | Files in the change | Composes the skills above; runs only what they run | Only whatever `/debug-test` routes to, and only when a failing test is present |
+
+`/debug-test` is the one skill that hands work to external tooling. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay surgical and gated on a clean git tree.
+
 ## Installation
 
-### From GitHub
+Add the marketplace, then install Sentinel by name:
 
-```bash
-claude plugin install github:kim-qa/sentinel
+```
+/plugin marketplace add TzolkinB/skills
+/plugin install sentinel@skills
 ```
 
-(Once this is published to your GitHub. For now, use local install below.)
+To install from a local checkout instead:
 
-### Local Install (Development)
-
-```bash
-cd /path/to/sentinel
-claude plugin install /path/to/sentinel
+```
+/plugin marketplace add ./
+/plugin install sentinel@skills
 ```
 
 Then in any Claude Code session:
@@ -98,6 +149,8 @@ Then in any Claude Code session:
 ```
 /test-plan "booking room app"
 /coverage-review app.test.js app.js
+/audit-test app.test.js app.js
+/prune-tests
 /bug-report "date filter doesn't work"
 /qa-review BookingService.js
 /debug-test tests/my.spec.ts
@@ -116,7 +169,7 @@ Sentinel is built on three premises:
 
 3. **Pragmatism over perfection.** You don't need 100% coverage or zero technical debt. You need to ship fast and be able to verify it works. Sentinel helps you do that.
 
-For the reasoning behind specific design choices — why 6 skills instead of one, why a 3-state verdict, what the tradeoffs are — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+For the reasoning behind specific design choices — why nine skills instead of one, why a 3-state verdict, what the tradeoffs are — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## New to testing? Start here
 
@@ -157,6 +210,8 @@ Not built yet, but planned as this gets used for real:
 | `/qa-review` | During code review — catch testability issues before they ship |
 | `/threat-model` | Before shipping something risky — what breaks, who's affected, would you even notice |
 | `/coverage-review` | After AI writes tests — verify they're not just making assertions pass |
+| `/audit-test` | When a test passes — prove it would actually fail if the code broke |
+| `/prune-tests` | When the suite feels slow or noisy — cut tests that cost more than they protect |
 | `/debug-test` | When a Playwright test is failing — automatically diagnose and route to the right fix |
 | `/bug-report` | When something breaks — structure it for the team |
 | `/sentinel` | Before you ship — full quality pass on your branch |

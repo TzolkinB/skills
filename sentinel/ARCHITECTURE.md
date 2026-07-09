@@ -1,6 +1,6 @@
 # Architecture & Decisions
 
-This doc exists because a feature list ("Sentinel has 6 skills") doesn't show engineering judgment, and a working plugin doesn't explain itself. This is the *why* behind Sentinel — the part that's actually useful on a resume or in an interview, and the part I'd want to remember myself six months from now.
+This doc exists because a feature list ("Sentinel has nine skills") doesn't show engineering judgment, and a working plugin doesn't explain itself. This is the *why* behind Sentinel — the part that's actually useful on a resume or in an interview, and the part I'd want to remember myself six months from now.
 
 ## Why separate skills instead of one big prompt
 
@@ -30,7 +30,7 @@ The tradeoff: `debug-test` now has an external dependency on the Playwright heal
 
 ## Why `/sentinel` orchestrates instead of everything being flat
 
-Several independent skills solve independent problems, but shipping a branch requires them at once, synthesized into one decision. `/sentinel` is the only skill that doesn't do original analysis — it calls the others in its chain (`test-plan`, `coverage-review`, `qa-review`, `debug-test`, and `audit-test` in batch over the changed tests) and reduces their output to a verdict. That's a deliberate layering: atomic skills for daily use, one orchestrator for the "am I safe to merge" moment.
+Several independent skills solve independent problems, but shipping a branch requires them at once, synthesized into one decision. `/sentinel` is the only skill that doesn't do original analysis — it calls the others in its chain (`test-plan`, `coverage-review`, `qa-review`, `debug-test`, and `audit-test` in batch over the changed tests) and reduces their output to a verdict. That's a deliberate layering: atomic skills for daily use, one orchestrator for the "am I safe to merge" moment. It is not a peer of the skills it runs.
 
 `audit-test` joined the chain deliberately: without it, a branch could pass Sentinel while its "passing" tests prove nothing — the exact false confidence the suite exists to expose. It runs as a batch False-Confidence Audit over the changed tests, and its 🔴 *proven* findings move the verdict (see the sacred-path override below).
 
