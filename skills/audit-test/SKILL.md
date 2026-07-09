@@ -106,5 +106,10 @@ Deep audit changes real files, so it inherits the same hard rule as `prune-tests
 - **Run one test, not the suite.** Cost stays a handful of single-test runs by design; a full mutation campaign is the heavyweight overhead this skill deliberately avoids.
 - **This is not `coverage-review`.** Don't flag missing paths or propose new tests — that's the additive skill. This judges tests that *already pass*.
 - **This is not `prune-tests`.** Don't propose deleting anything. A false-confidence test is often guarding a real behavior badly — the fix is usually to *strengthen* it, not remove it.
+- **When to reach for Stryker instead.** `audit-test` is the *judgment* tool: interactive, per-test, no setup, bounded by the triage funnel, and it hands you a taxonomy verdict + a concrete fix. It does **not** produce a codebase-wide mutation score, and it never will — that's a full [mutation campaign](../../GLOSSARY.md#mutation-campaign) (see [StrykerJS](https://stryker-mutator.io/)), the heavyweight route this skill deliberately avoids ([ADR-0004](../../docs/adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)). Route by the job:
+  - *Reviewing a PR, one suspicious test, no Stryker set up, or you want a **fix** not a number* → `audit-test`.
+  - *Periodic suite health, a defensible **[mutation score](../../GLOSSARY.md#mutation-score)**, gating a release* → Stryker.
+  - *Go/no-go:* run `audit-test` first (it's cheap); if it's flagging lots of false-confidence, fix those before spending Stryker's minutes-to-hours; when the suite looks tight and you need the number, run the campaign.
+  - Note the funnel **cannot** pre-filter a Stryker run — Stryker mutates *source*, `audit-test` triages *tests*; they select on different axes. Consuming a Stryker survivor report *into* this skill's taxonomy is a planned seam, not built yet.
 - **A characterization test is a safety net, not a failure.** If a test deliberately pins current behavior (even quirky behavior) so a refactor can't change it silently, label it as such and pass it.
 - **Never condemn a test you couldn't run** as Proven. Missing environment means 🟡, and say so plainly.
