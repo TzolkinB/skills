@@ -96,6 +96,9 @@ The orchestrator — the only skill that does no original analysis of its own. I
 
 `/threat-model` and `/bug-report` are deliberately *not* in the `/sentinel` chain — they answer questions (what breaks in production; how to hand off) that are orthogonal to shippability. `/sentinel` is a layer above the atomic skills, not a peer of them.
 
+### `/ask-sentinel` (router)
+Not one of the nine — the front door. Describe your situation (*"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"*) and it points you at the one skill that answers your question and shows where it sits in the flow. It routes; it never analyzes, runs, or emits a verdict, and it never joins the `/sentinel` chain. Run `/ask-sentinel` with no argument for the full map.
+
 ## Dependencies
 
 Most Sentinel skills are self-contained — they statically read your code and tests and need nothing beyond Claude Code. **`/debug-test` is the exception:** it orchestrates external tools, so install these before you rely on it.
@@ -215,6 +218,7 @@ Not built yet, but planned as this gets used for real:
 | `/debug-test` | When a Playwright test is failing — automatically diagnose and route to the right fix |
 | `/bug-report` | When something breaks — structure it for the team |
 | `/sentinel` | Before you ship — full quality pass on your branch |
+| `/ask-sentinel` | When you're not sure which of the above to reach for — describe the situation, get routed |
 
 ## Examples
 
