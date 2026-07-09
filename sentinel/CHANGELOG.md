@@ -19,6 +19,9 @@ release heading.
 
 ### Added
 
+- `ask-sentinel` router skill: a front-door that maps a QA situation to the right one of the
+  nine skills and describes the intended flow, naming `/sentinel` as the orchestrator. It is a
+  router, not one of the nine, and never joins the `/sentinel` chain (issue #8).
 - Release discipline: `CHANGELOG.md`, a per-plugin semver source of truth, and a
   `scripts/release.sh` release script (ADR 0008).
 
