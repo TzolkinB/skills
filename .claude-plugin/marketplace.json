@@ -1,0 +1,15 @@
+{
+  "name": "skills",
+  "description": "A bundled marketplace of QA-focused Claude Code plugins by TzolkinB, starting with Sentinel.",
+  "owner": {
+    "name": "TzolkinB",
+    "url": "https://github.com/TzolkinB"
+  },
+  "plugins": [
+    {
+      "name": "sentinel",
+      "source": "./sentinel",
+      "description": "QA-first testing skills for Claude Code. Verify behavior, not green lights."
+    }
+  ]
+}

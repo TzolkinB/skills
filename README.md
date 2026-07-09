@@ -1,255 +1,29 @@
-# Sentinel
+# skills
 
-**QA-first testing skills for Claude Code.** Verify behavior, not green lights.
+A bundled Claude Code plugin marketplace by [TzolkinB](https://github.com/TzolkinB).
 
-## What Is Sentinel?
+> **Placeholder.** The full marketplace overview — a card per plugin and the polished
+> install story — lands in the docs-reconciliation work. This file exists so the repo
+> root is a valid, installable marketplace today.
 
-Sentinel is a testing framework disguised as a Claude Code plugin. It's for anyone who's frustrated with AI writing tests that just make assertions pass instead of actually verifying the code works.
+## Plugins
 
-Built by a QA professional who got tired of:
-- AI tests that pass but don't catch real bugs
-- Massive code review backlogs with no time to verify quality
-- Bloated file structures with no clear testing strategy
-- Job descriptions requiring "AI proficiency" but not thinking about quality
+- **[sentinel](./sentinel/)** — QA-first testing skills for Claude Code. Verify behavior, not green lights.
 
-## What You Get
-
-Six QA-focused skills that work together or standalone:
-
-### `/test-plan`
-Generates a real test plan from a feature description:
-- Acceptance criteria
-- Happy path + edge cases
-- Error paths and preconditions
-- Recommended layer per case (`unit` / `component` / `integration` / `e2e`)
-
-Written to find bugs, not to make a green light.
-
-### `/coverage-review`
-Reads your test file and code. Flags:
-- What SHOULD be tested but isn't
-- Loose or missing assertions
-- Untested error paths
-- Boundary conditions you forgot
-
-The opposite of "make it pass."
-
-### `/bug-report`
-Converts a messy failure into a structured bug report:
-- Steps to reproduce
-- Expected vs actual
-- Severity, environment, affected scope
-- Ready to paste into Jira/Linear/GitHub Issues
-
-### `/qa-review`
-Code review from a QA angle:
-- Is this even testable?
-- Hard-coded dependencies?
-- Non-deterministic behavior (Date.now, Math.random)?
-- Will tests be flaky?
-
-Orthogonal to "is the code clean?"
-
-### `/threat-model`
-Independent of testability or coverage — asks what actually breaks in production if this is wrong:
-- What does this change touch (data, external systems, downstream dependents)?
-- Failure mode, blast radius, detectability, reversibility
-- Ranked by impact weighted by how long a failure would go unnoticed — not by how likely you think it is (a silent failure outranks a loud one)
-
-Doesn't run anything, doesn't prescribe a rollback plan it can't verify — flags reversibility as an open question, not an answer. Deliberately separate from `qa-review`; call it whenever you want the "what could go wrong" view without waiting on a full testability pass.
-
-### `/debug-test`
-Automatically diagnose a failing Playwright test — no describing required:
-- Reads the test file and runs it directly
-- Applies fast QA heuristics (setup, assertion, code logic)
-- Routes to the Playwright healer for locator/timing failures
-- Escalates to a full diagnostic loop for logic failures
-
-Scoped to Playwright. For non-Playwright failures, invoke diagnosing-bugs directly.
-
-### `/sentinel`
-The full orchestration: runs all skills on your branch and outputs:
-- Test plan coverage
-- Layer distribution snapshot (`unit/component/integration/e2e`)
-- Assertion quality audit
-- Testability issues
-- Risk summary
-- Verdict: 🟢 PASS / 🟡 CAUTION / 🔴 FAIL
-
-## Installation
-
-### From GitHub
-
-```bash
-claude plugin install github:kim-qa/sentinel
-```
-
-(Once this is published to your GitHub. For now, use local install below.)
-
-### Local Install (Development)
-
-```bash
-cd /path/to/sentinel
-claude plugin install /path/to/sentinel
-```
-
-Then in any Claude Code session:
+## Install
 
 ```
-/test-plan "booking room app"
-/coverage-review app.test.js app.js
-/bug-report "date filter doesn't work"
-/qa-review BookingService.js
-/debug-test tests/my.spec.ts
-/sentinel
+/plugin marketplace add TzolkinB/skills
+/plugin install sentinel@skills
 ```
 
-## Philosophy
-
-Testing isn't about green lights. It's about confidence. A test suite that passes but doesn't catch real bugs is worse than no tests—it gives you false confidence while your code rots.
-
-Sentinel is built on three premises:
-
-1. **Tests verify behavior.** An assertion should say "if this fails, something is genuinely broken," not "I made the test pass."
-
-2. **Quality is testable.** Code that's hard to test is a signal it has hidden dependencies, non-deterministic behavior, or brittle assumptions. Fix the code, not the test.
-
-3. **Pragmatism over perfection.** You don't need 100% coverage or zero technical debt. You need to ship fast and be able to verify it works. Sentinel helps you do that.
-
-For the reasoning behind specific design choices — why 6 skills instead of one, why a 3-state verdict, what the tradeoffs are — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
-
-## New to testing? Start here
-
-Every skill supports a `--explain` flag. Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
-
-Unfamiliar terms in any report (boundary condition, flaky test, loose assertion, etc.) are defined in [`GLOSSARY.md`](./GLOSSARY.md).
-
-[`LEARNINGS.md`](./LEARNINGS.md) is a running log of what real usage against real repos has actually surfaced — worth reading if you want to see the tool's judgment tested against real code, not just the spec.
-
-If you're a QA professional reviewing this and want to give feedback, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the specific questions worth asking (and where that feedback gets logged).
-
-## Existing Project Bootstrap (One-Time)
-
-Use this when adding Sentinel to a repo that already has tests.
-
-1. Pick critical-path tests first (auth, payments/PII, state transitions, core journey flows).
-2. Use `/test-plan` for upcoming work and ensure every case gets a layer recommendation (`unit`/`component`/`integration`/`e2e`).
-3. Classify a small set of existing high-value tests to create an initial layer baseline.
-4. Record an initial distribution (for example: `3 unit / 5 component / 7 integration / 4 e2e`).
-5. Keep only thin critical-path browser journeys in `e2e`; if a case still passes with a browser replaced by API/client calls, move it toward `integration`.
-6. From that point forward, treat the `/sentinel` report layer distribution as your per-PR drift signal.
-
-Bootstrap is intentionally lightweight. You do not need to classify the entire legacy suite on day one.
-
-## Roadmap
-
-Not built yet, but planned as this gets used for real:
-- [ ] Starter templates for common frameworks (Jest, pytest, Playwright)
-- [ ] Progressive guide: unit → integration → E2E testing
-- [ ] Decision tree: "which test type for this scenario?"
-- [ ] Real test-runner integration (read actual coverage output, not just static analysis — see ARCHITECTURE.md tradeoffs)
-
-## When to Use Each Skill
-
-| Skill | When |
-|-------|------|
-| `/test-plan` | Before you write code or tests — define what to test and where it should live (`unit`/`component`/`integration`/`e2e`) |
-| `/qa-review` | During code review — catch testability issues before they ship |
-| `/threat-model` | Before shipping something risky — what breaks, who's affected, would you even notice |
-| `/coverage-review` | After AI writes tests — verify they're not just making assertions pass |
-| `/debug-test` | When a Playwright test is failing — automatically diagnose and route to the right fix |
-| `/bug-report` | When something breaks — structure it for the team |
-| `/sentinel` | Before you ship — full quality pass on your branch |
-
-## Examples
-
-### Example 1: New Feature
+To try it from a local checkout instead:
 
 ```
-# You're building a booking system. First:
-/test-plan "Users can book a room from 9am-5pm, no overlaps allowed"
-
-# This gives you: happy path, edge cases (midnight boundary, double-booking), error paths,
-# and recommended test layers per case
-# You and Claude use this plan to write both code and tests
-
-# Later, when tests are done:
-/coverage-review booking.test.js booking.ts
-/sentinel booking-feature-branch
+/plugin marketplace add ./
+/plugin install sentinel@skills
 ```
 
-### Example 2: AI Code Review
+## License
 
-```
-# AI just wrote 500 lines of test code. Before merging:
-/coverage-review UserService.test.js UserService.ts
-
-# Red flags:
-# - Tests pass but don't assert structure
-# - Database error path not tested
-# - Date boundary not covered
-
-# You tell Claude: "Fix these gaps"
-# Run /sentinel again when it's done
-```
-
-### Example 3: Production Bug
-
-```
-# Production: "Date filter broke"
-/bug-report "Date filter on /books page broken, returns empty results, browser console shows dateRange.start is undefined"
-
-# Output: structured bug report with severity, steps to repro, scope
-
-# Now debug:
-/debug-test "date filter test"
-# ← reads the test file, runs it, identifies root cause automatically
-```
-
-### Example 4: Before / After
-
-**Before:**
-- Claude generates code + tests (tests all pass, but don't verify anything)
-- You review manually, frustrated, can't keep up
-- Something breaks in production
-
-**After:**
-- Claude generates code + tests
-- You run `/sentinel` before merging
-- It flags: "tests pass but don't verify booking collisions"
-- You tell Claude: "fix this gap"
-- `/sentinel` again — all good, ship it
-
-## Contributing
-
-This is a personal framework. If you find it useful, fork it. If you have ideas:
-
-1. Try the skills on your own code
-2. See what works and what doesn't
-3. Document what you learned
-4. Build on it
-
-Testing is collaborative. There's no "one right way"—just ways that work for your team.
-
-## FAQ
-
-**Q: Will this replace my QA team?**
-A: No. Sentinel helps you think like a QA professional and catch obvious gaps. A real QA team catches things AI never will.
-
-**Q: Can I use this if I don't write tests?**
-A: Yes, but the value is lower. Sentinel is most useful when you're actively writing/reviewing tests.
-
-**Q: What if I don't use Claude Code?**
-A: These are just frameworks and checklists. Adapt them to your workflow.
-
-**Q: How do I "ship" the report from `/sentinel`?**
-A: That's up to you. Copy it into your pull request, post it to Slack, use it in code review. It's a tool for thinking, not a gate.
-
-## Support
-
-This is a personal project. If something doesn't work or an idea sucks, file an issue.
-
----
-
-**Made by Kim, a QA professional learning AI.**
-Not because AI testing is solved. But because we all have to figure this out together.
+[MIT](./LICENSE)
