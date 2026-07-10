@@ -14,24 +14,20 @@ Built by a QA professional who got tired of:
 
 ## What You Get
 
-Nine QA-focused skills — eight atomic skills you run standalone, plus the `/sentinel` orchestrator that composes them into one verdict:
+Nine QA-focused skills — eight atomic skills you run standalone, plus the `/sentinel` orchestrator that composes them into one verdict. **Find your situation in the "When to use it" column**, then open the skill's **doc page** (what it does, when to use / when not, a worked example against the fixtures, anti-patterns) or its agent-facing **`SKILL.md`** (the instructions Claude runs):
 
-## Skill index
-
-Each skill has a **human-facing doc page** (what it does, when to use / when not, a worked example against the fixtures, and anti-patterns) and an **agent-facing `SKILL.md`** (the instructions Claude runs). Read the docs to judge fit; the `SKILL.md` is the implementation.
-
-| Skill | Question it answers | Docs | Agent instructions |
-|-------|---------------------|------|--------------------|
-| `/test-plan` | What *should* be tested, before code exists? | [docs](./docs/test-plan.md) | [SKILL.md](./skills/test-plan/SKILL.md) |
-| `/qa-review` | Is this code even testable? | [docs](./docs/qa-review.md) | [SKILL.md](./skills/qa-review/SKILL.md) |
-| `/coverage-review` | Of what's testable, what's actually covered? | [docs](./docs/coverage-review.md) | [SKILL.md](./skills/coverage-review/SKILL.md) |
-| `/audit-test` | Would this passing test fail if the code broke? | [docs](./docs/audit-test.md) | [SKILL.md](./skills/audit-test/SKILL.md) |
-| `/prune-tests` | Which tests cost more than they protect? | [docs](./docs/prune-tests.md) | [SKILL.md](./skills/prune-tests/SKILL.md) |
-| `/threat-model` | If this is wrong, what breaks in production? | [docs](./docs/threat-model.md) | [SKILL.md](./skills/threat-model/SKILL.md) |
-| `/debug-test` | A Playwright test is failing — root cause and fix? | [docs](./docs/debug-test.md) | [SKILL.md](./skills/debug-test/SKILL.md) |
-| `/bug-report` | How do I hand this failure off cleanly? | [docs](./docs/bug-report.md) | [SKILL.md](./skills/bug-report/SKILL.md) |
-| `/sentinel` | What's the net shippability verdict across all of the above? | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
-| `/ask-sentinel` (router) | Which skill do I reach for? | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
+| Skill | When to use it | Docs | Agent instructions |
+|-------|----------------|------|--------------------|
+| `/test-plan` | Before you write code or tests — define what to test and at which layer (`unit`/`component`/`integration`/`e2e`) | [docs](./docs/test-plan.md) | [SKILL.md](./skills/test-plan/SKILL.md) |
+| `/qa-review` | During code review — catch untestable code before it ships | [docs](./docs/qa-review.md) | [SKILL.md](./skills/qa-review/SKILL.md) |
+| `/coverage-review` | After AI writes tests — find the missing cases and loose assertions | [docs](./docs/coverage-review.md) | [SKILL.md](./skills/coverage-review/SKILL.md) |
+| `/audit-test` | A test passes but you don't trust it — prove it would fail if the code broke | [docs](./docs/audit-test.md) | [SKILL.md](./skills/audit-test/SKILL.md) |
+| `/prune-tests` | The suite feels slow or noisy — cut tests that cost more than they protect | [docs](./docs/prune-tests.md) | [SKILL.md](./skills/prune-tests/SKILL.md) |
+| `/threat-model` | Before shipping something risky — what breaks in production, and would you notice | [docs](./docs/threat-model.md) | [SKILL.md](./skills/threat-model/SKILL.md) |
+| `/debug-test` | A Playwright test is failing — auto-diagnose and route the fix | [docs](./docs/debug-test.md) | [SKILL.md](./skills/debug-test/SKILL.md) |
+| `/bug-report` | Something broke — structure it into a clean handoff for the team | [docs](./docs/bug-report.md) | [SKILL.md](./skills/bug-report/SKILL.md) |
+| `/sentinel` | Before you ship — one full quality pass on your branch (🟢 PASS / 🟡 CAUTION / 🔴 FAIL) | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
+| `/ask-sentinel` (router) | Not sure which to reach for — describe the situation, get routed | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
 
 ### `/test-plan`
 Generates a real test plan from a feature description:
@@ -221,21 +217,6 @@ Not built yet, but planned as this gets used for real:
 - [ ] Progressive guide: unit → integration → E2E testing
 - [ ] Decision tree: "which test type for this scenario?"
 - [ ] Real test-runner integration (read actual coverage output, not just static analysis — see ARCHITECTURE.md tradeoffs)
-
-## When to Use Each Skill
-
-| Skill | When |
-|-------|------|
-| `/test-plan` | Before you write code or tests — define what to test and where it should live (`unit`/`component`/`integration`/`e2e`) |
-| `/qa-review` | During code review — catch testability issues before they ship |
-| `/threat-model` | Before shipping something risky — what breaks, who's affected, would you even notice |
-| `/coverage-review` | After AI writes tests — verify they're not just making assertions pass |
-| `/audit-test` | When a test passes — prove it would actually fail if the code broke |
-| `/prune-tests` | When the suite feels slow or noisy — cut tests that cost more than they protect |
-| `/debug-test` | When a Playwright test is failing — automatically diagnose and route to the right fix |
-| `/bug-report` | When something breaks — structure it for the team |
-| `/sentinel` | Before you ship — full quality pass on your branch |
-| `/ask-sentinel` | When you're not sure which of the above to reach for — describe the situation, get routed |
 
 ## Examples
 
