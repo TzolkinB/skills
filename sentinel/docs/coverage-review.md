@@ -20,6 +20,10 @@ When the project already produces coverage instrumentation (lcov, istanbul/c8, J
 - **You want to prove a specific passing test would fail if the code broke** → [`audit-test`](./audit-test.md). Coverage tells you a line ran; audit-test proves a test bites.
 - **You want to cut redundant or stale tests** → [`prune-tests`](./prune-tests.md), its subtractive counterpart.
 
+## Prerequisites
+
+Just Claude Code. It reads your test and code files, plus any coverage report the project already produces (lcov, istanbul/c8, JaCoCo) — it never runs your suite to generate one, and no report just means it reasons statically instead. Nothing to install, nothing leaves your machine.
+
 ## Worked example
 
 Fixture: [`fixtures/coverage-review/`](../fixtures/coverage-review/) ([expected findings](../fixtures/coverage-review/expected-findings.md)).
@@ -36,6 +40,10 @@ expect(result.ok).toBeTruthy(); // never checks status or remaining
 ```
 
 A correct run flags the loose assertions (they'd pass even if the arithmetic were wrong) and the untested branches: `amount <= 0`, `amount > order.total`, the already-`refunded` no-op, and the full-refund boundary where `status` flips to `refunded`. Then it recommends the specific tests that would close each gap.
+
+## Where it fits
+
+Runs *after* tests exist, paired with [`audit-test`](./audit-test.md): coverage-review finds what's untested or loosely asserted, audit-test proves whether an existing green test would fail if the code broke. Both feed the [`sentinel`](./sentinel.md) ship gate. Its subtractive mirror is [`prune-tests`](./prune-tests.md), which cuts tests rather than adding them.
 
 ## Anti-patterns
 

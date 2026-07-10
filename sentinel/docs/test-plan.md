@@ -22,6 +22,10 @@ Its value is that it forces the definition of *done and correct* up front, when 
 
 It reads a *description*, not code — so it's the wrong tool once the code and tests are in front of you.
 
+## Prerequisites
+
+Just Claude Code. `test-plan` reads the feature description you give it and writes a plan — it runs no code, needs nothing installed, and nothing leaves your machine.
+
 ## Worked example
 
 `test-plan` consumes a feature description rather than a source file, so it has no code fixture ([why](../fixtures/README.md)). Given:
@@ -38,6 +42,10 @@ a good plan names the acceptance criteria and then spreads cases across layers i
 - **Preconditions** — user logged in, seed data present.
 
 The tell of a good plan is that the boundary and rejection cases appear *before* anyone writes code to handle them.
+
+## Where it fits
+
+The front of the [Sentinel flow](./ask-sentinel.md) — it runs *before* any code or tests exist. The per-case layer labels it produces are what [`sentinel`](./sentinel.md) later aggregates into a branch's layer-distribution snapshot. Once the tests are written, hand off to [`coverage-review`](./coverage-review.md) for what's missing and [`audit-test`](./audit-test.md) for whether the green tests actually bite.
 
 ## Anti-patterns
 

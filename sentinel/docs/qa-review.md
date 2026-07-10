@@ -19,6 +19,10 @@ The point is that testability is orthogonal to code quality. Beautiful code can 
 - **Tests already exist and you want the coverage gaps** → [`coverage-review`](./coverage-review.md).
 - **You want a general code-quality or style review** — that's a different tool; qa-review only judges testability.
 
+## Prerequisites
+
+Just Claude Code — `qa-review` reads the code statically and runs nothing. Nothing to install, nothing leaves your machine.
+
 ## Worked example
 
 Fixture: [`fixtures/qa-review/`](../fixtures/qa-review/) ([expected findings](../fixtures/qa-review/expected-findings.md)).
@@ -34,6 +38,10 @@ Fixture: [`fixtures/qa-review/`](../fixtures/qa-review/) ([expected findings](..
 - **Coupling** — the function bundles clock, RNG, network, and timer together, so it can only run with the whole world live; it can't be unit-tested in isolation.
 
 Note what a correct run does *not* do: it doesn't rank the production impact of a mispricing — that consequence view is [`threat-model`](./threat-model.md)'s job.
+
+## Where it fits
+
+Sits in the *while-reviewing* slot of the [Sentinel flow](./ask-sentinel.md) — before tests are written, catching untestable code while it's cheap to fix — and it's part of the [`sentinel`](./sentinel.md) shippability chain. Its consequence-focused sibling [`threat-model`](./threat-model.md) asks the orthogonal "what breaks in production" question and runs on its own.
 
 ## Anti-patterns
 
