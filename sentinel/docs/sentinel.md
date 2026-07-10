@@ -18,6 +18,10 @@ The verdict is a categorical judgment, never a numeric score. A proven false-con
 - **You have one specific question** (is this testable? what's missing? does this test bite?) → run that atomic skill directly, or ask [`ask-sentinel`](./ask-sentinel.md) to route you. Orchestrating five skills for one answer is overkill.
 - **You want the production-risk view or a bug handoff** → [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md) are deliberately *not* in the chain; call them on their own.
 
+## Prerequisites
+
+Claude Code for the orchestration itself. Because it *composes* the atomic skills, it inherits their prerequisites — most notably [`debug-test`](./debug-test.md)'s Playwright tooling, and only when the branch actually has a failing test to diagnose. Everything else it runs is local static analysis plus [`audit-test`](./audit-test.md)'s surgical mutations on a clean tree. Nothing leaves your machine.
+
 ## Worked example
 
 `sentinel` consumes the *output of the other skills* rather than a single source file, so it has no fixture of its own ([why](../fixtures/README.md)) — but you can watch it in action by running it over a branch containing the [`audit-test` fixture](../fixtures/audit-test/). When its batch `audit-test` pass flags `"rejects overlapping bookings"` as 🔴 proven false-confidence, the verdict moves categorically:
@@ -26,6 +30,10 @@ The verdict is a categorical judgment, never a numeric score. A proven false-con
 - **Sacred** (`--sacred=src/booking/**`) → the same finding fires the override into an **un-overridable 🔴 FAIL**, naming the sacred path that tripped it.
 
 Because sacred paths are matched through the test↔code pairing, designating the *source* glob is enough to make a hollow test of it sacred — you don't have to also glob the test directory. The report then prioritizes recommendations as BEFORE SHIPPING / FOLLOW-UP / NICE TO HAVE.
+
+## Where it fits
+
+The ship gate at the end of the [Sentinel flow](./ask-sentinel.md) — a layer *above* the atomic skills, not a peer. It composes [`test-plan`](./test-plan.md), [`coverage-review`](./coverage-review.md), [`qa-review`](./qa-review.md), [`debug-test`](./debug-test.md) (on failing tests), and [`audit-test`](./audit-test.md) (batch) into one verdict; [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md) sit outside the chain by design. Not sure whether you want the gate or a single atomic skill? [`ask-sentinel`](./ask-sentinel.md) routes you.
 
 ## Anti-patterns
 

@@ -18,6 +18,10 @@ It **routes; it doesn't analyze** — it never reads your code, runs a test, or 
 - **You already know the skill you need** — just run it; the router only adds a hop.
 - **You want analysis, a diagnosis, or a verdict** — the router produces none of those; it names the skill that will.
 
+## Prerequisites
+
+Just Claude Code — the router reads nothing and runs nothing. It only points you at another skill.
+
 ## Worked example
 
 `ask-sentinel` consumes a situation description rather than code, so it has no fixture. It maps a plain-language situation to a single skill:
@@ -30,6 +34,10 @@ It **routes; it doesn't analyze** — it never reads your code, runs a test, or 
 | "about to merge" | [`sentinel`](./sentinel.md) — the ship gate, one verdict |
 
 Run `/ask-sentinel` with no argument and it prints the full nine-skill table and the flow diagram instead of routing. The complete routing signals and flow live in [`skills/ask-sentinel/SKILL.md`](../skills/ask-sentinel/SKILL.md).
+
+## Where it fits
+
+*Before* the flow, not in it — the front door. It points you at the right skill and shows where that step sits, then gets out of the way; it never joins the [`sentinel`](./sentinel.md) chain and never runs analysis. Once it's routed you, you're done with it.
 
 ## Anti-patterns
 

@@ -18,6 +18,10 @@ Its value is that a vague "it's broken" is the number-one reason bugs bounce bac
 - **A Playwright test is red and you want the root cause** → [`debug-test`](./debug-test.md), which runs and diagnoses it.
 - **You want the ship/no-ship verdict on a branch** → [`sentinel`](./sentinel.md). Like [`threat-model`](./threat-model.md), bug-report is not part of the `/sentinel` chain.
 
+## Prerequisites
+
+Just Claude Code — it structures the failure description you provide. Nothing to install, nothing runs, nothing leaves your machine.
+
 ## Worked example
 
 `bug-report` consumes a failure narrative rather than a source file, so it has no code fixture ([why](../fixtures/README.md)). Given a raw observation:
@@ -34,6 +38,10 @@ a good report replaces "broken" with something reproducible:
 - **Expected vs Actual:** results update to that date forward *vs* page reloads, filters clear, console shows `TypeError: dateRange.start is undefined`
 - **Affected scope:** date filtering; `BookList` / `DateFilter` / `useBooks`; blocks reporting, which depends on filters
 - **Root-cause hypothesis** (only because it's plausible here): the `dateRange` state is cleared before the filter effect runs.
+
+## Where it fits
+
+Outside the [`sentinel`](./sentinel.md) chain — it's a handoff tool, not a shippability check. It often follows [`debug-test`](./debug-test.md): once a failing test is diagnosed, bug-report turns the finding into a report the team can act on.
 
 ## Anti-patterns
 

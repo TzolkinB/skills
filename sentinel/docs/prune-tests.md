@@ -20,6 +20,10 @@ It's the **subtractive** counterpart to [`coverage-review`](./coverage-review.md
 - **A test looks like it never verifies its code** → [`audit-test`](./audit-test.md), which proves it by mutation. prune-tests defers these rather than guessing.
 - **You want it to just delete things.** It won't, without `--apply` on a clean git tree, and even then only high-confidence removes/merges act automatically.
 
+## Prerequisites
+
+Just Claude Code to get the proposal — it reads your tests and proposes, deleting nothing. `--apply` edits or removes tests, so it requires a **clean git tree** and reruns the affected tests locally afterward. Nothing leaves your machine.
+
 ## Worked example
 
 Fixture: [`fixtures/prune-tests/`](../fixtures/prune-tests/) ([expected findings](../fixtures/prune-tests/expected-findings.md)).
@@ -36,6 +40,10 @@ Fixture: [`fixtures/prune-tests/`](../fixtures/prune-tests/) ([expected findings
 - **Keep** — `empty cart totals zero`: a real boundary condition and unique signal.
 
 What the run does *not* do: it won't claim any test is proven false-confidence (that needs a mutation — hand off to [`audit-test`](./audit-test.md)) and it won't propose new tests for missing paths.
+
+## Where it fits
+
+The suite-hygiene step, and the subtractive counterpart to [`coverage-review`](./coverage-review.md). It hands any "does this test actually bite?" question to [`audit-test`](./audit-test.md) and never adds tests itself. It's *not* part of the [`sentinel`](./sentinel.md) ship-gate chain — reach for it when the suite feels slow or noisy, not at the merge gate.
 
 ## Anti-patterns
 

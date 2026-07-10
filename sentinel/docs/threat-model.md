@@ -19,6 +19,10 @@ For everything a change touches — data writes, external systems, downstream de
 - **You want coverage gaps** → [`coverage-review`](./coverage-review.md).
 - **You want a shippability verdict** → [`sentinel`](./sentinel.md). threat-model is intentionally *not* in the `/sentinel` chain — it answers a different question and is called on its own.
 
+## Prerequisites
+
+Just Claude Code — it reads the change or diff and reasons about consequence. It runs nothing, prescribes no rollback it can't see, and nothing leaves your machine.
+
 ## Worked example
 
 Fixture: [`fixtures/threat-model/`](../fixtures/threat-model/) ([expected findings](../fixtures/threat-model/expected-findings.md)).
@@ -35,6 +39,10 @@ The change makes refunds "fire-and-forget": `paymentGateway.refund(...)` is no l
 - **Reversibility:** hard — the email is sent and the status flipped; unwinding is money movement, not a code rollback.
 
 It raises open questions (is this flag-gated? what reconciles gateway refunds against status today?) without answering them, and it doesn't re-flag the testability smells or invent a rollback plan.
+
+## Where it fits
+
+Runs *independently* of the [`sentinel`](./sentinel.md) chain — "what breaks in production" is orthogonal to shippability, so `/sentinel` never calls it. Pair it with [`qa-review`](./qa-review.md) on a risky change: qa-review asks *can I test this*, threat-model asks *what happens if it's wrong*.
 
 ## Anti-patterns
 
