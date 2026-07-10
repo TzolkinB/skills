@@ -5,13 +5,9 @@ argument-hint: "[what you're trying to do, or a file/branch/situation — omit f
 allowed-tools: [Read, Glob]
 ---
 
-## Philosophy
-
 Nine skills is more than anyone wants to memorize. `ask-sentinel` is the front door: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"* — and it names the one skill that answers your question, says why, and shows where that step sits in the wider QA flow.
 
-It routes; it doesn't analyze. `ask-sentinel` never reads your code to find bugs, never runs a test, never emits a verdict — it hands you the skill that does. It is *not* one of the nine and never appears in the `/sentinel` chain; think of it as the map, not a stop on the route.
-
-The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer.** It's the only skill that does no original analysis — it composes the shippability skills into a single verdict. The other eight are atomic, run standalone, and each answer exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for the "am I safe to merge" moment.
+It **routes; it doesn't analyze** — never reads your code, never runs a test, never emits a verdict; it hands you the skill that does. It is not one of the nine and never joins the `/sentinel` chain — it's the map, not a stop on the route. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other eight are atomic, run standalone, and each answer exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for the "am I safe to merge" moment.
 
 ## The nine skills, by the question each answers
 
@@ -33,7 +29,7 @@ The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer.
 
 1. Read the situation from $ARGUMENTS. It may be a plain description, a file path, a branch name, or empty.
 2. **If $ARGUMENTS is empty**, output the full map (the table above plus the flow below) and stop — that's valid routing guidance on its own.
-3. Otherwise, match the situation to exactly one primary skill using the routing signals below. If two questions are genuinely in play (e.g. "review this AI-written test file *and* tell me if it's safe to ship"), name the primary skill first, then the secondary as a follow-up — don't hedge with a list of five.
+3. Otherwise, match the situation to exactly one primary skill using the routing signals below — a router that returns five options has routed nothing. If two questions are genuinely in play (e.g. "review this AI-written test file *and* tell me if it's safe to ship"), prefer the one whose *single question* most directly matches what the user asked, name it first, then the secondary as a follow-up.
 4. If the situation is the merge/ship decision over a whole branch, route to `/sentinel` and note it will call the atomic shippability skills for you — don't also tell the user to run those by hand.
 5. Output the recommendation in the format below: the skill, one line on *why* it fits, the exact invocation, and the natural next step in the flow.
 6. If nothing fits cleanly, say so plainly and ask one clarifying question — do not force a bad match.
@@ -93,12 +89,3 @@ For a matched situation:
 ```
 
 For empty $ARGUMENTS, output the nine-skill table and the intended-flow diagram above, then one line: "Tell me what you're trying to do and I'll point you at one."
-
-## Notes
-
-- Route to **one** primary skill. A router that returns five options has routed nothing.
-- Never do the downstream skill's job here — don't read code for testability, don't audit a test, don't emit a verdict. Point, don't perform.
-- `/sentinel` is a layer *above* the atomic skills, not a peer. When the answer is `/sentinel`, don't also list its chain members as separate to-dos — it runs them.
-- `/threat-model` and `/bug-report` are independent by design; recommend them freely without implying `/sentinel` covers them.
-- `ask-sentinel` is not one of the nine and never joins the `/sentinel` chain — it's the map, not a stop on the route.
-- When unsure between two skills, prefer the one whose *single question* most directly matches what the user asked, and offer the other as the follow-up.
