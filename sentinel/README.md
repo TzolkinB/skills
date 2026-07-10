@@ -307,4 +307,4 @@ This is a personal project, built and maintained by one QA engineer. If somethin
 ---
 
 **Made by Kim, a QA professional learning AI.**
-AI can write the tests. Knowing whether they'd actually catch a bug is still the job — that's what Sentinel is for.
+AI can write the tests. Knowing whether they have value is still the job — that's what Sentinel is for.
