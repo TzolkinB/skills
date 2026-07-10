@@ -4,7 +4,7 @@
 
 ## What Is Sentinel?
 
-Sentinel is a testing framework disguised as a Claude Code plugin. It's for anyone who's frustrated with AI writing tests that just make assertions pass instead of actually verifying the code works.
+Sentinel is a judgement layer for your tests. It exists for one problem: AI writes tests that make assertions pass without proving anything — tests that stay green even when you break the very behavior they claim to guard. A suite like that isn't protection; it's false confidence, and false confidence is worse than no tests at all.
 
 Built by a QA professional who got tired of:
 - AI tests that pass but don't catch real bugs
