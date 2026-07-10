@@ -18,13 +18,21 @@ The trap: an AI can *reason* a test is fine and be exactly as wrong as the test 
    - **a single named test** → deep-audit that one test.
    - **a test file** → triage every test in it, deep-audit only the flagged ones.
    - **a test *and* its code** (both paths given) → deep-audit, code-aware. The first-class mode — full confidence needs the code.
-   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run **Batch mode**. `Glob` a directory/glob for `**/*.{spec,test}.*`; for `--changed`, list test files changed against the merge-base (`git diff --name-only main...HEAD`, filtered to test files). This is the mode `/sentinel` calls over a branch's changed tests.
-   - **nothing** → default the glob to the whole suite (`**/*.{spec,test}.*`) and run Batch mode.
+   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run **Batch mode**. Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns. This is the mode `/sentinel` calls over a branch's changed tests.
+   - **nothing** → default to the whole suite (same patterns) and run Batch mode.
+
+   **Test-file discovery patterns** (extensible by convention — not JS-only, per [ADR-0014](../../docs/adr/0014-sacred-path-integrity-discovery-fails-loud.md)):
+   - JS/TS: `**/*.{spec,test}.{js,jsx,ts,tsx,mjs,cjs}`
+   - pytest: `**/test_*.py`, `**/*_test.py`
+   - Go: `**/*_test.go`
+   - JVM: `**/*Test.java`, `**/*Tests.java`, `**/*Test.kt`
+
+   If discovery matches **zero** test files, the audit is **INCONCLUSIVE — no recognized test files**: report it and stop. Never treat "nothing found" as "nothing wrong" — a caller like `/sentinel` must read INCONCLUSIVE as "the audit did not run," not as a clean result.
 2. Read the test(s) fully. If code paths are given, read those too.
 3. **Triage (cheap, static).** For each test, state its **behavior contract** in one sentence ("what real behavior would break if this failed?"), then smell-check it. The assertion-quality smells — loose, incidental, overmocked (taxonomy 2–4) — are the *same static read* `/coverage-review` defines; apply that read here rather than re-deriving it. The taxonomy below adds the smells specific to *this* skill's question (focal-unit-never-invoked, order-dependent, implementation-coupled, pseudo-tested). What `audit-test` contributes beyond the static read is Step 4 — escalating the suspects to a live mutation. Only suspicious tests advance; this **funnel** keeps runtime to a handful of single-test runs.
 4. **Deep audit (per flagged test).** Reason out the single most plausible code change that *should* make this test fail, then prove it — honoring the **Safety rule**:
    - Apply the mutation to the source, run just that one test, record pass/fail, then **revert immediately**.
-   - Test still passed → **🔴 Proven false-confidence.** Test failed as it should → **🟢 Holds up.**
+   - Test still passed → **🔴 Proven false-confidence.** Test failed as it should → **🟢 killed the proposed mutation** (proven-solid *against this mutation* — not a blanket guarantee the test is fine).
    - If the code can't be run (no runnable env, missing deps), do **not** guess a Proven verdict — fall back to the mutation *thought* experiment and label it **🟡 Likely**.
 5. Classify each finding with the failure taxonomy and write the report. A **characterization test** (one deliberately pinning current behavior, even quirky behavior, so a refactor can't change it silently) is *labeled a safety net*, not condemned.
 6. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode). Otherwise omit it — default output stays lean.
@@ -35,13 +43,13 @@ Reuses `/sentinel`'s three states, scoped to a single test:
 
 - 🔴 **Proven false-confidence** — mutation ran, test stayed green. Factual, execution-proven.
 - 🟡 **Likely false-confidence** — reasoned only; code wasn't runnable, so this is the thought experiment, not proof.
-- 🟢 **Holds up** — the mutation made it fail as it should, or no plausible green-surviving change exists.
+- 🟢 **Killed the proposed mutation** — the mutation ran and the test failed as it should (or no plausible green-surviving change exists). Proven-solid *against that mutation*; not a blanket "this test is fine." A test that never advanced past triage is **Unexamined**, not 🟢.
 
 ## Batch / directory mode
 
 The same audit fanned out over a set of test files, with the triage funnel doing the cost control. It's how `/sentinel` consumes this skill.
 
-1. **Resolve the file set** (Step 1). If empty, say so and stop.
+1. **Resolve the file set** (Step 1). If discovery matches no test files, report **INCONCLUSIVE — no recognized test files** and stop. A caller like `/sentinel` must treat INCONCLUSIVE as "the audit did not run," never as a clean result.
 2. **Triage every test** (Step 3), then **deep-audit only the flagged ones** (Step 4) — never more than one live mutation across the whole batch, reverting between each.
 3. **Cost guard.** The funnel normally keeps deep audits to a handful. If more than ~15 tests flag, or even triage is heavy, report the counts and ask the user to narrow scope rather than grinding the whole suite — deep-audit the highest-smell tests first and say plainly which ones you did **not** reach.
 4. **Report the tally plus flagged-only** (see Output Format). Each flagged entry names the test **and its file path**, so a caller — e.g. `/sentinel` mapping findings to sacred paths — can locate every finding without re-triaging.
@@ -72,18 +80,19 @@ Single-test / flagged-test entry:
 
 For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code couldn't be run. For a 🟢, state briefly what made it fail (or why no green-surviving change exists).
 
-**Batch mode** shows flagged-only plus a tally — never the full green list, which just re-creates the noise this tool exists to cut. Each line carries the test's **file path**:
+**Batch mode** shows flagged findings plus a **provenance tally** — never a flat "hold up" count, which hides the difference between a test proven solid and one never examined ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). Only deep-audited tests can be 🟢; every test that never left triage is **Unexamined**, counted separately and never as green. Each line carries the test's **file path**:
 
 ```
-Audited 47 · 42 hold up · 5 flagged
+Audited 47 · deep-audited 5 (3 🟢 proven-solid · 1 🔴 proven-hollow · 1 🟡 likely-hollow) · 42 unexamined
 
 🔴 "rejects overlapping bookings" (booking.spec.ts) — overmocked (proof: removed guard, still green)
-🔴 "charges the card" (payment.spec.ts) — focal unit never invoked
 🟡 "sends confirmation email" (email.spec.ts) — likely incidental (env not runnable, reasoned only)
-...
+🟢 "charges the card" (payment.spec.ts) — killed the proposed mutation (nulled the amount → test failed)
+
+42 unexamined — triaged clean but never mutated; not evidence of health. Use `--all` to list them.
 ```
 
-Single-test mode always shows its verdict, including 🟢. In batch mode, `--all` additionally lists the tests that held up; without it, greens are omitted.
+Single-test mode always shows its verdict, including 🟢. In batch mode, `--all` additionally lists the **Unexamined** tests; without it they are summarized by count only — but they are **never** folded into the proven-solid greens.
 
 ## Explain Mode (`--explain`)
 
@@ -105,7 +114,18 @@ Deep audit changes real files, so it inherits the same hard rule as `prune-tests
 
 1. Refuse to run mutations unless `git status` reports a **clean tree** (or the user points to a scratch copy). Print the reason and fall back to 🟡 (reasoning only) otherwise.
 2. Mutate → run the single test → **revert** — one test at a time, never leave more than one mutation live.
-3. Guarantee revert even on crash or interrupt. Verify with `git status` before finishing.
+3. Revert immediately after each single-test run, and **verify the tree is clean with `git status` before finishing**. The clean-tree precondition makes recovery *possible* if a run dies mid-mutation — `git checkout -- <file>` restores the source — but that is a manual recovery step, not a guarantee the skill can make about a crashed session. Never leave a mutation live between tests.
+
+## Running just one test
+
+"Run just that one test" is framework-specific — never run the whole suite, and never trust a run you can't confirm targeted exactly one test:
+
+- **Jest / Vitest:** `jest -t '<test name>' <file>` / `vitest run -t '<test name>' <file>`
+- **pytest:** `pytest '<file>::<test_id>'`
+- **Go:** `go test -run '^<TestName>$' ./<pkg>`
+- **JUnit (Maven / Gradle):** `mvn -Dtest='<Class>#<method>' test` / `gradle test --tests '<Class>.<method>'`
+
+If the name is ambiguous (duplicate names, parametrized cases), target by file + name and **confirm the run executed exactly one test**. A selector that matches zero tests "passes" vacuously and would fake a 🟢 — if you can't confirm exactly one test ran, fall back to 🟡.
 
 ## Notes
 
