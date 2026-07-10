@@ -19,6 +19,10 @@ release heading.
 
 ### Added
 
+- Per-skill human-facing docs tree under `docs/`: one page per skill (what it does, when to use /
+  when not, a worked example against the fixtures, anti-patterns), plus a skill-index table in
+  `README.md` linking each skill to its doc page and its `SKILL.md`. Docs sit at a distinct altitude
+  from `SKILL.md` — they describe why/when, not how the agent executes (issue #10).
 - `ask-sentinel` router skill: a front-door that maps a QA situation to the right one of the
   nine skills and describes the intended flow, naming `/sentinel` as the orchestrator. It is a
   router, not one of the nine, and never joins the `/sentinel` chain (issue #8).

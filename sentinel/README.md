@@ -4,7 +4,7 @@
 
 ## What Is Sentinel?
 
-Sentinel is a testing framework disguised as a Claude Code plugin. It's for anyone who's frustrated with AI writing tests that just make assertions pass instead of actually verifying the code works.
+Sentinel is a judgement layer for your tests. It exists for one problem: AI writes tests that make assertions pass without proving anything — tests that stay green even when you break the very behavior they claim to guard. A suite like that isn't protection; it's false confidence, and false confidence is worse than no tests at all.
 
 Built by a QA professional who got tired of:
 - AI tests that pass but don't catch real bugs
@@ -14,7 +14,20 @@ Built by a QA professional who got tired of:
 
 ## What You Get
 
-Nine QA-focused skills — eight atomic skills you run standalone, plus the `/sentinel` orchestrator that composes them into one verdict:
+Nine QA-focused skills — eight atomic skills you run standalone, plus the `/sentinel` orchestrator that composes them into one verdict. **Find your situation in the "When to use it" column**, then open the skill's **doc page** (what it does, when to use / when not, a worked example against the fixtures, anti-patterns) or its agent-facing **`SKILL.md`** (the instructions Claude runs):
+
+| Skill | When to use it | Docs | Agent instructions |
+|-------|----------------|------|--------------------|
+| `/test-plan` | Before you write code or tests — define what to test and at which layer (`unit`/`component`/`integration`/`e2e`) | [docs](./docs/test-plan.md) | [SKILL.md](./skills/test-plan/SKILL.md) |
+| `/qa-review` | During code review — catch untestable code before it ships | [docs](./docs/qa-review.md) | [SKILL.md](./skills/qa-review/SKILL.md) |
+| `/coverage-review` | After AI writes tests — find the missing cases and loose assertions | [docs](./docs/coverage-review.md) | [SKILL.md](./skills/coverage-review/SKILL.md) |
+| `/audit-test` | A test passes but you don't trust it — prove it would fail if the code broke | [docs](./docs/audit-test.md) | [SKILL.md](./skills/audit-test/SKILL.md) |
+| `/prune-tests` | The suite feels slow or noisy — cut tests that cost more than they protect | [docs](./docs/prune-tests.md) | [SKILL.md](./skills/prune-tests/SKILL.md) |
+| `/threat-model` | Before shipping something risky — what breaks in production, and would you notice | [docs](./docs/threat-model.md) | [SKILL.md](./skills/threat-model/SKILL.md) |
+| `/debug-test` | A Playwright test is failing — auto-diagnose and route the fix | [docs](./docs/debug-test.md) | [SKILL.md](./skills/debug-test/SKILL.md) |
+| `/bug-report` | Something broke — structure it into a clean handoff for the team | [docs](./docs/bug-report.md) | [SKILL.md](./skills/bug-report/SKILL.md) |
+| `/sentinel` | Before you ship — one full quality pass on your branch (🟢 PASS / 🟡 CAUTION / 🔴 FAIL) | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
+| `/ask-sentinel` (router) | Not sure which to reach for — describe the situation, get routed | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
 
 ### `/test-plan`
 Generates a real test plan from a feature description:
@@ -176,13 +189,11 @@ For the reasoning behind specific design choices — why nine skills instead of 
 
 ## New to testing? Start here
 
-Every skill supports a `--explain` flag. Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
+Every skill except `/debug-test` supports a `--explain` flag (`/debug-test` is procedural, not pedagogical). Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
 
 Unfamiliar terms in any report (boundary condition, flaky test, loose assertion, etc.) are defined in [`GLOSSARY.md`](./GLOSSARY.md).
 
-[`LEARNINGS.md`](./LEARNINGS.md) is a running log of what real usage against real repos has actually surfaced — worth reading if you want to see the tool's judgment tested against real code, not just the spec.
-
-If you're a QA professional reviewing this and want to give feedback, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the specific questions worth asking (and where that feedback gets logged).
+If you're a QA professional reviewing this and want to give feedback, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the specific questions worth asking.
 
 ## Existing Project Bootstrap (One-Time)
 
@@ -204,21 +215,6 @@ Not built yet, but planned as this gets used for real:
 - [ ] Progressive guide: unit → integration → E2E testing
 - [ ] Decision tree: "which test type for this scenario?"
 - [ ] Real test-runner integration (read actual coverage output, not just static analysis — see ARCHITECTURE.md tradeoffs)
-
-## When to Use Each Skill
-
-| Skill | When |
-|-------|------|
-| `/test-plan` | Before you write code or tests — define what to test and where it should live (`unit`/`component`/`integration`/`e2e`) |
-| `/qa-review` | During code review — catch testability issues before they ship |
-| `/threat-model` | Before shipping something risky — what breaks, who's affected, would you even notice |
-| `/coverage-review` | After AI writes tests — verify they're not just making assertions pass |
-| `/audit-test` | When a test passes — prove it would actually fail if the code broke |
-| `/prune-tests` | When the suite feels slow or noisy — cut tests that cost more than they protect |
-| `/debug-test` | When a Playwright test is failing — automatically diagnose and route to the right fix |
-| `/bug-report` | When something breaks — structure it for the team |
-| `/sentinel` | Before you ship — full quality pass on your branch |
-| `/ask-sentinel` | When you're not sure which of the above to reach for — describe the situation, get routed |
 
 ## Examples
 
@@ -306,9 +302,9 @@ A: That's up to you. Copy it into your pull request, post it to Slack, use it in
 
 ## Support
 
-This is a personal project. If something doesn't work or an idea sucks, file an issue.
+This is a personal project, built and maintained by one QA engineer. If something doesn't work, or a skill's judgment seems off, please file an issue — real usage against real code is exactly what sharpens these skills.
 
 ---
 
 **Made by Kim, a QA professional learning AI.**
-Not because AI testing is solved. But because we all have to figure this out together.
+AI can write the tests. Knowing whether they have value is still the job — that's what Sentinel is for.
