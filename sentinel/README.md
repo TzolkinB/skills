@@ -193,9 +193,7 @@ Every skill except `/debug-test` supports a `--explain` flag (`/debug-test` is p
 
 Unfamiliar terms in any report (boundary condition, flaky test, loose assertion, etc.) are defined in [`GLOSSARY.md`](./GLOSSARY.md).
 
-[`LEARNINGS.md`](./LEARNINGS.md) is a running log of what real usage against real repos has actually surfaced — worth reading if you want to see the tool's judgment tested against real code, not just the spec.
-
-If you're a QA professional reviewing this and want to give feedback, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the specific questions worth asking (and where that feedback gets logged).
+If you're a QA professional reviewing this and want to give feedback, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the specific questions worth asking.
 
 ## Existing Project Bootstrap (One-Time)
 
@@ -304,9 +302,9 @@ A: That's up to you. Copy it into your pull request, post it to Slack, use it in
 
 ## Support
 
-This is a personal project. If something doesn't work or an idea sucks, file an issue.
+This is a personal project, built and maintained by one QA engineer. If something doesn't work, or a skill's judgment seems off, please file an issue — real usage against real code is exactly what sharpens these skills.
 
 ---
 
 **Made by Kim, a QA professional learning AI.**
-Not because AI testing is solved. But because we all have to figure this out together.
+AI can write the tests. Knowing whether they'd actually catch a bug is still the job — that's what Sentinel is for.
