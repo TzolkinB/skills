@@ -1,8 +1,8 @@
 # debug-test gains a flake mode that detects, quarantines, and routes — it does not rebuild the runner
 
 Flaky tests are the one failure category `debug-test` handled only rudimentarily: run it a few
-times, and if it's non-deterministic, hand off to `qa-review`. The
-[market analysis](../../../references/judgement_layer_skills.md) and everyday practice both show the
+times, and if it's non-deterministic, hand off to `qa-review`. A market analysis of
+judgment-layer tools and everyday practice both show the
 real gap is *disposition*: teams meet a flaky test with `.skip()` or deletion — silent capitulation.
 That throws away a real signal, because a flaky test usually guards real behavior, so skipping it
 lets a genuine regression ship with invisible coverage loss. Teams do it anyway because they have no

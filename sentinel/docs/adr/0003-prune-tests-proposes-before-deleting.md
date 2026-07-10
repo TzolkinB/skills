@@ -13,7 +13,7 @@ belong in Sentinel at all.
 
 ## Why a recurring maintenance skill, despite the earlier decision not to add one
 
-`references/pyramid-tier-plan.md` records a deliberate choice: *"This avoids creating a separate
+An earlier test-pyramid tier plan recorded a deliberate choice: *"This avoids creating a separate
 recurring audit skill inside Sentinel while still supporting mature repos."* That decision was
 about **test-layer drift** — whether a repo's unit/component/integration/e2e mix is slipping — and
 it was solved without a new skill by shifting tier decisions left into `/test-plan` and surfacing
@@ -74,8 +74,7 @@ non-negotiable.
   worthless or just weak?" require `audit-test` to be available. Without it, `prune-tests` still
   works but must label suspected false-confidence tests as "Deferred — unverified" rather than
   resolving them.
-- `references/pyramid-tier-plan.md` should get a one-line pointer noting that its "no recurring
-  audit skill" scope was about tier drift, and that `prune-tests` is the deliberate exception for
-  test debt — so the two documents don't read as contradictory.
+- The earlier tier-plan decision should be read as scoped to tier drift, with `prune-tests`
+  as the deliberate exception for test debt — so the two decisions don't read as contradictory.
 - `ARCHITECTURE.md`'s skill table and its "no automated tool execution" tradeoff (already stale per
   ADR-0001) need updating to list `prune-tests` and its `--apply` execution path.

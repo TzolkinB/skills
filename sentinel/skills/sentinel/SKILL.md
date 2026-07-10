@@ -76,7 +76,7 @@ Layers: 2 unit / 3 component / 4 integration / 1 e2e
 ---
 
 ## Coverage Review Summary
-**Lines Tested:** 84%  
+**Coverage:** Broadly covered, high-risk gaps below (source: static inference — no instrumentation run)  
 **High-Risk Gaps:**
 - Line 42: Database write error handling — no test
 - Line 15: Date boundary condition (midnight) — not tested
