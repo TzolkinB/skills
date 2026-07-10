@@ -7,7 +7,7 @@ allowed-tools: [Read, Bash]
 
 When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. Scoped to Playwright; for non-Playwright failures, invoke diagnosing-bugs directly.
 
-A flaky test is a special case. Most teams `.skip()` or delete it — silent capitulation that throws away a real signal, because the flaky test usually guards real behavior. This skill instead **detects, quarantines, and routes the cause to a fix**, consuming the framework's own burn mechanisms rather than rebuilding a test runner. See **Flake Mode** and [ADR-0010](../../docs/adr/0010-debug-test-flake-mode.md).
+A flaky test is a special case. Most teams `.skip()` or delete it — silent capitulation that throws away a real signal, because the flaky test usually guards real behavior. This skill instead **detects, quarantines, and routes the cause to a fix**, consuming the framework's own burn mechanisms rather than rebuilding a test runner. See **Flake Mode** and [ADR-0012](../../docs/adr/0012-debug-test-flake-mode.md).
 
 ## Steps
 

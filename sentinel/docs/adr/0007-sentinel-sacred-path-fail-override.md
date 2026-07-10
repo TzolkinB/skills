@@ -3,9 +3,8 @@
 `/sentinel` synthesizes a three-state verdict — PASS / CAUTION / FAIL — and CAUTION is the
 deliberate middle: "shippable with known gaps" ([ARCHITECTURE.md → why a 3-state verdict](../../ARCHITECTURE.md)).
 [ADR-0002](0002-sentinel-is-judgment-not-release-evidence.md) further fixes Sentinel as *categorical
-judgment*, never a numeric release score. The governance-gap critique
-([`references/judgement_layer_skills.md`](../../../references/judgement_layer_skills.md), the J-Rig
-comparison) presses on the cost of that gradient: on a *core* path, "CAUTION — ship with notes" lets
+judgment*, never a numeric release score. The governance-gap critique (the J-Rig
+comparison from a market analysis of judgment-layer tools) presses on the cost of that gradient: on a *core* path, "CAUTION — ship with notes" lets
 human subjectivity wave through a test that has been *proven* to guard nothing. J-Rig's answer is to
 delete gradients entirely and gate on "sacred regressions." Adopting that wholesale would contradict
 why CAUTION exists at all.

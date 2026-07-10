@@ -1,9 +1,8 @@
 # coverage-review prefers real coverage instrumentation, falling back to static inference
 
 `coverage-review` historically inferred coverage *statically* — it read the test and the code and
-reasoned about which paths were exercised. The market analysis in
-[`references/judgement_layer_skills.md`](../../../references/judgement_layer_skills.md) flags this as
-the suite's weakest moat: ecosystem tools (nyc/istanbul, c8, JaCoCo, `test-coverage-analyzer`) *run*
+reasoned about which paths were exercised. A market analysis of judgment-layer
+tools flags this as the suite's weakest moat: ecosystem tools (nyc/istanbul, c8, JaCoCo, `test-coverage-analyzer`) *run*
 the suite and read real instrumentation, which is strictly more authoritative for "which lines
 executed" than any amount of reasoning. But *requiring* instrumentation would raise an activation
 barrier the skill deliberately doesn't have today — many AI-generated repos have no coverage config
