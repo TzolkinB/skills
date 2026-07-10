@@ -16,6 +16,23 @@ Built by a QA professional who got tired of:
 
 Nine QA-focused skills — eight atomic skills you run standalone, plus the `/sentinel` orchestrator that composes them into one verdict:
 
+## Skill index
+
+Each skill has a **human-facing doc page** (what it does, when to use / when not, a worked example against the fixtures, and anti-patterns) and an **agent-facing `SKILL.md`** (the instructions Claude runs). Read the docs to judge fit; the `SKILL.md` is the implementation.
+
+| Skill | Question it answers | Docs | Agent instructions |
+|-------|---------------------|------|--------------------|
+| `/test-plan` | What *should* be tested, before code exists? | [docs](./docs/test-plan.md) | [SKILL.md](./skills/test-plan/SKILL.md) |
+| `/qa-review` | Is this code even testable? | [docs](./docs/qa-review.md) | [SKILL.md](./skills/qa-review/SKILL.md) |
+| `/coverage-review` | Of what's testable, what's actually covered? | [docs](./docs/coverage-review.md) | [SKILL.md](./skills/coverage-review/SKILL.md) |
+| `/audit-test` | Would this passing test fail if the code broke? | [docs](./docs/audit-test.md) | [SKILL.md](./skills/audit-test/SKILL.md) |
+| `/prune-tests` | Which tests cost more than they protect? | [docs](./docs/prune-tests.md) | [SKILL.md](./skills/prune-tests/SKILL.md) |
+| `/threat-model` | If this is wrong, what breaks in production? | [docs](./docs/threat-model.md) | [SKILL.md](./skills/threat-model/SKILL.md) |
+| `/debug-test` | A Playwright test is failing — root cause and fix? | [docs](./docs/debug-test.md) | [SKILL.md](./skills/debug-test/SKILL.md) |
+| `/bug-report` | How do I hand this failure off cleanly? | [docs](./docs/bug-report.md) | [SKILL.md](./skills/bug-report/SKILL.md) |
+| `/sentinel` | What's the net shippability verdict across all of the above? | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
+| `/ask-sentinel` (router) | Which skill do I reach for? | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
+
 ### `/test-plan`
 Generates a real test plan from a feature description:
 - Acceptance criteria
@@ -176,7 +193,7 @@ For the reasoning behind specific design choices — why nine skills instead of 
 
 ## New to testing? Start here
 
-Every skill supports a `--explain` flag. Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
+Every skill except `/debug-test` supports a `--explain` flag (`/debug-test` is procedural, not pedagogical). Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
 
 Unfamiliar terms in any report (boundary condition, flaky test, loose assertion, etc.) are defined in [`GLOSSARY.md`](./GLOSSARY.md).
 
