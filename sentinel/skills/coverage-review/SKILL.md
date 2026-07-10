@@ -5,6 +5,9 @@ argument-hint: "[test file path] [code file path]"
 allowed-tools: [Read, Bash]
 ---
 
+**Owns:** what these tests *don't catch yet* — missing paths, edge cases, loose assertions. The additive gap-finder.
+**Not this:** a test that passes but may guard nothing → `/audit-test` (it proves by mutation); redundant, over-mocked, or stale tests to remove → `/prune-tests`; source that's hard to test at all → `/qa-review`.
+
 A test suite that makes green lights doesn't protect you. Coverage review asks: *what could break that these tests wouldn't catch?* It's the anti-AI-makes-it-pass tool.
 
 **Which lines executed** is a fact a coverage tool measures better than any reasoning can — so when instrumentation is present, read it as ground truth. But a line that *executed* is not a line that was *verified*: the real value is the judgment on top — assertion quality and the edge cases nobody wrote a test for. So prefer real coverage data when it exists and fall back to static inference when it doesn't; the judgment layer runs the same either way. It never *requires* instrumentation — most AI-generated repos have none, and a hard setup barrier would defeat the point.

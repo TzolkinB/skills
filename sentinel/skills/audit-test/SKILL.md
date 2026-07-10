@@ -5,6 +5,9 @@ argument-hint: "[test name, test file, test + its code, or a directory/glob/--ch
 allowed-tools: [Read, Bash, Glob]
 ---
 
+**Owns:** whether an *existing* passing test is real — proven by running one targeted mutation. The verifier.
+**Not this:** missing paths or new tests to add → `/coverage-review`; redundant or stale tests to remove → `/prune-tests`; whether the source is testable at all → `/qa-review`.
+
 A green test is not proof. This skill asks the sharpest question about the tests you already have: **would this passing test fail if the code it covers broke?** If it wouldn't, it's **false confidence** — it looks like protection but guards nothing.
 
 The trap: an AI can *reason* a test is fine and be exactly as wrong as the test it's judging. So don't stop at reasoning. For a suspect test, reason out the single most-likely-breaking change to the code, **apply that mutation, run just that one test, and report what actually happened** — never the whole suite. The strongest honest claim is factual: "I broke the code like this and the test still passed." Whether the mutation was behaviorally meaningful stays a visible human judgment — this skill is a **challenger, not an oracle**. (See [ADR-0001](../../docs/adr/0001-audit-test-proves-by-execution.md).)
@@ -18,7 +21,7 @@ The trap: an AI can *reason* a test is fine and be exactly as wrong as the test 
    - **a directory, glob, or `--changed`** → resolve to a set of test files, then run **Batch mode**. `Glob` a directory/glob for `**/*.{spec,test}.*`; for `--changed`, list test files changed against the merge-base (`git diff --name-only main...HEAD`, filtered to test files). This is the mode `/sentinel` calls over a branch's changed tests.
    - **nothing** → default the glob to the whole suite (`**/*.{spec,test}.*`) and run Batch mode.
 2. Read the test(s) fully. If code paths are given, read those too.
-3. **Triage (cheap, static).** For each test, state its **behavior contract** in one sentence ("what real behavior would break if this failed?") and smell-check it against the failure taxonomy below. Only tests that smell suspicious advance — this **funnel** keeps runtime to a handful of single-test runs.
+3. **Triage (cheap, static).** For each test, state its **behavior contract** in one sentence ("what real behavior would break if this failed?"), then smell-check it. The assertion-quality smells — loose, incidental, overmocked (taxonomy 2–4) — are the *same static read* `/coverage-review` defines; apply that read here rather than re-deriving it. The taxonomy below adds the smells specific to *this* skill's question (focal-unit-never-invoked, order-dependent, implementation-coupled, pseudo-tested). What `audit-test` contributes beyond the static read is Step 4 — escalating the suspects to a live mutation. Only suspicious tests advance; this **funnel** keeps runtime to a handful of single-test runs.
 4. **Deep audit (per flagged test).** Reason out the single most plausible code change that *should* make this test fail, then prove it — honoring the **Safety rule**:
    - Apply the mutation to the source, run just that one test, record pass/fail, then **revert immediately**.
    - Test still passed → **🔴 Proven false-confidence.** Test failed as it should → **🟢 Holds up.**

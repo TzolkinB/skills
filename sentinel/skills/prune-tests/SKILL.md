@@ -5,6 +5,9 @@ argument-hint: "[test file or directory path]"
 allowed-tools: [Read, Bash, Glob]
 ---
 
+**Owns:** which existing tests cost more than they protect — redundancy, over-mocking, drift. The subtractive economy pass.
+**Not this:** whether a weak-looking test actually guards its behavior → `/audit-test` (don't delete what only it can prove); missing coverage to add → `/coverage-review`; source testability → `/qa-review`.
+
 `prune-tests` asks the suite-level question its siblings don't: **which existing tests cost more than they protect?** — and proposes removing, merging, or rewriting them. Test suites accumulate debt the same way architecture does, and AI-assisted development is especially prone to it: redundant paths, assertions that can't fail, over-mocking that only verifies the mocks, tests drifted out of sync with the code they name. Left alone, this debt makes the suite slower, noisier, and less trustworthy without adding confidence.
 
 This is a **subtractive** skill, so it is deliberately **conservative**: it *proposes* a categorized plan and deletes nothing by default, and when uncertain it keeps. It does not re-derive whether a test protects its behavior — that's `audit-test`'s job, so suspected false-confidence tests are **handed off** (see Hand-off rule), not judged here.
