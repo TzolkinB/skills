@@ -5,6 +5,9 @@ argument-hint: "[file path to review]"
 allowed-tools: [Read, Bash]
 ---
 
+**Owns:** whether the *source code* can be tested at all — hidden deps, non-determinism, coupling — judged before any test exists.
+**Not this:** anything about tests that already exist — their gaps → `/coverage-review`, their credibility → `/audit-test`, their redundancy → `/prune-tests`.
+
 A code review from QA asks different questions than a general code review. Can I test this? Will it be flaky? Are there hidden dependencies? Is it coupled to something I can't mock?
 
 ## Steps
