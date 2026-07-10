@@ -44,6 +44,9 @@ A failure that produces no error, no crash, no alert — just wrong behavior nob
 ### False-Confidence Test
 A passing test that wouldn't fail even if the code it covers broke — so it looks like protection but guards nothing. The umbrella term for what `audit-test` hunts. Proven false-confidence means a mutation was actually applied and the test stayed green; likely means it was only reasoned about.
 
+### Provenance (Proven / Likely / Unexamined)
+How a verdict input is *known*, carried on every finding so a reader can tell evidence from guesswork. **Proven**: a mutation was run and its effect observed. **Likely**: reasoned about statically, because the code could not be run. **Unexamined**: read and triaged but never advanced past the funnel — no mutation ran and no static judgment was committed, so nothing vouches for it. The distinction that matters most is *Likely-good vs Unexamined*: an Unexamined test is not evidence of health and is never folded into a "holds up" count.
+
 ### Overmocking
 Replacing so many real collaborators with fakes that the test only verifies the fakes, not the code. Classic tell: the test asserts a method *was called* (`expect(save).toHaveBeenCalled()`) instead of asserting the real outcome happened (the record is actually rejected/saved). Break the real logic and the test still passes, because it never touched it.
 

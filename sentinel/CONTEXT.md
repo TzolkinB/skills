@@ -32,10 +32,14 @@ _Avoid_: test-assert (the retired predecessor)
 
 **Categorical confidence**:
 Sentinel reports confidence as named levels tied to concrete evidence, never as invented numbers.
-For `audit-test`: **Proven** false-confidence (a mutation was run and the test stayed green) vs
-**Likely** false-confidence (reasoned only — the code could not be run).
-_Avoid_: numeric confidence scores (e.g. "87% confident") — reserve those for a future evidence
-pipeline with defined inputs.
+Every verdict input carries its **provenance** — how it is known
+([ADR-0013](docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)):
+**Proven** (a mutation was run and observed), **Likely** (reasoned only — the code could not be
+run), or **Unexamined** (read and triaged but never advanced past the funnel, so nothing executed
+or committed vouches for it). Sentinel *labels* provenance; it does not gate on execution — the
+hard execution gate is the future evidence pipeline's job.
+_Avoid_: numeric confidence scores (e.g. "87% confident") — reserve those for that pipeline; and
+never let an Unexamined test sit in a "holds up" tally as if it were Proven.
 
 **Sacred path**:
 A path (code or test) the user marks as critical for a `/sentinel` run, via `--sacred=<glob>`, so that
