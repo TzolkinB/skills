@@ -5,8 +5,6 @@ argument-hint: "[file path to review]"
 allowed-tools: [Read, Bash]
 ---
 
-## Philosophy
-
 A code review from QA asks different questions than a general code review. Can I test this? Will it be flaky? Are there hidden dependencies? Is it coupled to something I can't mock?
 
 ## Steps
@@ -78,8 +76,4 @@ Keep it concept-level, not a repeat of the finding. The finding already says *wh
 
 ## Notes
 
-- Testability review ≠ code quality review (orthogonal concerns)
-- Even beautiful code can be untestable; even ugly code can be testable
-- Flag: can I test this in isolation? Or do I need the whole system running?
-- Flag: will this test be flaky or slow?
-- Hard-coded values, timestamps, randomness, external service calls—all test killers
+- Testability review ≠ code quality review — orthogonal concerns. Even beautiful code can be untestable; even ugly code can be testable.

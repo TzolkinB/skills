@@ -5,8 +5,6 @@ argument-hint: "[description of the bug]"
 allowed-tools: [Read, Bash]
 ---
 
-## Philosophy
-
 A good bug report is reproducible, scoped, and actionable. It gives the person fixing it enough context that they don't have to ask follow-up questions.
 
 ## Steps

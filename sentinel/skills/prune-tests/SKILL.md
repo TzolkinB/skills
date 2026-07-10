@@ -5,13 +5,9 @@ argument-hint: "[test file or directory path]"
 allowed-tools: [Read, Bash, Glob]
 ---
 
-## Philosophy
+`prune-tests` asks the suite-level question its siblings don't: **which existing tests cost more than they protect?** — and proposes removing, merging, or rewriting them. Test suites accumulate debt the same way architecture does, and AI-assisted development is especially prone to it: redundant paths, assertions that can't fail, over-mocking that only verifies the mocks, tests drifted out of sync with the code they name. Left alone, this debt makes the suite slower, noisier, and less trustworthy without adding confidence.
 
-`coverage-review` asks "what's *missing*?" and adds tests. `audit-test` asks "would this *one passing test* fail if the code broke?" and proves it with a mutation. This skill asks the opposite, suite-level question: **which existing tests cost more than they protect?** — and proposes removing, merging, or rewriting them.
-
-Test suites accumulate debt the same way architecture does. AI-assisted development is especially prone to it: redundant paths, assertions that can't fail, over-mocking that only verifies the mocks, and tests that drifted out of sync with the code they name. Left alone, this debt makes the suite slower, noisier, and less trustworthy without adding confidence.
-
-This is a **subtractive** skill, so it is deliberately **conservative**. It *proposes* a categorized plan by default — it does not delete or edit anything. When uncertain, it keeps. And it does not re-derive whether a test protects its behavior: that's `audit-test`'s job, so suspected false-confidence tests are **handed off**, not judged here.
+This is a **subtractive** skill, so it is deliberately **conservative**: it *proposes* a categorized plan and deletes nothing by default, and when uncertain it keeps. It does not re-derive whether a test protects its behavior — that's `audit-test`'s job, so suspected false-confidence tests are **handed off** (see Hand-off rule), not judged here.
 
 ## Steps
 
@@ -104,10 +100,4 @@ Keep it concept-level. The plan already says *what* to prune; this says *why the
 
 ## Notes
 
-- **Conservative by default.** Low-confidence deletion candidates become `keep` or `rewrite`, never `remove`. When scenario equivalence is uncertain, keep.
-- **Don't merge across distinct behavior contracts** even when the setup looks identical — matching setup is not matching meaning.
-- **Prefer merge/rename/rewrite before remove** whenever a useful behavior contract survives.
-- **This is not `coverage-review`.** Don't propose new tests or flag missing paths here — that's the additive skill.
-- **This is not `audit-test`.** Don't claim a test is false-confidence; you can't prove it without running a mutation. Hand it off.
-- **Destructive actions need a clean tree.** No exceptions — a prune that can't be reverted is worse than the debt it removes.
-- Recommendations must be file-specific and actionable, tied to the test's behavior contract — not generic advice.
+- **Conservative by default.** When scenario equivalence is uncertain, keep. Low-confidence deletion candidates become `keep` or `rewrite`, never `remove` — matching setup is not matching meaning.

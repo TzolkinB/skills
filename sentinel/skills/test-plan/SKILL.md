@@ -5,8 +5,6 @@ argument-hint: "[feature description]"
 allowed-tools: [Read, Bash]
 ---
 
-## Philosophy
-
 A test plan is a contract between you and the code. It says "this behavior will work this way." The plan should be testable, specific, and find bugs—not describe how to make a green light.
 
 ## Steps
@@ -70,7 +68,5 @@ e.g. "See: Acceptance Criteria", "See: Boundary Condition".]
 	- `component` — client-side UI logic that never needed a real backend. Field validation, disabled buttons, conditional rendering.
 	- `integration` — authz/RLS, DB triggers/constraints, API contracts, PII boundaries. No browser.
 	- `e2e` — one thin real-browser journey per critical path. If it would still pass with a browser swapped for an API client, downgrade to `integration`.
-- Write from the perspective of "what could break here?"
-- Include boundary conditions (0, 1, max-int, negative, null)
-- Call out state dependencies (is this feature dependent on another feature's state?)
-- Tests should fail if the criteria aren't met, not pass because the criteria are loose
+- Include boundary conditions (0, 1, max-int, negative, null) and state dependencies (does this feature depend on another feature's state?).
+- Tests should fail if the criteria aren't met, not pass because the criteria are loose.

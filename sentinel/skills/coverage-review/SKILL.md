@@ -5,11 +5,9 @@ argument-hint: "[test file path] [code file path]"
 allowed-tools: [Read, Bash]
 ---
 
-## Philosophy
+A test suite that makes green lights doesn't protect you. Coverage review asks: *what could break that these tests wouldn't catch?* It's the anti-AI-makes-it-pass tool.
 
-A test suite that makes green lights doesn't protect you. Coverage review asks: "What could break that these tests wouldn't catch?" It's the anti-AI-makes-it-pass tool.
-
-**Which lines executed** is a fact a coverage tool already measures better than any reasoning can — so when instrumentation is present, read it as ground truth instead of re-deriving it. But a line that *executed* is not a line that was *verified*: the skill's real value is the judgment on top — assertion quality and the edge cases nobody wrote a test for. So it prefers real coverage data when it exists and falls back to static inference when it doesn't, but the judgment layer runs the same either way. It never *requires* instrumentation — most AI-generated repos have none, and a hard setup barrier would defeat the point.
+**Which lines executed** is a fact a coverage tool measures better than any reasoning can — so when instrumentation is present, read it as ground truth. But a line that *executed* is not a line that was *verified*: the real value is the judgment on top — assertion quality and the edge cases nobody wrote a test for. So prefer real coverage data when it exists and fall back to static inference when it doesn't; the judgment layer runs the same either way. It never *requires* instrumentation — most AI-generated repos have none, and a hard setup barrier would defeat the point.
 
 ## Steps
 
@@ -77,11 +75,6 @@ Keep it concept-level. The gap list already says *what's* missing; this says *wh
 
 ## Notes
 
-- **Prefer real, fall back to static.** If the project already emits coverage (lcov/istanbul/c8/jacoco), read it as ground truth for *which lines ran*; otherwise infer statically. Always name the mode. Instrumentation is never a prerequisite — the skill works with zero config.
-- Even in instrumentation mode, don't stop at the number — a covered line with a loose assertion is still a gap. The executed/verified distinction is the whole point (see GLOSSARY: Coverage — line vs behavioral).
-- Don't just count lines covered; look at logic branches
-- A test that runs code but doesn't assert anything is worthless
-- Flag any `catch` block that isn't tested
-- Boundary conditions: 0, 1, -1, max, null, undefined, empty string, [], {}
-- State transitions: before/after state, side effects
-- This reads coverage reports; it does **not** run your suite to generate them. If no report exists, it stays in static mode rather than kicking off a coverage run.
+- A covered line with a loose assertion is still a gap — the executed-vs-verified distinction is the whole point (see GLOSSARY: Coverage — line vs behavioral).
+- Boundary conditions to probe: 0, 1, -1, max, null, undefined, empty string, [], {}. State transitions: before/after state, side effects.
+- This reads coverage reports; it does **not** run your suite to generate them. No report → static mode, never a coverage run.

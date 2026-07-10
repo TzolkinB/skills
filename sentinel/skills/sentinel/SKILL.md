@@ -5,11 +5,7 @@ argument-hint: "[branch or file path] [--sacred=<glob>] [--explain]"
 allowed-tools: [Read, Bash, Glob]
 ---
 
-## Philosophy
-
-Sentinel watches your code the way a QA professional does—not just "does it run?" but "will it actually work? Will it break later? Did we test what matters?"
-
-Sentinel is your testing framework: fast iteration, verify behavior, catch the AI hallucinations before they ship.
+Sentinel is the **orchestrator**: it runs no original analysis of its own — it composes the atomic QA skills over a feature branch and synthesizes one shippability verdict. The question every part serves: do the tests *verify behavior*, or just show green lights? It makes the AI-generated suite that passes while guarding nothing visible before it ships.
 
 ## Steps
 
@@ -159,11 +155,5 @@ This is the mode to use when reviewing a branch with someone newer to testing �
 
 ## Notes
 
-- Sentinel is the orchestrator—it calls the other skills (including `/audit-test` in batch over the changed tests) and synthesizes the report
-- Verdict: PASS = ship it; CAUTION = ship with known gaps; FAIL = fix before shipping
-- The False-Confidence Audit (`/audit-test`) is what makes a green suite untrustworthy *visible* — proven-hollow tests block PASS; a proven-hollow test on a sacred path is an un-overridable FAIL (see Sacred-Path FAIL Override and [ADR-0007](../../docs/adr/0007-sentinel-sacred-path-fail-override.md))
-- Sacred paths are opt-in per run via `--sacred=<glob>`; without them Sentinel stays a pure gradient
-- Focus on HIGH and MEDIUM risks; flag LOW for follow-up
-- Give the developer actionable next steps, not just complaints
-- A report that says "too many issues" is useless; prioritize by shippability impact
-- `/threat-model` exists as a separate skill and is intentionally NOT part of this chain — it answers a different question (what breaks in production) than shippability (are tests solid). Call it on its own when that's the question, don't assume `/sentinel` covers it.
+- Prioritize recommendations by shippability impact — BEFORE SHIPPING vs FOLLOW-UP vs NICE TO HAVE, as in the example. A report that just lists every issue is useless.
+- `/threat-model` exists as a separate skill and is intentionally NOT part of this chain — it answers a different question (what breaks in production) than shippability (are the tests solid). Call it on its own when that's the question; don't assume `/sentinel` covers it.

@@ -5,11 +5,9 @@ argument-hint: "[test file path or test name] [--flake]"
 allowed-tools: [Read, Bash]
 ---
 
-## Philosophy
+When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. Scoped to Playwright; for non-Playwright failures, invoke diagnosing-bugs directly.
 
-When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. No describing required. Scoped to Playwright; for non-Playwright failures invoke diagnosing-bugs directly.
-
-A flaky test is a special case with its own disposition. Most teams `.skip()` or delete it — silent capitulation that throws away a real signal, because the flaky test usually guards real behavior. The differentiator here is to **detect + quarantine + route the cause to a fix**, not to rebuild a test runner: the frameworks already provide burn mechanisms, so this skill consumes them and adds the judgment layer on top. See **Flake Mode** and [ADR-0010](../../docs/adr/0010-debug-test-flake-mode.md).
+A flaky test is a special case. Most teams `.skip()` or delete it — silent capitulation that throws away a real signal, because the flaky test usually guards real behavior. This skill instead **detects, quarantines, and routes the cause to a fix**, consuming the framework's own burn mechanisms rather than rebuilding a test runner. See **Flake Mode** and [ADR-0010](../../docs/adr/0010-debug-test-flake-mode.md).
 
 ## Steps
 
@@ -187,8 +185,4 @@ Suspected: source non-determinism — `Date.now()` in pricing.js:12, no `page.ro
 
 ## Notes
 - Scoped to Playwright (flake mode also supports Cypress `@cypress/grep --burn`). For Jest/Vitest/pytest failures, invoke diagnosing-bugs directly.
-- The Playwright healer requires `npx playwright init-agents` in the repo. If missing, skip to Step 5.
-- **Flake mode consumes the framework's own burn (`--repeat-each`, `flaky` status, `--burn`) — it never builds a re-run engine.** Detection + quarantine are the reliable output; the cause is a routed suggestion, never this skill's verdict.
-- **Quarantine, never silently skip or delete.** A flaky test usually guards real behavior; deletion *with justification* is `prune-tests`' job after a cause is confirmed.
 - `--explain` is not supported — this skill is procedural, not pedagogical.
-- 80% of quick-heuristic catches are one of three things: missing `await`, mock set up but function never called, assertion that can never fail.
