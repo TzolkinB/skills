@@ -13,9 +13,13 @@ Specific questions that are actually useful (generic "what do you think?" isn't)
 
 ## Logging feedback
 
-When feedback comes in, log it in [`LEARNINGS.md`](./LEARNINGS.md) under the "Expert Feedback" section — dated, attributed if the person is willing, and honest about what changed (or didn't) as a result. Feedback that doesn't get acted on is still worth recording; it's evidence the tool was actually reviewed, not just built in isolation.
+Feedback lives in the open, in the homes that already exist — not a separate log to drift:
 
-Don't write up feedback that hasn't happened yet. An empty log is more credible than a fabricated one.
+- **File an issue** with the observation. That is the durable, public record that the tool was reviewed rather than built in isolation.
+- **If it changes behavior**, the fix lands with a `CHANGELOG.md` entry under `## [Unreleased]` (see below).
+- **If it changes a decision or a tradeoff**, record it — or amend the one it affects — as an ADR under [`docs/adr/`](./docs/adr/). That's where the *why* is kept.
+
+Don't write up feedback that hasn't happened yet. An empty issue tracker is more credible than a fabricated log.
 
 ## If you want to contribute code/skills
 
