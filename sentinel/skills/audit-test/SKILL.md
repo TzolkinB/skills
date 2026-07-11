@@ -12,6 +12,8 @@ A green test is not proof. This skill asks the sharpest question about the tests
 
 The trap: an AI can *reason* a test is fine and be exactly as wrong as the test it's judging. So don't stop at reasoning. For a suspect test, reason out the single most-likely-breaking change to the code, **apply that mutation, run just that one test, and report what actually happened** — never the whole suite. The strongest honest claim is factual: "I broke the code like this and the test still passed." Whether the mutation was behaviorally meaningful stays a visible human judgment — this skill is a **challenger, not an oracle**. (See [ADR-0001](../../docs/adr/0001-audit-test-proves-by-execution.md).)
 
+There's a second, subtler failure the mutation alone can't see: a test whose assertion is *live* but **pinned to the wrong value** — edited to bless a regression (the fingerprint an AI self-healer leaves when it "fixes" a red test by rewriting the expected value). It kills mutations, so it reads 🟢 — yet it *enforces* the broken behavior and would reject the real fix. Catching it needs an intent signal, not just a mutation (see [ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md)).
+
 ## Steps
 
 1. Resolve the target from $ARGUMENTS:
@@ -32,7 +34,7 @@ The trap: an AI can *reason* a test is fine and be exactly as wrong as the test 
 3. **Triage (cheap, static).** For each test, state its **behavior contract** in one sentence ("what real behavior would break if this failed?"), then smell-check it. The assertion-quality smells — loose, incidental, overmocked (taxonomy 2–4) — are the *same static read* `/coverage-review` defines; apply that read here rather than re-deriving it. The taxonomy below adds the smells specific to *this* skill's question (focal-unit-never-invoked, order-dependent, implementation-coupled, pseudo-tested). What `audit-test` contributes beyond the static read is Step 4 — escalating the suspects to a live mutation. Only suspicious tests advance; this **funnel** keeps runtime to a handful of single-test runs.
 4. **Deep audit (per flagged test).** Reason out the single most plausible code change that *should* make this test fail, then prove it — honoring the **Safety rule**:
    - Apply the mutation to the source, run just that one test, record pass/fail, then **revert immediately**.
-   - Test failed as it should → **🟢 killed the proposed mutation** (proven-solid *against this mutation* — not a blanket guarantee the test is fine).
+   - Test failed as it should → **🟢 killed the proposed mutation** (proven-solid *against this mutation* — not a blanket guarantee the test is fine). But before recording 🟢 for a *changed* test, run the **Baseline-lock check** (below): a live assertion can still be pinned to a regressed value it was edited to match — if it fires, report **⚠️ Baseline-lock suspected**, not 🟢.
    - Test still passed → **candidate 🔴** — do **not** record it yet. Run the **Reachability check** (below) first: only a survival that clears reachability is **🔴 Proven false-confidence**; a survival that fails reachability is **🟡** — the mutation never reached the running app, so the test target is stale, not the test proven hollow.
    - If the code can't be run (no runnable env, missing deps), do **not** guess a Proven verdict — fall back to the mutation *thought* experiment and label it **🟡 Likely**.
 5. Classify each finding with the failure taxonomy and write the report. A **characterization test** (one deliberately pinning current behavior, even quirky behavior, so a refactor can't change it silently) is *labeled a safety net*, not condemned.
@@ -40,11 +42,12 @@ The trap: an AI can *reason* a test is fine and be exactly as wrong as the test 
 
 ## Verdicts
 
-Reuses `/sentinel`'s three states, scoped to a single test:
+Reuses `/sentinel`'s three states, scoped to a single test, plus one suspicion flag (⚠️) for the failure a mutation can't see:
 
 - 🔴 **Proven false-confidence** — mutation ran, test stayed green, **and the reachability check confirmed the harness is source-live**. Factual, execution-proven.
 - 🟡 **Likely false-confidence** — reasoned only; code wasn't runnable *or* the mutation didn't reach the running app (stale/remote harness), so this is short of proof.
 - 🟢 **Killed the proposed mutation** — the mutation ran and the test failed as it should (or no plausible green-surviving change exists). Proven-solid *against that mutation*; not a blanket "this test is fine." A test that never advanced past triage is **Unexamined**, not 🟢.
+- ⚠️ **Baseline-lock suspected** — the assertion is *live* (it kills mutations) but appears pinned to a value the code was **changed to produce**, not its intended behavior. Neither a clean 🟢 nor a hollow 🔴: a distinct suspicion that needs the reviewer (or an intent source) to confirm the intended value. A caller reads it as **caution, never a pass**. (See [ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md).)
 
 ## Reachability check (why a 🔴 needs it)
 
@@ -57,6 +60,20 @@ So before recording any 🔴, prove the harness is source-live:
 3. **Probe survived (test still green)** → the mutation is not reaching the tested artifact. Execution cannot distinguish "stale/remote harness" from "catastrophically hollow test," so **do not claim 🔴** — report **🟡** with: *"mutation did not reach the running app — the test target looks like a stale build or a deployed artifact; re-run against a source-live target (a dev server, or add a rebuild step to the harness) and re-audit."*
 
 For unit tests run against source (Jest/Vitest/pytest/…) the probe is caught trivially and confirms 🔴 at negligible cost — the check only bites where it must. This keeps audit-test's core promise honest: a 🔴 is *execution-proven false confidence*, never an artifact of a stale test harness.
+
+## Baseline-lock check (why a 🟢 can still be wrong)
+
+A 🟢 proves the assertion is *live* — it fails when the code changes. It does **not** prove the assertion pins the *correct* value. A test edited to match a regression still kills mutations perfectly; it's just anchored to the wrong point. Mutation has no notion of "correct," only "different from now," so it structurally can't see a baseline-lock ([ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md)). The classic source is an AI self-healer or "make the test pass" agent that greens a red test by rewriting its expected value.
+
+Raise **⚠️ Baseline-lock suspected** — never from an invented oracle — from intent signals, in order:
+
+1. **Assertion diff (primary; changed-test / `--changed` mode).** From the same diff you resolved the target with, check whether an assertion's expected value was **changed in lockstep with — especially weakened to match — the code change it should catch** (a count/threshold/enum/status loosened to track new output). That co-change is the fingerprint of a green-locked regression.
+2. **In-code intent oracle (secondary; any mode).** If mutating the code to *align it with its own declared intent* — a source-of-truth constant, type, schema, or doc the current code contradicts — makes the "passing" test **fail**, the test pins against intent, not behavior. (This is how a blinded audit caught it in EXPERIMENT-0002: restoring the code's declared 12-card deck failed a test that had been healed to expect 10.)
+3. **Neither available** → do **not** raise it. Say the check couldn't run (no diff, no in-code oracle) rather than guess — an honest gap, not a fabricated pass.
+
+**Not a characterization test.** A deliberate pin of current behavior (even quirky) is a labeled safety net, not a baseline-lock. The discriminator is *lockstep*: the assertion was changed **together with, and to accommodate,** the code change it should have caught. When ambiguous, present it as a question, not a verdict — challenger, not oracle.
+
+**Remedy:** *restore the assertion to the intended value (N); or, if the new behavior is correct, update the code's declared intent to match — don't leave the test blessing a value that contradicts the code's own source of truth.*
 
 ## Batch / directory mode
 
@@ -78,6 +95,7 @@ Batch mode judges tests exactly as single-test mode does; it does **not** know o
 5. **Order-dependent assertion** — passes only because of test execution order or shared state, not because the behavior is correct.
 6. **Implementation-coupled** — asserts *how* the code works (internal calls, private shape) rather than *what* it guarantees; passes even when the guarantee is broken. *(Needs code+test mode to judge.)*
 7. **Pseudo-tested** — the strongest, execution-proven case: the code can be broken arbitrarily and the test never notices.
+8. **Baseline-locked** — a *live* assertion pinned to the wrong value: it kills mutations but was edited to match a regression, so it enforces the broken behavior and would reject the fix. Distinct from 1–7 (which guard *nothing*); this one guards the *wrong thing*. Detected via the Baseline-lock check, not the mutation alone.
 
 ## Output Format
 
@@ -91,14 +109,23 @@ Single-test / flagged-test entry:
 **A real test would:** assert the 2nd booking is rejected with 409, not that save() ran
 ```
 
-For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code couldn't be run. For a 🟢, state briefly what made it fail (or why no green-surviving change exists).
+For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code couldn't be run. For a 🟢, state briefly what made it fail (or why no green-surviving change exists). For **⚠️ Baseline-lock suspected**, show the intent signal — the co-changed assertion (`old → new` expected value) or the in-code source of truth it contradicts — and the remedy:
+
+```
+## audit-test: "renders the initial deck"
+**Verdict:** ⚠️ Baseline-lock suspected
+**How it fails:** Baseline-locked — assertion loosened in lockstep with the code change it should catch
+**Signal:** assertion `toHaveCount(12)` → `toHaveCount(10)`, co-changed with `Main.reducer.ts` slicing the deck to 10; `robots.ts` declares 12 cards / 6 pairs
+**Remedy:** restore `toHaveCount(12)`, or — if a 10-card deck is intended — update `robots.ts`/the deck's declared size to match. Confirm the intended count before merging.
+```
 
 **Batch mode** shows flagged findings plus a **provenance tally** — never a flat "hold up" count, which hides the difference between a test proven solid and one never examined ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). Only deep-audited tests can be 🟢; every test that never left triage is **Unexamined**, counted separately and never as green. Each line carries the test's **file path**:
 
 ```
-Audited 47 · deep-audited 5 (3 🟢 proven-solid · 1 🔴 proven-hollow · 1 🟡 likely-hollow) · 42 unexamined
+Audited 47 · deep-audited 5 (2 🟢 proven-solid · 1 🔴 proven-hollow · 1 🟡 likely-hollow · 1 ⚠️ baseline-lock) · 42 unexamined
 
 🔴 "rejects overlapping bookings" (booking.spec.ts) — overmocked (proof: removed guard, still green)
+⚠️ "renders the initial deck" (seed.spec.ts) — baseline-lock: assertion 12→10 co-changed with the deck slice; robots.ts declares 12 (confirm intended count)
 🟡 "sends confirmation email" (email.spec.ts) — likely incidental (env not runnable, reasoned only)
 🟢 "charges the card" (payment.spec.ts) — killed the proposed mutation (nulled the amount → test failed)
 

@@ -8,6 +8,8 @@
 
 The trap it's built to avoid is that an AI can *reason* a test is fine and be exactly as wrong as the test it's judging. So it doesn't stop at reasoning: for a suspect test it applies the single most-likely-breaking mutation to the source, runs just that one test, and reports what actually happened. Findings are labeled **Proven** (a mutation ran and the test stayed green) or **Likely** (reasoned only, because the code couldn't be run) — never an invented score. Whether the mutation was behaviorally meaningful stays a visible human call: this is a **challenger, not an oracle**.
 
+It also flags a subtler failure the mutation alone can't see — a **baseline-lock** (⚠️): a *live* assertion edited to bless a regression (the fingerprint a self-healer leaves when it greens a red test by rewriting the expected value). It still kills mutations, so it reads 🟢 — but it pins the *wrong* value and would reject the real fix. audit-test raises it from the assertion diff (in `--changed` mode) or an in-code source of truth the code now contradicts, for a human to confirm the intended value ([ADR-0017](./adr/0017-audit-test-baseline-lock-suspected.md)).
+
 ## When to use it
 
 - A test is green and you don't trust it — you want proof it would actually bite.
