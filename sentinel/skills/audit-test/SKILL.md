@@ -32,7 +32,8 @@ The trap: an AI can *reason* a test is fine and be exactly as wrong as the test 
 3. **Triage (cheap, static).** For each test, state its **behavior contract** in one sentence ("what real behavior would break if this failed?"), then smell-check it. The assertion-quality smells — loose, incidental, overmocked (taxonomy 2–4) — are the *same static read* `/coverage-review` defines; apply that read here rather than re-deriving it. The taxonomy below adds the smells specific to *this* skill's question (focal-unit-never-invoked, order-dependent, implementation-coupled, pseudo-tested). What `audit-test` contributes beyond the static read is Step 4 — escalating the suspects to a live mutation. Only suspicious tests advance; this **funnel** keeps runtime to a handful of single-test runs.
 4. **Deep audit (per flagged test).** Reason out the single most plausible code change that *should* make this test fail, then prove it — honoring the **Safety rule**:
    - Apply the mutation to the source, run just that one test, record pass/fail, then **revert immediately**.
-   - Test still passed → **🔴 Proven false-confidence.** Test failed as it should → **🟢 killed the proposed mutation** (proven-solid *against this mutation* — not a blanket guarantee the test is fine).
+   - Test failed as it should → **🟢 killed the proposed mutation** (proven-solid *against this mutation* — not a blanket guarantee the test is fine).
+   - Test still passed → **candidate 🔴** — do **not** record it yet. Run the **Reachability check** (below) first: only a survival that clears reachability is **🔴 Proven false-confidence**; a survival that fails reachability is **🟡** — the mutation never reached the running app, so the test target is stale, not the test proven hollow.
    - If the code can't be run (no runnable env, missing deps), do **not** guess a Proven verdict — fall back to the mutation *thought* experiment and label it **🟡 Likely**.
 5. Classify each finding with the failure taxonomy and write the report. A **characterization test** (one deliberately pinning current behavior, even quirky behavior, so a refactor can't change it silently) is *labeled a safety net*, not condemned.
 6. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode). Otherwise omit it — default output stays lean.
@@ -41,9 +42,21 @@ The trap: an AI can *reason* a test is fine and be exactly as wrong as the test 
 
 Reuses `/sentinel`'s three states, scoped to a single test:
 
-- 🔴 **Proven false-confidence** — mutation ran, test stayed green. Factual, execution-proven.
-- 🟡 **Likely false-confidence** — reasoned only; code wasn't runnable, so this is the thought experiment, not proof.
+- 🔴 **Proven false-confidence** — mutation ran, test stayed green, **and the reachability check confirmed the harness is source-live**. Factual, execution-proven.
+- 🟡 **Likely false-confidence** — reasoned only; code wasn't runnable *or* the mutation didn't reach the running app (stale/remote harness), so this is short of proof.
 - 🟢 **Killed the proposed mutation** — the mutation ran and the test failed as it should (or no plausible green-surviving change exists). Proven-solid *against that mutation*; not a blanket "this test is fine." A test that never advanced past triage is **Unexamined**, not 🟢.
+
+## Reachability check (why a 🔴 needs it)
+
+A 🔴 claims the mutation ran and the test stayed green — but that only means false confidence if the mutation actually reached the code the running test exercises. **App-driven tests (Playwright, Cypress) are the trap:** when the test drives a stale build (`build && preview`, a served `dist/`) or a deployed URL, an edit to `src/` never reaches the app, so *every* mutation "survives" and audit-test would fabricate a 🔴 on a perfectly good test. (Proven empirically — see [ADR-0016](../../docs/adr/0016-audit-test-reachability-guard.md).)
+
+So before recording any 🔴, prove the harness is source-live:
+
+1. Apply a **maximal, unmissable mutation** to the same code the test asserts on — one a correctly wired test cannot miss (e.g. replace the asserted value/output with an obviously wrong constant, or break the covered unit outright). Run just that one test; **revert immediately** (same Safety rule).
+2. **Probe caught (test failed)** → the running app reflects source edits → the original survival is real → **🔴 confirmed.**
+3. **Probe survived (test still green)** → the mutation is not reaching the tested artifact. Execution cannot distinguish "stale/remote harness" from "catastrophically hollow test," so **do not claim 🔴** — report **🟡** with: *"mutation did not reach the running app — the test target looks like a stale build or a deployed artifact; re-run against a source-live target (a dev server, or add a rebuild step to the harness) and re-audit."*
+
+For unit tests run against source (Jest/Vitest/pytest/…) the probe is caught trivially and confirms 🔴 at negligible cost — the check only bites where it must. This keeps audit-test's core promise honest: a 🔴 is *execution-proven false confidence*, never an artifact of a stale test harness.
 
 ## Batch / directory mode
 
