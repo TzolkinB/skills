@@ -19,8 +19,8 @@ instrumentation, Playwright, mutation testing) instead of reimplementing them.
 The skills span the testing loop — planning what to test, reviewing coverage and
 testability, auditing whether passing tests actually protect anything, pruning
 test debt, modeling production risk, and diagnosing failures. `/sentinel` is the
-orchestrator that runs the shippability skills together and reduces them to a
-single 🟢 PASS / 🟡 CAUTION / 🔴 FAIL verdict.
+orchestrator that composes the QA skills over your branch into a single
+🟢 / 🟡 / 🔴 read to act on — a judgment, not a release gate.
 
 Full skill list, dependencies, and a privacy breakdown of what each skill reads
 and runs: see [`sentinel/README.md`](./sentinel/README.md).
