@@ -18,6 +18,11 @@ Comment out / delete the overlap guard in `booking.js` (the `if (clashes.length 
 block), run *only this test* → it still passes green. That is the execution proof of false
 confidence. Revert immediately after (skill's safety rule; requires a clean git tree).
 
+**Reachability check** ([ADR-0016](../../docs/adr/0016-audit-test-reachability-guard.md)): this is a
+unit test whose runner executes `booking.js` from source, so a maximal control mutation is caught
+trivially — the harness is source-live and the candidate 🔴 is **confirmed**, not downgraded to 🟡.
+(The downgrade path is for app-driven tests hitting a stale build or deployed URL.)
+
 ## A real test would
 Set `findOverlapping` to return a non-empty array and assert that `svc.book(...)` throws with
 `code === 409` — i.e. exercise and pin the rejection behavior, not the mock interaction.
