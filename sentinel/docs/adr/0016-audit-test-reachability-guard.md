@@ -17,6 +17,11 @@ a test asserting `toHaveCount(12)`:
 - **Build-served** (`preview` of a stale `dist/`, no rebuild): the test **passed** — mutation never
   reached the app → `audit-test` would have reported a **false 🔴**.
 
+Re-confirmed independently on 2026-07-11 under a blinded protocol: a fresh run on the same app —
+whose default `webServer` is build-served (`preview`) — reproduced the trap without prompting, the
+injected regression not reaching the running app until the harness was switched to a dev server. The
+stale-harness failure is reproducible, not a one-off.
+
 ## Decision
 
 Before recording any 🔴, `audit-test` runs a **reachability check**: it applies a *maximal, unmissable*
