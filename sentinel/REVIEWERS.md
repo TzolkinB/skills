@@ -41,6 +41,22 @@ Its differentiator is honesty in both directions on **app-driven (Playwright/Cyp
    Unit tests (Jest / Vitest / pytest) are always source-live — this step only matters for tests that
    drive a running app.
 
+## No Claude Code? Paste-and-run
+
+The skill *is* just a self-contained procedure — the plugin install is only convenience, so you can
+run it in almost anything:
+
+- **Any agentic coding tool with file + shell access** (Cursor agent mode, Cline, Windsurf, Copilot
+  agent, Codex CLI, …) → **full fidelity.** Paste the raw skill
+  ([`skills/audit-test/SKILL.md`](./skills/audit-test/SKILL.md)) and say: *"Follow this procedure to
+  audit the test `X` in `path/to/test`, whose code is `path/to/code`. Clean git tree; mutate → run one
+  test → revert."* Replace the `$ARGUMENTS` reference with your actual paths. It mutates, runs one
+  test, reverts, and gives the same execution-proven verdict as the installed skill. *(This is exactly
+  how it was validated — pointed at the raw file, no install.)*
+- **A plain chat with no tools** (a vanilla Claude/ChatGPT window) → it can't run a mutation, so it
+  falls back to the **reasoned-only 🟡** path the skill explicitly defines: static triage + a mutation
+  thought-experiment. Weaker (no proof), but honest — it won't dress reasoning up as a proven verdict.
+
 ## One known limitation to watch (please poke at this)
 
 `/audit-test` reasons only about the code you point it at. If a behavior is *also* enforced by
