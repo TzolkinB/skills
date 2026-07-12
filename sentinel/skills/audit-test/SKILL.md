@@ -164,6 +164,8 @@ Deep audit changes real files, so it inherits the same hard rule as `prune-tests
 - **pytest:** `pytest '<file>::<test_id>'`
 - **Go:** `go test -run '^<TestName>$' ./<pkg>`
 - **JUnit (Maven / Gradle):** `mvn -Dtest='<Class>#<method>' test` / `gradle test --tests '<Class>.<method>'`
+- **Playwright:** `npx playwright test <file> -g '<test title>' --project=<one project>` — `-g` targets by title; **`--project` pins a single browser** (without it every configured project runs, so "one test" executes 2–3× and muddies the result). Confirm the match first with the same command plus `--list`. App-driven → also subject to the **Reachability check** above.
+- **Cypress:** single-`it` isolation needs the **`@cypress/grep`** plugin: `npx cypress run --spec '<file>' --env grep='<test title>'`. **Without it, `cypress run --spec` executes the *whole spec file*, not one test** — another test in the file can catch your mutation and mask the target's hollowness. So prefer a one-test spec (or install `@cypress/grep`); if you can only run the whole spec and can't attribute the result to the target test, **fall back to 🟡**. App-driven → also subject to the **Reachability check** above.
 
 If the name is ambiguous (duplicate names, parametrized cases), target by file + name and **confirm the run executed exactly one test**. A selector that matches zero tests "passes" vacuously and would fake a 🟢 — if you can't confirm exactly one test ran, fall back to 🟡.
 
