@@ -41,6 +41,17 @@ Its differentiator is honesty in both directions on **app-driven (Playwright/Cyp
    Unit tests (Jest / Vitest / pytest) are always source-live — this step only matters for tests that
    drive a running app.
 
+## One known limitation to watch (please poke at this)
+
+`/audit-test` reasons only about the code you point it at. If a behavior is *also* enforced by
+something it can't see — a **database constraint/trigger, or an external service/validator** — then
+removing the app-level guard may not change what the test observes, and audit-test could in principle
+report a **false 🔴** (calling a good test hollow). In practice it often handles this well: it reasons
+about defense-in-depth and, when the hidden layer surfaces a *different* result, attributes correctly.
+The risk is narrow — a hidden layer that produces an *identical* observable outcome with no trace in
+the code. **So if you get a 🔴, sanity-check it: is this behavior guarded somewhere audit-test couldn't
+see?** If so, tell me — that false-🔴 is exactly the edge I most want to find.
+
 ## The feedback I actually want
 
 1. **Did you reach for `/audit-test` again unprompted?** (the real signal — did it earn a second use?)
