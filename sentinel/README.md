@@ -2,6 +2,8 @@
 
 **QA-first testing skills for Claude Code.** Verify behavior, not green lights.
 
+> **Reviewing this, or new here?** Start with the flagship — **[`/audit-test`](./docs/audit-test.md)** — the one skill that *proves* (by running a mutation, not by reasoning) whether a passing test would actually catch a real break. See [`REVIEWERS.md`](./REVIEWERS.md) for a 10-minute try-it path.
+
 ## What Is Sentinel?
 
 Sentinel is a judgement layer for your tests. It exists for one problem: AI writes tests that make assertions pass without proving anything — tests that stay green even when you break the very behavior they claim to guard. A suite like that isn't protection; it's false confidence, and false confidence is worse than no tests at all.
@@ -26,7 +28,7 @@ Nine QA-focused skills — eight atomic skills you run standalone, plus the `/se
 | `/threat-model` | Before shipping something risky — what breaks in production, and would you notice | [docs](./docs/threat-model.md) | [SKILL.md](./skills/threat-model/SKILL.md) |
 | `/debug-test` | A Playwright test is failing — auto-diagnose and route the fix | [docs](./docs/debug-test.md) | [SKILL.md](./skills/debug-test/SKILL.md) |
 | `/bug-report` | Something broke — structure it into a clean handoff for the team | [docs](./docs/bug-report.md) | [SKILL.md](./skills/bug-report/SKILL.md) |
-| `/sentinel` | Before you ship — one full quality pass on your branch (🟢 PASS / 🟡 CAUTION / 🔴 FAIL) | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
+| `/sentinel` | Before you merge — one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate) | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
 | `/ask-sentinel` (router) | Not sure which to reach for — describe the situation, get routed | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
 
 ### `/test-plan`
@@ -47,11 +49,13 @@ Reads your test file and code. Flags:
 
 The opposite of "make it pass."
 
-### `/audit-test`
+### `/audit-test` — the sharpest skill, and the one to look at first
 Interrogates a *passing* test: would it actually fail if the code it covers broke?
-- Proposes the single code change most likely to expose a false-confidence test
-- Runs that targeted mutation and checks whether the test stays green (proof), or reasons it out when the code can't be run (fallback)
-- Labels findings as **Proven** vs **Likely** false-confidence — never an invented score
+- Proposes the single most-likely-breaking change, runs that targeted mutation, and checks whether the test stays green — **proof, not reasoning**. Labels findings **Proven** vs **Likely**, never an invented score.
+- **Honest in both directions** — the part nothing else does on app-driven tests:
+  - won't fake a 🔴 on a stale/served app where the mutation never reaches the running code *(reachability guard, [ADR-0016](./docs/adr/0016-audit-test-reachability-guard.md))*
+  - catches a 🟢 that's been **pinned to a regression** — the trap a self-healer leaves when it "fixes" a red test by editing the expected value *(baseline-lock, [ADR-0017](./docs/adr/0017-audit-test-baseline-lock-suspected.md))*
+- Runs on **dev-served Playwright/Cypress**, not just unit tests — the credibility gap first-party test agents (which optimize toward green) structurally leave open.
 
 Distinct from `coverage-review` (finds *missing* coverage) — this hunts tests that exist but protect nothing.
 

@@ -1,11 +1,11 @@
 ---
 name: sentinel
-description: Run a full QA pass on a feature branch — test plan gaps, coverage, assertion quality, false-confidence audit, regression risks
+description: Run a QA judgment pass over a feature branch — test plan gaps, coverage, assertion quality, false-confidence audit, regression risks
 argument-hint: "[branch or file path] [--sacred=<glob>] [--explain]"
 allowed-tools: [Read, Bash, Glob]
 ---
 
-Sentinel is the **orchestrator**: it runs no original analysis of its own — it composes the atomic QA skills over a feature branch and synthesizes one shippability verdict. The question every part serves: do the tests *verify behavior*, or just show green lights? It makes the AI-generated suite that passes while guarding nothing visible before it ships.
+Sentinel is the **orchestrator**: it runs no original analysis of its own — it composes the atomic QA skills over a feature branch and synthesizes one QA read (🟢/🟡/🔴) you act on. The question every part serves: do the tests *verify behavior*, or just show green lights? It surfaces the AI-generated suite that passes while guarding nothing before you merge.
 
 ## Steps
 
