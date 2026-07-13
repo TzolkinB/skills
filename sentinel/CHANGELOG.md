@@ -17,6 +17,14 @@ release heading.
 
 ## [Unreleased]
 
+### Added
+
+- `debug-test` flake mode now routes **root-cause runtime evidence by framework** (new step F3):
+  Playwright → trace viewer / Test Replay; Cypress → [`cypress-flaky-test-audit`](https://github.com/sclavijosuero/cypress-flaky-test-audit)
+  (command-queue enqueue-vs-execution order, timing, never-run commands, retry diff), with a one-line
+  "how to read it for a flake". Evidence *downstream of detection* — a pointer, not rebuilt
+  instrumentation. (issue #46)
+
 ### Changed
 
 - `audit-test` reachability guard now covers **warm dev-server mutation propagation**, not just stale
