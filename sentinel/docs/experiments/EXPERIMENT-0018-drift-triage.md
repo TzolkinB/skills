@@ -1,7 +1,11 @@
 # EXPERIMENT-0018 — does drift-mode classify external drift vs. local regression, blinded, without a contract guard?
 
-**Status: Protocol (not yet run).** Gates [ADR-0018](../adr/0018-debug-test-drift-triage.md) from
-*Proposed* toward a recorded decision, the way EXPERIMENT-0002 gated
+**Status: Run — existence proof (2026-07-12, blinded).** The protocol below was executed blinded for
+Arms A and C (Arm B deferred) — see the [Results](#results-run-2026-07-12-blinded) section. This run
+is what backs [ADR-0018](../adr/0018-debug-test-drift-triage.md)'s move to *Accepted*, on the honest
+**existence-proof** label (n=1 target, n=1 app) — **not a rate**; the widening arms remain open. As
+designed, it gated [ADR-0018] from *Proposed* toward a recorded decision, the way EXPERIMENT-0002
+gated
 [ADR-0017](../adr/0017-audit-test-baseline-lock-suspected.md). Mirror of that experiment's design:
 run the judgment **blinded**, and measure both sides — does it catch what it should (sensitivity) and
 does it *refuse* to fire when it shouldn't (specificity)?
