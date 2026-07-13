@@ -1,6 +1,6 @@
 {
   "name": "sentinel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "QA-first testing skills for Claude Code. Verify behavior, not green lights.",
   "author": {
     "name": "Kim"

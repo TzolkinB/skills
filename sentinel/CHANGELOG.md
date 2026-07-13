@@ -17,8 +17,22 @@ release heading.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-13
+
 ### Added
 
+- `audit-test` **reachability guard** (ADR-0016): before recording a 🔴, it proves the harness is
+  source-live via a maximal probe mutation. An app-driven Playwright/Cypress test that drives a stale
+  build (`build && preview`, a served `dist/`) or a deployed URL now returns an honest 🟡 (the
+  mutation never reached the running app) instead of a fabricated 🔴.
+- `audit-test` **baseline-lock** ⚠️ suspicion flag (ADR-0017): catches the mirror failure a mutation
+  can't see — a *live* assertion pinned to a regressed value (the fingerprint an AI self-healer leaves
+  when it "fixes" a red test by rewriting the expected value). Reads as caution, never a pass.
+- `audit-test` / `debug-test`: guidance for when the **Cypress runner won't launch** (macOS 26 /
+  Electron 36 incompatibility) — framed as an environment reachability failure (honest "can't execute
+  here", not a fabricated verdict), with the Docker (`cypress/included`) / CI-Linux remedy.
+- `audit-test`: Playwright & Cypress added to the run-one-test guidance (single-test isolation via
+  `--project` / `@cypress/grep`).
 - `debug-test` **drift mode**: classifies an already-red test as external drift vs local regression
   from static signals (diff-relevance → temporal → published-contract), quarantines it non-blocking,
   and surfaces the mismatch for a human to dispose — never healing to green or unilaterally blaming
