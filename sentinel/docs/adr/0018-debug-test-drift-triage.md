@@ -1,8 +1,18 @@
 # debug-test gains a drift mode: it classifies an *already-red* test as external drift vs. code regression and routes — it does not run the suite
 
-**Status: Proposed.** The gap is argued from field experience (enterprise orgs split
-frontend/backend teams; a frontend suite goes red on a backend the frontend team never touched and
-cannot instrument), not yet from a blinded experiment. This ADR is the sibling of
+**Status: Accepted (2026-07-13).** Implemented as `debug-test`'s **Drift Mode**
+([SKILL.md](../../skills/debug-test/SKILL.md)) — classify → quarantine → surface, entered via
+`--drift` or a deterministic red whose diff doesn't touch the code the test exercises. Backed by
+[EXPERIMENT-0018](../experiments/EXPERIMENT-0018-drift-triage.md), a **blinded** run in which Arm A
+(external field-rename drift) classified as external drift and routed away from local patching, while
+Arm C (a genuine local regression control) did **not** cry drift — sensitivity ✓ and specificity ✓.
+This is an **existence proof (n=1 target, n=1 app), not a rate**: widening it — the empty-diff flavor
+on an un-reset backend, a frontend without response-schema validation, and a naive-healer arm for the
+green-lock hazard — is tracked separately to upgrade the evidence, held to the
+[ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md) provenance discipline (shipped on
+the honest existence-proof label, not oversold as a rate). The gap is argued from field experience
+(enterprise orgs split frontend/backend teams; a frontend suite goes red on a backend the frontend
+team never touched and cannot instrument). This ADR is the sibling of
 [ADR-0012](0012-debug-test-flake-mode.md): flake-mode gave `debug-test` a disposition for a
 *non-deterministic* red; drift-mode gives it a disposition for a *deterministic red with no relevant
 local cause* — the failure a long-idle microservice consumer eats when the world moved and its code

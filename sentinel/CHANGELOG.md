@@ -19,6 +19,12 @@ release heading.
 
 ### Added
 
+- `debug-test` **drift mode**: classifies an already-red test as external drift vs local regression
+  from static signals (diff-relevance → temporal → published-contract), quarantines it non-blocking,
+  and surfaces the mismatch for a human to dispose — never healing to green or unilaterally blaming
+  the provider. Entered via `--drift` or a deterministic red whose diff doesn't touch the code the
+  test exercises. Sibling of flake mode; backed by a blinded n=1 existence proof (ADR-0018,
+  EXPERIMENT-0018, issue #42).
 - Per-skill human-facing docs tree under `docs/`: one page per skill (what it does, when to use /
   when not, a worked example against the fixtures, anti-patterns), plus a skill-index table in
   `README.md` linking each skill to its doc page and its `SKILL.md`. Docs sit at a distinct altitude
