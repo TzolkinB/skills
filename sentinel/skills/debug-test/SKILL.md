@@ -95,7 +95,7 @@ Reached from Step 0 (`--flake`) or Step 1 (mixed pass/fail on the repeats). The 
 ### F1. Measure the flake rate (framework-native burn — no custom loop)
 Use the burn mechanism the framework already ships:
 - **Playwright:** `npx playwright test "$TEST_NAME" --repeat-each=10 --reporter=line` — count failures over the 10 runs. Or, if the project runs with retries, parse the JSON reporter's `status: "flaky"` (emitted when a test fails then passes on retry): `npx playwright test "$TEST_NAME" --retries=2 --reporter=json` and read `status`.
-- **Cypress:** shell out to `@cypress/grep`'s burn — `npx cypress run --env grep="$TEST_NAME",burn=10`.
+- **Cypress:** shell out to `@cypress/grep`'s burn — `npx cypress run --env grep="$TEST_NAME",burn=10`. **If the runner won't launch** (`bad option: --smoke-test`/`--ping`, "Cypress failed to start" — common on macOS 26 / Electron 36, unfixed by `install --force`): that's an environment blocker, not a flake result — don't record a rate; run via Docker (`cypress/included`) or CI/Linux. See [`audit-test`](../audit-test/SKILL.md) → run-one-test → Cypress note.
 
 Flake rate = failures / runs. `0/N` → not actually flaky (stop, say so). `N/N` → deterministic failure, not flake → go back to Step 2. Anything in between → **confirmed flaky**; record the rate (e.g. "3/10").
 
