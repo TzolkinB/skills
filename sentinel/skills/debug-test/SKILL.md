@@ -108,7 +108,14 @@ Recommend moving the test out of the blocking lane while keeping the signal:
 - Open/keep a tracking note referencing the flake rate.
 - **Never propose `.skip()`-and-forget or deletion.** A flaky test usually guards real behavior; dropping it lets a real regression ship unnoticed with invisible coverage loss. (Deleting *with justification* is `prune-tests`' job, only after a cause is confirmed — not a disposition you reach for here.)
 
-### F3. Route the suspected cause (a suggestion, not a verdict)
+### F3. Get the runtime evidence (framework-native — evidence, not a verdict)
+Before hypothesizing a cause, pull the per-run runtime evidence the framework already produces — it lets you *see* the flake's mechanism instead of guessing it. Route by stack:
+- **Playwright → trace viewer / Test Replay** (`npx playwright show-trace`, or the HTML report's trace) — per-step timeline, network, and DOM snapshots to compare the failing vs passing attempt.
+- **Cypress → [`cypress-flaky-test-audit`](https://github.com/sclavijosuero/cypress-flaky-test-audit)** — a diagnosis-only command-queue tracer: per-command enqueue-vs-execution order, timing, internal retries, *never-run* (dead) commands, and a side-by-side retry diff. **Reading it for a flake:** an enqueue-vs-execution-order mismatch or a late-resolving command points at a timing/wait race; a *never-run* command marks where a prior step died; the retry diff shows what differed between the flaky and the green attempt.
+
+This is **evidence downstream of detection** — not a detection or credibility claim — feeding the cause hypothesis below. Orchestrate the tool; don't rebuild its instrumentation into the skill.
+
+### F4. Route the suspected cause (a suggestion, not a verdict)
 Read the test + the code under test, then hand off — always phrased as "suspected → routed to X to confirm":
 - **Source non-determinism** (`Date.now()`/`new Date()`/`Math.random()`, uncontrolled timers, races, network calls without interception, shared state / missing `beforeEach` reset) → **`/qa-review`** on the test *and* the production code.
 - **Over-mocked / timing-coupled** (asserts on mocks, or only passes on lucky timing) → **`/audit-test`** to prove whether it ever tested anything; if it comes back proven false-confidence → **`/prune-tests`** to remove it *with justification*.
@@ -208,6 +215,9 @@ Proceeding with diagnosing-bugs Phase 2...
 ### Disposition → Quarantine (non-blocking)
 Tag `@flaky` / move to the quarantine project — keeps running and reporting, stops blocking CI.
 NOT skipped, NOT deleted — the signal is preserved.
+
+### Evidence → runtime trace (framework-native)
+Playwright: `npx playwright show-trace` · Cypress: `cypress-flaky-test-audit` (command-queue order/timing, never-run commands, retry diff) — read to see the flake, not to verdict it.
 
 ### Suspected cause → routed (to confirm, not a verdict)
 Suspected: source non-determinism — `Date.now()` in pricing.js:12, no `page.route` mock on /rates
