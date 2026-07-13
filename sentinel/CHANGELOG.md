@@ -17,6 +17,14 @@ release heading.
 
 ## [Unreleased]
 
+### Changed
+
+- `audit-test` reachability guard now covers **warm dev-server mutation propagation**, not just stale
+  builds (ADR-0019). On a dev-served app-driven target it forces the mutation live — a fresh-boot-per-run
+  harness (e.g. Cypress `cypress/included`, or a built/CI server) or a dev-server restart — before
+  trusting a *survival* as 🔴, closing a false-🔴 (and flaky-🟡) window where an HMR edit hadn't
+  propagated to every assertion in a run. A `sleep`/settle doesn't fix it. (issue #54)
+
 ## [0.2.0] - 2026-07-13
 
 ### Added
