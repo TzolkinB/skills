@@ -24,6 +24,12 @@ release heading.
   (command-queue enqueue-vs-execution order, timing, never-run commands, retry diff), with a one-line
   "how to read it for a flake". Evidence *downstream of detection* — a pointer, not rebuilt
   instrumentation. (issue #46)
+- **`e2e-impact`** skill (E2E test-impact-analysis v0, issue #44): maps a working/PR diff → the
+  Playwright/Cypress specs it plausibly hits, via test-side-import, route, and selector/test-id
+  signals (incl. project custom commands + substring matches), each with a confidence and an honest
+  **run-all / unmapped** fallback — never silently dropping a changed file. Emits a source→spec
+  relevance map that `/debug-test --drift` reads inverted (ADR-0018). Heuristic v0:
+  correctness-with-honest-gaps over false precision. User-invoked leaf (ADR-0020).
 
 ### Changed
 
