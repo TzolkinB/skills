@@ -27,6 +27,16 @@ release heading.
 
 ### Changed
 
+- **Suite trigger model** ([ADR-0020](docs/adr/0020-suite-trigger-model-leaves-user-invoked.md)): the eight leaf skills
+  (`audit-test`, `coverage-review`, `debug-test`, `prune-tests`, `qa-review`, `threat-model`, `test-plan`, `bug-report`)
+  are now **user-invoked** (`disable-model-invocation: true`); discovery routes through the two model-invoked entry
+  points, `ask-sentinel` and `sentinel`. Always-on descriptions drop from 10 to 2. Skills stay independently invocable
+  and orchestration is unchanged (the router/`sentinel`/`debug-test` invoke leaves by name). Applies Matt Pocock's
+  *writing-great-skills* trigger axis.
+- **`debug-test` and `audit-test` restructured** for progressive disclosure (*writing-great-skills* structure axis):
+  branch-only material moved into `reference/*.md` behind context pointers, loaded only when its trigger fires —
+  `debug-test` Flake/Drift modes; `audit-test` Reachability check, Baseline-lock check, Batch mode, run-one-test.
+  Behavior unchanged; the always-loaded `SKILL.md` shrinks ~63% (debug-test) / ~46% (audit-test).
 - `audit-test` reachability guard now covers **warm dev-server mutation propagation**, not just stale
   builds (ADR-0019). On a dev-served app-driven target it forces the mutation live — a fresh-boot-per-run
   harness (e.g. Cypress `cypress/included`, or a built/CI server) or a dev-server restart — before
