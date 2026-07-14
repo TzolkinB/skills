@@ -3,6 +3,7 @@ name: test-plan
 description: Generate a structured QA test plan from a feature description or ticket
 argument-hint: "[feature description]"
 allowed-tools: [Read, Bash]
+disable-model-invocation: true
 ---
 
 A test plan is a contract between you and the code. It says "this behavior will work this way." The plan should be testable, specific, and find bugs—not describe how to make a green light.

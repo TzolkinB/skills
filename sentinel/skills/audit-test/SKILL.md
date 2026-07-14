@@ -3,6 +3,7 @@ name: audit-test
 description: Audit a passing test for false confidence — would it still pass if the code it covers broke? — and prove the answer by running a targeted mutation, not by reasoning alone
 argument-hint: "[test name, test file, test + its code, or a directory/glob/--changed for batch]"
 allowed-tools: [Read, Bash, Glob]
+disable-model-invocation: true
 ---
 
 **Owns:** whether an *existing* passing test is real — proven by running one targeted mutation. The verifier.

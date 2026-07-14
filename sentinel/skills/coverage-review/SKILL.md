@@ -3,6 +3,7 @@ name: coverage-review
 description: Review test coverage and flag untested paths, edge cases, and assertion gaps — reads real coverage instrumentation when present, falls back to static analysis
 argument-hint: "[test file path] [code file path]"
 allowed-tools: [Read, Bash]
+disable-model-invocation: true
 ---
 
 **Owns:** what these tests *don't catch yet* — missing paths, edge cases, loose assertions. The additive gap-finder.

@@ -3,6 +3,7 @@ name: bug-report
 description: Convert a messy failure description into a structured, actionable bug report
 argument-hint: "[description of the bug]"
 allowed-tools: [Read, Bash]
+disable-model-invocation: true
 ---
 
 A good bug report is reproducible, scoped, and actionable. It gives the person fixing it enough context that they don't have to ask follow-up questions.

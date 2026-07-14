@@ -3,6 +3,7 @@ name: threat-model
 description: Threat model a change — what actually breaks in production if it's wrong, and how you'd find out — independent of whether it's tested
 argument-hint: "[file path, diff, or change description]"
 allowed-tools: [Read, Bash]
+disable-model-invocation: true
 ---
 
 A threat model answers a different question than `qa-review` or `coverage-review`. Those ask "can I test this" and "did the tests verify it." This asks: **if this change is wrong, what actually happens, to whom, and how would anyone find out?** Code can be perfectly testable and thoroughly tested and still have a bad blast radius if it fails — this skill looks at consequence, not coverage.
