@@ -8,7 +8,7 @@ traced by hand to confirm the signals resolve to real source.
 Simulated change: edit `app/routes/users/index.tsx` (the users search route).
 Run: `/e2e-impact` (diff includes that file)
 - **Impacted:** `tests/e2e/search.test.ts` — 🟢 **High** · two signals converge:
-  - **route** — the spec drives search and lands on `/users?search=…`, which `app/routes/users/index.tsx` implements;
+  - **route** — the spec reaches the users route by *interaction* and asserts `page.waitForURL('/users?search=…')` (never calling `goto`), and `app/routes/users/index.tsx` implements that route — so the route signal must read URL waits/assertions, not just `goto`/`visit`;
   - **text** — the spec asserts `getByText('Epic Notes Users')`, and that literal is rendered in the same file.
 - **High on all specs** if the change is to `tests/playwright-utils.ts` — every spec `import`s it (test-side import signal).
 

@@ -30,7 +30,7 @@ A spec can match on several signals; confidence is the **strongest** that select
 |---|---|---|
 | **Test-side import** — a changed page-object / fixture / helper | grep specs for an `import … from '<changed test module>'` | **High** — a direct dependency |
 | **Test-id / data-attr** — a changed file renders a `data-testid`/`data-test` a spec drives | pull the id from specs — `getByTestId('x')`, `[data-testid=x]`, `cy.get('[data-testid=x]')`, **and project custom commands** (`cy.getBySel('x')`→`[data-test=x]`; grep `cypress/support` to learn them) — then grep changed files for `x`. For **partial-match** selectors (`getBySelLike`, `[data-test*=…]`, regex) grep as a **substring**, not exact | **High** if the id is unique; **Medium** if it's a substring that matches many attrs |
-| **Route** — a changed file implements a path a spec visits | derive the URL from the changed file (file-based routing: `app/routes/checkout.tsx`→`/checkout`; `pages/`; `src/routes/`; or a router config) → match specs' `page.goto('/checkout')` / `cy.visit('/checkout')` and in-app link navigations | **Medium** |
+| **Route** — a changed file implements a path a spec visits | derive the URL from the changed file (file-based routing: `app/routes/checkout.tsx`→`/checkout`; `pages/`; `src/routes/`; or a router config) → match specs' `page.goto('/checkout')` / `cy.visit('/checkout')`, **URL assertions/waits** (`page.waitForURL('…/checkout')`, `cy.url().should('include','/checkout')` — a spec often reaches a route by *interaction* and asserts the URL, never calling goto/visit), and in-app link navigations | **Medium** |
 | **Role+name / text** — a changed file renders a label a spec targets | pull `getByRole(..,{name:'Pay'})` / `getByText('Pay')` / `cy.contains('Pay')`; grep changed files for the literal | **Medium** if specific, **Low** if generic |
 | **API / endpoint** — a changed handler under a path a spec intercepts or asserts | pull `page.route('/api/x')` / `cy.intercept('/api/x')`; map to changed files under that route | **Medium** |
 | **Global** — a changed router table, root layout, provider, or design-system primitive | — | **run-all** (broad blast radius; don't enumerate a false subset) |
@@ -56,12 +56,15 @@ A spec can match on several signals; confidence is the **strongest** that select
 ### Source→spec relevance map  (for /debug-test --drift, read inverted)
 Pay.tsx               → checkout.spec.ts (High)
 app/routes/login.tsx  → login.spec.ts (Medium)
-utils/format.ts       → (unmapped)
+app/root.tsx          → (run-all — reaches every spec)
+utils/format.ts       → (unmapped — reaches every spec, run defensively)
 ```
+
+`run-all` and `unmapped` entries are **edges to every spec**, not absent edges — the inverse-consumer must treat them that way (see the drift-mode note).
 
 ## Notes
 
 - **v0 is heuristic, and says so.** E2E has no reliable static source→spec edge — the app boundary is a black box to the module graph — so this unions app-surface signals and **labels confidence** rather than claiming precision. A Low match is a lead, not a guarantee; an unmapped change is run-all, never dropped. Per-test E2E coverage instrumentation (Playwright/Istanbul) would upgrade this from *heuristic* to *measured* — a scoped follow-up, not v0.
-- **Shared artifact with drift-mode.** The source→spec map is exactly what `/debug-test --drift` consumes inverted ([ADR-0018](../../docs/adr/0018-debug-test-drift-triage.md)): forward it selects impacted specs; backward, an already-red spec that **no** changed file maps to is the external-drift signature. One build, both directions — whichever ships first subsidizes the other.
+- **Shared artifact with drift-mode.** The source→spec map is exactly what `/debug-test --drift` consumes inverted ([ADR-0018](../../docs/adr/0018-debug-test-drift-triage.md)): forward it selects impacted specs; backward, an already-red spec that **no** changed file maps to is the external-drift signature. **Invert safely:** a `run-all`/`unmapped`/global change reaches *every* spec, so the inverse must **union the map's direct edges with the run-all bucket** — a red spec is a drift candidate only when *no* direct edge **and** *no* run-all/unmapped change in the diff could reach it; otherwise a globally-affected red would be misread as external drift. One build, both directions — whichever ships first subsidizes the other.
 - **Selection, not execution.** It never runs a spec; it names the set to run (or hands off). Running/diagnosing → `/debug-test`; proving a green spec → `/audit-test`.
 - `--explain` is not supported — procedural, not pedagogical.
