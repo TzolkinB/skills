@@ -19,6 +19,13 @@ release heading.
 
 ### Added
 
+- **`audit-orchestrator`** skill (stage-3 Audit router, issue #43): detects a suspicious passing test's stack
+  (Playwright/Cypress app-driven vs Vitest/Jest unit) and routes it — unit JS/TS → Tautest (PR diff-mutation) /
+  StrykerJS (full) where they fit; app-driven → `/audit-test` (dev-served) with the ADR-0016/0019 reachability
+  guard, because source-mutating tools can't reach app-driven code (the reachability wall). Emits a
+  provenance-labelled verdict (ADR-0013), never a gate. Proves the "orchestrate the best free tools + fill the
+  E2E gap" pattern end-to-end. User-invoked leaf (ADR-0020).
+
 - `debug-test` flake mode now routes **root-cause runtime evidence by framework** (new step F3):
   Playwright → trace viewer / Test Replay; Cypress → [`cypress-flaky-test-audit`](https://github.com/sclavijosuero/cypress-flaky-test-audit)
   (command-queue enqueue-vs-execution order, timing, never-run commands, retry diff), with a one-line
