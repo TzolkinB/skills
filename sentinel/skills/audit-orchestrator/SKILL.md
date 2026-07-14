@@ -48,7 +48,7 @@ Pick **one** primary tool and state the reason and its provenance:
 <!-- audit-test route: the /audit-test verdict, verbatim -->
 [🔴/🟡/🟢/⚠️ verdict block from /audit-test]
 
-<!-- Tautest / Stryker / Exspec route: point, don't absorb -->
+<!-- Tautest / Stryker route: point, don't absorb -->
 Run: `npx tautest ...`  (setup: [one line])
 Then: `/audit-test [survivor]` for a fix on anything that survives.
 

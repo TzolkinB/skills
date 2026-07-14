@@ -29,7 +29,7 @@ Run: `/audit-orchestrator <a Vitest *.test.ts>` scoped to a PR
 ## Boundary notes (what it must NOT do)
 - **Never emit a PASS/FAIL gate** — it routes and carries a credibility verdict; the ship verdict is
   `/sentinel` → Witness.
-- **Orchestrate, don't absorb** — for Tautest/Stryker/Exspec it prints the command + points; it does
+- **Orchestrate, don't absorb** — for Tautest/Stryker it prints the command + points; it does
   not reimplement mutation.
 - **Never upgrade a provenance label past its evidence** — the reachability wall is *Proven*;
   audit-test-proves-dev-served is *Proven on Playwright*, *Likely on Cypress*.
