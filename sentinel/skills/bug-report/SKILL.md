@@ -52,8 +52,8 @@ The filter is applied and results update showing only books from that date forwa
 Page reloads and all filters are cleared. Browser console shows: `TypeError: dateRange.start is undefined`
 
 **Environment:**
-- Browser: Chrome 130
-- OS: macOS 14.7
+- Browser: Chrome 130          <!-- only if stated/known; otherwise: Unknown — not provided -->
+- OS: macOS 14.7               <!-- only if stated/known; otherwise: Unknown — not provided -->
 - Test: Using seed data from `test-setup.js`
 - Reproduce: [Yes|No|Sometimes] — always
 
@@ -90,5 +90,6 @@ unresolved." Link to GLOSSARY.md terms where applicable, e.g. "See: Severity vs 
 - Don't say "broken" or "doesn't work"—say exactly what's wrong and what should happen
 - Steps to reproduce should be repeatable by a stranger
 - Severity: Critical = blocks shipping / High = feature broken / Medium = workaround exists / Low = edge case / typo
+- **Never fabricate a field to fill the template.** The anti-guess rule isn't just for root cause — it covers *every* derived field. Environment (OS/browser/version), the exact error text, affected components, and repro specifics that the input doesn't support get marked **Unknown — not provided** (or listed under a short "Needs info" line), never invented. A plausible-but-wrong detail is worse than a blank: it sends the fixer down a false path, which is the opposite of this report's job. The input here is a *messy* description by definition — sparse fields are the norm, not a failure.
 - If you don't know the root cause, say so—don't guess
 - Frequency matters: "happens 50% of the time" is different from "always"

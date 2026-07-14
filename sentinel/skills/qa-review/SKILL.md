@@ -19,6 +19,7 @@ A code review from QA asks different questions than a general code review. Can I
    - Side effects that are hard to observe (console.log, network calls, timers)
    - Non-deterministic behavior (Date.now(), Math.random(), setTimeout)
    - Deeply nested state or coupled modules
+   - **Structural coupling the pattern list above won't name** — look past the literal keywords for what forces integration-only testing: a **module-level singleton** imported once and called directly throughout (a `db`/`prisma`/client/service you can't inject without module-mocking), or an **import-time side effect** (work done at load — building a registry, opening a connection — so merely importing the file for a test triggers it). These are usually the *real* reason a file can't be unit-tested in isolation, and they don't show up as a hard-coded value or a `Date.now()`.
    - Missing error handling that would leave tests hanging
 3. Scan for **brittleness risks**:
    - Overly specific assertions (e.g., exact string matching that might change)
@@ -81,3 +82,4 @@ Keep it concept-level, not a repeat of the finding. The finding already says *wh
 ## Notes
 
 - Testability review ≠ code quality review — orthogonal concerns. Even beautiful code can be untestable; even ugly code can be testable.
+- **Credit handling that is present; don't flag it.** Well-guarded I/O — a `fetch` with a timeout, a try/catch with a graceful fallback — is a *coupling* to note (still not injectable), not a "missing error handling" gap. Report the seam you'd need to mock, not an error path the code already covers.

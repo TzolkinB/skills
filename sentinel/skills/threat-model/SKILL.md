@@ -15,7 +15,7 @@ This is reasoning, not verification. It doesn't execute the code under review an
 1. Read the file(s), diff, or change description from $ARGUMENTS
 2. Identify what this change touches: data, external systems, other services/features, user-facing behavior
 3. For each thing touched, ask the four axes below. Cover every data write, external system, and downstream dependent — not just the obvious one or two:
-   - **Failure mode**: If this is wrong, what specifically happens? (wrong data written, request hangs, silent no-op, crash, partial state)
+   - **Failure mode**: If this is wrong, what specifically happens? (wrong data written, request hangs, silent no-op, crash, partial state, or **fail-open** — a check that returns a safe-*looking* default like `false`/`null`/`[]` on error. Trace what that value gates upstream: if an error degrades a security, permission, or validation decision to *permit*, that's not an innocuous default — it's a silent, high-blast failure that looks harmless in the erroring function itself.)
    - **Blast radius**: How much is affected — one user, all users, one feature, something downstream? (See GLOSSARY.md: Blast Radius)
    - **Detectability**: If this fails in production, would anyone notice — an error, a metric, a support ticket — or is it a silent failure? (See GLOSSARY.md: Silent Failure)
    - **Reversibility**: Is this easy to undo (stateless, flag-gated) or hard (data migration, sent email, charged payment)?
