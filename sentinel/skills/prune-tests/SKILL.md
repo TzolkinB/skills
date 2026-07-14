@@ -18,11 +18,12 @@ This is a **subtractive** skill, so it is deliberately **conservative**: it *pro
 2. Read the target file(s) fully.
 3. State each test's **behavior contract** in one sentence ("what real behavior would break if this failed?").
 4. Group tests by overlap vs. unique signal.
-5. Run a **scenario-boundary check** before proposing any merge:
+5. Run a **scenario-boundary check** before proposing any merge **or remove**:
    - only merge within the same scenario class (expected use / edge / failure),
    - only merge when business preconditions match (zero-cost with zero-cost, permission-granted with permission-granted),
    - propose `merge` only when behavior contract, setup meaning, and outcome type are effectively the same.
    - If scenarios differ but both are valuable, prefer `rewrite`/`rename` over `merge`.
+   - **Keep separate tests for distinct behavior contracts even when the setup or assertions look similar — matching setup is not matching meaning.** This gate applies to `remove` as much as `merge`: only propose `remove` when another *kept* test subsumes the candidate's behavior contract (Step 3). Duplicated assertions or examples alone are never grounds to remove — a replay/idempotency guard or a boundary case routinely shares surface form with a happy-path test while protecting a distinct invariant.
 6. Evaluate **mocking strategy**: prefer real collaborators for *internal* systems (services, model managers, permission classes, serializers, query paths) when integration is cheap; keep mocks only at *external* boundaries (network, third-party APIs, clock/randomness, expensive side effects).
 7. Detect **out-of-sync / stale** tests: name says one behavior but assertions prove another; Given/When/Then comments contradict setup; assertions validate payload shapes or status contracts no longer in use; intent duplicates a newer canonical test with stale assumptions.
 8. Apply the **hand-off rule** (see below) before categorizing — anything that smells like false-confidence rather than redundancy goes to `audit-test`, not into this report's prune list.
@@ -47,7 +48,7 @@ This keeps one question per skill and prevents `prune-tests` from deleting a wea
 Tests reviewed: N   |   Proposed: X remove / Y merge / Z rewrite / K keep
 
 ### 1. Low-Value / Likely Prune
-- **`test name`** — [why it adds little unique confidence: duplicate assertions, perf/timing check in a normal suite, pseudo-concurrency without a real race boundary, or a test of library/ORM behavior rather than domain behavior]
+- **`test name`** — [why it adds little unique confidence: duplicate assertion sets **over the same behavior contract**, perf/timing check in a normal suite, pseudo-concurrency with no real race boundary (*not* a replay/idempotency guard, which is load-bearing), or a test of library/ORM behavior rather than domain behavior]
   - confidence: high | action: remove
 
 ### 2. Consolidate or Rewrite
