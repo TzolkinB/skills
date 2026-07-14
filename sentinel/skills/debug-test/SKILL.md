@@ -2,7 +2,7 @@
 name: debug-test
 description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs. Also has a flake mode (detects, quarantines, routes flaky tests) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
 argument-hint: "[test file path or test name] [--flake] [--drift]"
-allowed-tools: [Read, Bash]
+allowed-tools: [Read, Bash, Task, Skill]
 ---
 
 When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. Scoped to Playwright; for non-Playwright failures, invoke diagnosing-bugs directly.
@@ -66,7 +66,7 @@ Read the failure output from Step 1:
 | Unknown / ambiguous | → Step 5 (diagnosing-bugs) |
 
 ### 4. Playwright Healer
-Invoke the Playwright healer agent with the failing test name.
+Invoke the Playwright healer subagent (via the **`Task`** tool) with the failing test name. This reaches execution *across the seam* — the healer owns the browser run; debug-test only orchestrates the handoff ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)).
 
 > Requires `npx playwright init-agents` to have been run in the repo. If not initialized, note it and proceed directly to Step 5.
 
@@ -78,7 +78,7 @@ Healer input: [failing test name]
 - **Healer skips** (outputs "functionality broken") → Step 5
 
 ### 5. diagnosing-bugs
-Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md).
+Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md) via the **`Skill`** tool.
 
 **Phase 1 is already complete** — the failing Playwright test is the tight, deterministic feedback loop. Pass this context and begin at Phase 2:
 
@@ -243,6 +243,7 @@ Tag / quarantine lane — keeps running and reporting, stops blocking CI. NOT sk
 ```
 
 ## Notes
+- **Self-invoking orchestrator.** debug-test drives its own handoffs: the Playwright healer via the `Task` tool, sibling skills (`/qa-review`, `/audit-test`, `/prune-tests`, `diagnosing-bugs`) via the `Skill` tool — hence `allowed-tools` includes `Task` and `Skill`. It *invokes across* the judgment/execution seam but never owns execution itself (no browser-driving stack absorbed) — the moat in [ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md) holds. The cause a route carries is still a *lead to confirm*, not a verdict; invoking `/audit-test` or `/qa-review` is how it gets confirmed.
 - Scoped to Playwright (flake mode also supports Cypress `@cypress/grep --burn`). For Jest/Vitest/pytest failures, invoke diagnosing-bugs directly.
 - Drift mode is **judgment on an already-red test** — it never runs the suite ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)). Its primary signal (diff↔test relevance) is the same map E2E impact-analysis builds, read inverted. It **consumes** a published contract (OpenAPI/Swagger or an in-repo response schema); building a provider-independent contract check is a scoped-out follow-up ([ADR-0018](../../docs/adr/0018-debug-test-drift-triage.md)).
 - `--explain` is not supported — this skill is procedural, not pedagogical.
