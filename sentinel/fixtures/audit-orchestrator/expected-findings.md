@@ -8,8 +8,8 @@ warm fixtures used to validate `audit-test` (siblings in `~/projects/`, not vend
 Run: `/audit-orchestrator ~/projects/epic-stack/tests/e2e/search.test.ts`
 - **Stack detected:** Playwright app-driven (signal: `@playwright/test` import + `playwright.config.ts`).
 - **Routed to:** `/audit-test` (dev-served, reachability guard).
-- **Provenance:** Proven — Stryker/Tautest/Exspec can't reach app-driven code (reachability wall);
-  audit-test proves a dev-served target, honest 🟡 on a stale build.
+- **Provenance:** Proven — Stryker/Tautest can't reach app-driven code (reachability wall);
+  audit-test proves a dev-served Playwright target, honest 🟡 on a stale build.
 - Must **not** recommend StrykerJS/Tautest here (they'd survive every mutation → false 🔴).
 
 ## Case B — app-driven Cypress (cypress-realworld-app)
@@ -31,5 +31,5 @@ Run: `/audit-orchestrator <a Vitest *.test.ts>` scoped to a PR
   `/sentinel` → Witness.
 - **Orchestrate, don't absorb** — for Tautest/Stryker/Exspec it prints the command + points; it does
   not reimplement mutation.
-- **Never upgrade a provenance label past its evidence** — Exspec's limitation is *Likely*, the
-  reachability wall is *Proven*.
+- **Never upgrade a provenance label past its evidence** — the reachability wall is *Proven*;
+  audit-test-proves-dev-served is *Proven on Playwright*, *Likely on Cypress*.
