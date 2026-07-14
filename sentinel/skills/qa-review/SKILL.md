@@ -3,6 +3,7 @@ name: qa-review
 description: Review code from a QA/testability angle — is this even testable?
 argument-hint: "[file path to review]"
 allowed-tools: [Read, Bash]
+disable-model-invocation: true
 ---
 
 **Owns:** whether the *source code* can be tested at all — hidden deps, non-determinism, coupling — judged before any test exists.

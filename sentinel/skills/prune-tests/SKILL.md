@@ -3,6 +3,7 @@ name: prune-tests
 description: Review a test file or suite for low-value, redundant, over-mocked, or stale tests and propose a conservative prune / merge / rewrite plan — the subtractive counterpart to coverage-review
 argument-hint: "[test file or directory path]"
 allowed-tools: [Read, Bash, Glob]
+disable-model-invocation: true
 ---
 
 **Owns:** which existing tests cost more than they protect — redundancy, over-mocking, drift. The subtractive economy pass.

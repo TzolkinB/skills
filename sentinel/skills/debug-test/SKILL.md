@@ -3,6 +3,7 @@ name: debug-test
 description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs. Also has a flake mode (detects, quarantines, routes flaky tests) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
 argument-hint: "[test file path or test name] [--flake] [--drift]"
 allowed-tools: [Read, Bash, Task, Skill]
+disable-model-invocation: true
 ---
 
 When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. Scoped to Playwright; for non-Playwright failures, invoke diagnosing-bugs directly.
