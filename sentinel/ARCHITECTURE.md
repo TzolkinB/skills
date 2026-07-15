@@ -1,10 +1,10 @@
 # Architecture & Decisions
 
-This doc exists because a feature list ("Sentinel has nine skills") doesn't show engineering judgment, and a working plugin doesn't explain itself. This is the *why* behind Sentinel — the part that's actually useful on a resume or in an interview, and the part I'd want to remember myself six months from now.
+This doc exists because a feature list ("Sentinel has a dozen skills") doesn't show engineering judgment, and a working plugin doesn't explain itself. This is the *why* behind Sentinel — the part that's actually useful on a resume or in an interview, and the part I'd want to remember myself six months from now.
 
 ## Why separate skills instead of one big prompt
 
-Each skill answers exactly one question — eight atomic skills plus one orchestrator:
+Each skill answers exactly one question — eleven skills plus the `/sentinel` orchestrator:
 
 | Skill | Question it answers |
 |---|---|
@@ -16,9 +16,12 @@ Each skill answers exactly one question — eight atomic skills plus one orchest
 | `threat-model` | If this change is wrong, what breaks in production and would anyone notice? |
 | `debug-test` | When a Playwright test is failing — what's the root cause and how do I fix it? |
 | `bug-report` | How do I hand this off cleanly? |
+| `e2e-impact` | Which E2E specs does this diff plausibly hit? |
+| `audit-orchestrator` | Which tool can actually *prove* this suspicious passing test? |
+| `contract-guard` | Does the backend response the frontend depends on still match its published contract? |
 | `sentinel` | What's the net verdict across all of the above? |
 
-`threat-model` and `bug-report` are core-but-independent — real skills, but deliberately *not* in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability.
+`threat-model` and `bug-report` are core-but-independent — real skills, but deliberately *not* in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability. `e2e-impact`, `audit-orchestrator`, and `contract-guard` are likewise standalone and outside the chain — the newer app-driven / E2E-focused additions.
 
 A single mega-prompt would blur these questions together — you'd get one wall of text instead of being able to run `/qa-review` mid-code-review and `/debug-test` when a Playwright test is actively failing. Splitting them means each one stays sharp for its one job, and they compose instead of overlapping. This is the same reason you don't write one function that validates, saves, and emails — single responsibility applies to prompts too.
 
