@@ -19,6 +19,17 @@ release heading.
 
 ### Added
 
+- **`contract-guard`** skill (consumer-side contract check, issue #48 / spec #71): gives the *stranded*
+  enterprise frontend team the coverage Pact structurally can't (Pact needs provider participation). Tiered,
+  cheapest-first — **Tier 0** detect existing response validation (schema present → drift self-revealing,
+  recommend nothing); **Tier 1** untyped frontend → propose/scaffold client-side response-schema validation
+  (the lighter play); **Tier 2** empty-diff + no-validation → **differ** the shape the consumer expects against
+  the provider's **published** OpenAPI/Swagger, carrying the deliberate-vs-accidental oracle (matches spec →
+  deliberate/stale, offer update; contradicts / no spec → suspected break → `/bug-report`). Static-judgment
+  only (ADR-0010) — reads the *published* contract, never snapshots a live response; human disposition only
+  (ADR-0013), proposes never applies (ADR-0002/0003). Is the detector `/debug-test --drift` was scoped to
+  consume (ADR-0018 → ADR-0021). User-invoked leaf (ADR-0020).
+
 - **`audit-orchestrator`** skill (stage-3 Audit router, issue #43): detects a suspicious passing test's stack
   (Playwright/Cypress app-driven vs Vitest/Jest unit) and routes it — unit JS/TS → Tautest (PR diff-mutation) /
   StrykerJS (full) where they fit; app-driven → `/audit-test` (dev-served) with the ADR-0016/0019 reachability
