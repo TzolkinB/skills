@@ -91,16 +91,18 @@ export function gradeSampleFile(path, testCase, opts) {
 
 // ---- helpers --------------------------------------------------------------
 
+// The one line-finder the three callers share: first line satisfying `pred`, trimmed.
+function findLine(transcript, pred) {
+  return transcript.split('\n').find(pred)?.trim() ?? null;
+}
 function firstLineMatching(transcript, re) {
-  return transcript.split('\n').find((l) => re.test(l))?.trim() ?? null;
+  return findLine(transcript, (l) => re.test(l));
 }
 function firstLineContaining(transcript, needle) {
-  const n = needle.toLowerCase();
-  return transcript.split('\n').find((l) => l.toLowerCase().includes(n))?.trim() ?? null;
+  return findLine(transcript, (l) => l.toLowerCase().includes(needle.toLowerCase()));
 }
 function anchorEvidence(transcript, anchors = {}) {
-  const lines = transcript.split('\n');
-  const lineWith = (kw) => lines.find((l) => l.toLowerCase().includes(kw.toLowerCase()))?.trim() ?? null;
+  const lineWith = (kw) => findLine(transcript, (l) => l.toLowerCase().includes(kw.toLowerCase()));
   if (anchors.all) {
     const allPresent = anchors.all.every((kw) => lineWith(kw) != null);
     return allPresent ? lineWith(anchors.all[0]) : null;

@@ -10,7 +10,7 @@ disable-model-invocation: true
 This skill exists only to prove the Phase 0 lint catches what it should. It deliberately
 plants two smells:
 
-1. A no-op directive: always write clean, readable code and follow best practices.
+1. No-op directives: always write clean, readable code and follow best practices, refactoring if needed.
 2. A dead link: see [the missing reference](reference/does-not-exist.md) for details.
 
 A real skill would say what to actually do here; this one intentionally does not.

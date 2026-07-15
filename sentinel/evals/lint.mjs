@@ -40,7 +40,7 @@ const NOOP_PATTERNS = [
   /\bmake (it|the code) (more )?readable\b/i,
   /\bas (needed|appropriate)\b/i,
   /\bwhere appropriate\b/i,
-  /\bif necessary\b/i,
+  /\bif (necessary|needed)\b/i,
   /\bbe sure to (carefully|properly)\b/i,
 ];
 
@@ -90,6 +90,14 @@ function lintSkill(file) {
     else if (fm.values.description.length < 25)
       add('warn', fm.lineOf('description'), `description looks thin (${fm.values.description.length} chars) — say why + how`);
     if (!/allowed-tools/.test(fm.raw)) add('warn', 1, 'frontmatter has no `allowed-tools` — declare the tool surface');
+    // Invocation mode must be a conscious choice (ADR-0020: leaves are user-invoked,
+    // only the router/orchestrator are model-invoked). We can't read intent, but we
+    // can surface the model-invoked exception for confirmation and catch a malformed flag.
+    const dmi = fm.values['disable-model-invocation'];
+    if (dmi === undefined)
+      add('review', fm.lineOf('name') ?? 1, "model-invoked (no `disable-model-invocation`) — always-on description; confirm intended (ADR-0020)");
+    else if (dmi !== 'true')
+      add('warn', fm.lineOf('disable-model-invocation'), `\`disable-model-invocation\` should be \`true\` or omitted, got \`${dmi}\``);
   }
 
   // line ceiling (informational)
