@@ -23,9 +23,11 @@ This harness is the missing **middle** tier.
 - **Assert on tokens, not prose.** Deterministic regex over the `**Verdict:**` emoji, a route name,
   a filename — cheap, model-free, fails fast.
 - **Judge the prose against the fixture rubric.** Each `must_surface` / `must_not` item comes
-  straight from the skill's `expected-findings.md`. The real judge (an LLM that quotes the supporting
-  line) is wired but not yet built; the default is an **offline heuristic stand-in** so the pipeline
-  runs without an API key. The heuristic screens by anchor keywords — a scaffold, not the design.
+  straight from the skill's `expected-findings.md`. `--judge=llm` is the real grader
+  (ADR-0022 §Decision.2): a cheap model (Haiku 4.5) scores each item and must quote a **verbatim**
+  transcript line, which the harness re-checks is a real substring before it counts — the
+  anti-rubber-stamp gate. The default `--judge=heuristic` is an **offline anchor-keyword stand-in** so
+  the pipeline runs without an API key.
 - **Never diff prose.** No golden files, no snapshots — this upholds [`fixtures/README.md`](../fixtures/README.md).
 - **Outcomes, not paths. Isolated runs. N trials → a reliability number. Label, don't gate** (yet).
 
@@ -35,7 +37,8 @@ This harness is the missing **middle** tier.
 evals/
   lint.mjs                     Tier 0 — static SKILL.md lint
   run-eval.mjs                 Tier 1 — fixture-outcome runner
-  lib/grade.mjs                token asserts + judge (heuristic | llm-slot)
+  lib/grade.mjs                token asserts + judge dispatch (heuristic | llm)
+  lib/judge-llm.mjs            LLM judge — zero-dep fetch to the Messages API, quote-grounded
   cases/audit-test.json        a case = verdict token + must_surface + must_not (from expected-findings)
   samples/
     audit-test.*.pass.md       faithful run — dry-run grades this, expects PASS
@@ -54,6 +57,10 @@ node sentinel/evals/lint.mjs --self-test        # prove the detectors fire on a 
 node sentinel/evals/run-eval.mjs --dry-run   cases/audit-test.json
 node sentinel/evals/run-eval.mjs --self-test cases/audit-test.json   # proves the grader discriminates
 
+# Tier 1 — real LLM judge (needs ANTHROPIC_API_KEY). --self-test IS the judge meta-eval:
+# it must PASS the faithful sample and FAIL the hollow one before you trust the judge.
+ANTHROPIC_API_KEY=… node sentinel/evals/run-eval.mjs --self-test cases/audit-test.json --judge=llm
+
 # Tier 1 — live: isolated worktree + real agent, N trials, reliability report
 node sentinel/evals/run-eval.mjs --live cases/audit-test.json --trials=3 \
      --agent='claude -p {prompt}'
@@ -65,15 +72,17 @@ delete the test). If that ever stops discriminating, the harness is broken.
 
 ## What's honest about this skeleton
 
-- **The heuristic judge is a stand-in.** It can match a keyword in the wrong place; the ADR-0022 LLM
-  judge (with quote-grounding + a one-time meta-eval) is the real Tier-1 deliverable. Token asserts
-  and the lint stand on their own regardless.
+- **Two judges.** `--judge=llm` (Haiku 4.5, quote-grounded) is the real grader; `--judge=heuristic`
+  is an offline anchor-keyword stand-in for running without a key, and can match a keyword in the
+  wrong place. **Meta-eval the LLM judge before trusting it** — `--self-test --judge=llm` must pass
+  the faithful sample and fail the hollow one. Token asserts and the lint stand on their own regardless.
 - **Dry-run grades a recorded transcript**, not a live skill run — it exercises the *grading pipeline*
   offline. `--live` is the real thing and is wired, but nothing here calls a model unless you pass it.
 
 ## Next (per #74)
 
-1. Wire `--judge=llm` (cheap model, quote-grounded) + meta-eval it.
+1. Meta-eval `--judge=llm` against the known-good/known-bad samples with a real key, then default to
+   it when a key is present (heuristic remains the offline fallback). ✅ judge built — this is validation.
 2. Fan out `cases/` to the other verdict-emitting skills: `debug-test`, `contract-guard`, `e2e-impact`.
 3. **Phase 1b** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the acceptance
    test for [#47](https://github.com/TzolkinB/skills/issues/47)).
