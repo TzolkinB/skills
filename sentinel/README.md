@@ -16,7 +16,7 @@ Built by a QA professional who got tired of:
 
 ## What You Get
 
-Nine QA-focused skills — eight atomic skills you run standalone, plus the `/sentinel` orchestrator that composes them into one verdict. **Find your situation in the "When to use it" column**, then open the skill's **doc page** (what it does, when to use / when not, a worked example against the fixtures, anti-patterns) or its agent-facing **`SKILL.md`** (the instructions Claude runs):
+Twelve QA-focused skills — eleven you run standalone, plus the `/sentinel` orchestrator that composes the shippability ones into a single verdict (with `/ask-sentinel` as the front-door router). **Find your situation in the "When to use it" column**, then open the skill's **doc page** (what it does, when to use / when not, a worked example against the fixtures, anti-patterns) or its agent-facing **`SKILL.md`** (the instructions Claude runs). The three most recent additions (`/e2e-impact`, `/audit-orchestrator`, `/contract-guard`) are agent-instructions-only for now — doc pages pending:
 
 | Skill | When to use it | Docs | Agent instructions |
 |-------|----------------|------|--------------------|
@@ -28,6 +28,9 @@ Nine QA-focused skills — eight atomic skills you run standalone, plus the `/se
 | `/threat-model` | Before shipping something risky — what breaks in production, and would you notice | [docs](./docs/threat-model.md) | [SKILL.md](./skills/threat-model/SKILL.md) |
 | `/debug-test` | A Playwright test is failing — auto-diagnose and route the fix | [docs](./docs/debug-test.md) | [SKILL.md](./skills/debug-test/SKILL.md) |
 | `/bug-report` | Something broke — structure it into a clean handoff for the team | [docs](./docs/bug-report.md) | [SKILL.md](./skills/bug-report/SKILL.md) |
+| `/e2e-impact` | Before running E2E — map a diff to the Playwright/Cypress specs it plausibly hits | — | [SKILL.md](./skills/e2e-impact/SKILL.md) |
+| `/audit-orchestrator` | A suspicious passing test — route it to the tool that can actually prove it (Tautest/StrykerJS or `/audit-test`) | — | [SKILL.md](./skills/audit-orchestrator/SKILL.md) |
+| `/contract-guard` | A frontend suite reddens on backend drift — check the consumer's expectations against the provider's published OpenAPI | — | [SKILL.md](./skills/contract-guard/SKILL.md) |
 | `/sentinel` | Before you merge — one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate) | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
 | `/ask-sentinel` (router) | Not sure which to reach for — describe the situation, get routed | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
 
@@ -102,6 +105,28 @@ Scoped to Playwright. For non-Playwright failures, invoke diagnosing-bugs direct
 
 > **Requires external tools** — Playwright, and Matt Pocock's `diagnosing-bugs` skill for logic-bug diagnosis. See [Dependencies](#dependencies) below.
 
+### `/e2e-impact`
+Maps a working/PR diff to the E2E specs it plausibly hits — because E2E specs drive the app over a browser, they don't import the source they exercise, so the module graph misses them:
+- Traces test-side imports, routes visited, and selectors / test-ids / text driven — each impacted spec with a confidence
+- Anything it can't trace lands in an explicit **run-all / unmapped** bucket, never silently dropped
+
+Selection, not execution. The source→spec map it emits is the same artifact `/debug-test --drift` reads inverted.
+
+### `/audit-orchestrator`
+The Audit-stage router — detects a suspicious *passing* test's stack and hands it to the tool that can actually prove it:
+- Unit JS/TS → **Tautest** (PR diff-mutation) / **StrykerJS** (full campaign) where they fit — orchestrate the best free tools, don't reimplement them
+- App-driven Playwright/Cypress → `/audit-test`, because source-mutating tools hit a reachability wall they can't cross
+
+Every recommendation carries a provenance label; it emits a verdict, never a gate.
+
+### `/contract-guard`
+The consumer-side contract check for the *stranded* frontend team Pact can't serve (Pact needs the provider to run verification; when the backend org won't, the consumer gets no coverage). Tiered, cheapest-first:
+- Detect existing response validation → drift is self-revealing, recommend nothing
+- Untyped frontend → recommend/scaffold client-side response-schema validation (the lighter play)
+- Empty-diff drift → differ the shape the frontend expects against the provider's published **OpenAPI/Swagger**, carrying the deliberate-vs-accidental oracle
+
+Surfaces the mismatch for human disposition — never green-locks the consumer to an unconfirmed change.
+
 ### `/sentinel`
 The orchestrator — the only skill that does no original analysis of its own. It composes the shippability skills (`/test-plan`, `/coverage-review`, `/qa-review`, and `/debug-test` on any failing tests) across your branch and reduces their output to one decision:
 - Test plan coverage
@@ -114,21 +139,22 @@ The orchestrator — the only skill that does no original analysis of its own. I
 `/threat-model` and `/bug-report` are deliberately *not* in the `/sentinel` chain — they answer questions (what breaks in production; how to hand off) that are orthogonal to shippability. `/sentinel` is a layer above the atomic skills, not a peer of them.
 
 ### `/ask-sentinel` (router)
-Not one of the nine — the front door. Describe your situation (*"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"*) and it points you at the one skill that answers your question and shows where it sits in the flow. It routes; it never analyzes, runs, or emits a verdict, and it never joins the `/sentinel` chain. Run `/ask-sentinel` with no argument for the full map.
+Not one of the twelve — the front door. Describe your situation (*"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"*) and it points you at the one skill that answers your question and shows where it sits in the flow. It routes; it never analyzes, runs, or emits a verdict, and it never joins the `/sentinel` chain. Run `/ask-sentinel` with no argument for the full map.
 
 ## Dependencies
 
-Most Sentinel skills are self-contained — they statically read your code and tests and need nothing beyond Claude Code. **`/debug-test` is the exception:** it orchestrates external tools, so install these before you rely on it.
+Most Sentinel skills are self-contained — they statically read your code and tests and need nothing beyond Claude Code. Two reach for external tools: **`/debug-test` requires them to run at all**, and **`/audit-orchestrator` optionally routes to them** (falling back to a self-contained skill when they're absent). Install these before you rely on them.
 
 | Needed by | Tool | Install | If missing |
 |-----------|------|---------|------------|
 | `/debug-test` (all of it) | **Playwright** | already in your project (`npx playwright test`) | Skill can't run — it is Playwright-scoped |
 | `/debug-test` auto-heal (locator/timing failures) | **Playwright agents** | `npx playwright init-agents` (once per repo) | Falls through to `diagnosing-bugs` instead of self-healing |
 | `/debug-test` logic diagnosis | **Matt Pocock's `diagnosing-bugs` skill** | `npx skills@latest add mattpocock/skills` | Deep bug diagnosis has no terminal route — `/debug-test` stalls after triage |
+| `/audit-orchestrator` unit-test route | **Tautest** (PR diff-mutation) / **StrykerJS** (full campaign) | per each tool's own Vitest/Jest setup | No hard dependency — routes the audit to `/audit-test` instead |
 
 `diagnosing-bugs` is the load-bearing one: when Playwright agents aren't set up, locator failures also route to it, so `/debug-test` leans on it for anything past a clean auto-heal. Installing Matt Pocock's skills alongside Sentinel is recommended — the two are designed to compose: **build with Matt's skills, verify with Sentinel.**
 
-Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/sentinel`) needs only Claude Code.
+Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/e2e-impact`, `/contract-guard`, `/sentinel`) needs only Claude Code — `/contract-guard` optionally reads a published OpenAPI spec from a URL you supply, but requires no install. `/audit-orchestrator` runs on Claude Code alone too; it only *recommends* the external mutation tools above where they fit.
 
 ## Privacy — what each skill reads, runs, and routes externally
 
@@ -143,10 +169,13 @@ Sentinel is local-first. No skill sends your code to any third-party service, an
 | `/qa-review` | The code under review | Nothing | Nothing |
 | `/threat-model` | The change / diff | Nothing | Nothing |
 | `/bug-report` | A failure description you provide | Nothing | Nothing |
+| `/e2e-impact` | The diff + your E2E specs and source | `git` locally (read-only) to resolve the diff | Nothing |
+| `/audit-orchestrator` | The test under audit + your test configs | Detection locally (Glob/Read/`git`); hands off to `/audit-test` or points you at Tautest/StrykerJS | **Yes** — routes to `/audit-test` or the external mutation tools, all run locally in your session (see [Dependencies](#dependencies)) |
+| `/contract-guard` | The consumer code + the published contract (a local file, or a URL you point it at) | Reads the spec — a local file, or a read-only `GET` on the URL you supply | Routes to `/bug-report` locally; the only network touch is fetching the published-spec URL you provide — your code is never sent out |
 | `/debug-test` | The failing Playwright test + code | Runs the Playwright test locally | **Yes** — routes to the Playwright healer agent and to Matt Pocock's `diagnosing-bugs` skill (both run locally in your session; see [Dependencies](#dependencies)) |
 | `/sentinel` | Files in the change | Composes the skills above; runs only what they run | Only whatever `/debug-test` routes to, and only when a failing test is present |
 
-`/debug-test` is the one skill that hands work to external tooling. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay surgical and gated on a clean git tree.
+`/debug-test` and `/audit-orchestrator` are the skills that hand work to external tooling; `/contract-guard` may fetch a published OpenAPI spec from a URL you supply, but never sends your code anywhere. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay surgical and gated on a clean git tree.
 
 ## Installation
 
@@ -189,7 +218,7 @@ Sentinel is built on three premises:
 
 3. **Pragmatism over perfection.** You don't need 100% coverage or zero technical debt. You need to ship fast and be able to verify it works. Sentinel helps you do that.
 
-For the reasoning behind specific design choices — why nine skills instead of one, why a 3-state verdict, what the tradeoffs are — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+For the reasoning behind specific design choices — why many small skills instead of one, why a 3-state verdict, what the tradeoffs are — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## New to testing? Start here
 

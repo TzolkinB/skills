@@ -1,15 +1,15 @@
 ---
 name: ask-sentinel
-description: Router — describe your QA situation and get pointed at the right Sentinel skill, plus where it sits in the flow across the nine skills
+description: Router — describe your QA situation and get pointed at the right Sentinel skill, plus where it sits in the flow across Sentinel's skills
 argument-hint: "[what you're trying to do, or a file/branch/situation — omit for the full map]"
 allowed-tools: [Read, Glob]
 ---
 
-Nine skills is more than anyone wants to memorize. `ask-sentinel` is the front door: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"* — and it names the one skill that answers your question, says why, and shows where that step sits in the wider QA flow.
+A dozen Sentinel skills is more than anyone wants to memorize. `ask-sentinel` is the front door: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"* — and it names the one skill that answers your question, says why, and shows where that step sits in the wider QA flow.
 
-It **routes; it doesn't analyze** — never reads your code, never runs a test, never emits a verdict; it hands you the skill that does. It is not one of the nine and never joins the `/sentinel` chain — it's the map, not a stop on the route. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other eight are atomic, run standalone, and each answer exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for the "am I safe to merge" moment.
+It **routes; it doesn't analyze** — never reads your code, never runs a test, never emits a verdict; it hands you the skill that does. It is not one of them and never joins the `/sentinel` chain — it's the map, not a stop on the route. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other atomic skills run standalone, and each answer exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for the "am I safe to merge" moment.
 
-## The nine skills, by the question each answers
+## The core skills, by the question each answers
 
 | Skill | Question it answers | Reach for it when |
 |---|---|---|
@@ -24,6 +24,8 @@ It **routes; it doesn't analyze** — never reads your code, never runs a test, 
 | `/sentinel` | What's the net verdict across all of the above? | The merge gate — full pass on a branch, one PASS/CAUTION/FAIL |
 
 `/threat-model` and `/bug-report` are core-but-independent: real skills, but deliberately **not** in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability. Call them on their own when that's the question.
+
+> **Not yet in this router's table:** three newer app-driven skills — `/e2e-impact` (which E2E specs a diff hits), `/audit-orchestrator` (route a suspicious passing test to the tool that can prove it), and `/contract-guard` (does the backend response still match its published contract) — exist and run standalone, but aren't wired into the routing decision above yet. That's a separate stack-aware orchestration-router effort; reach these three directly for now.
 
 ## Steps
 
@@ -48,7 +50,7 @@ It **routes; it doesn't analyze** — never reads your code, never runs a test, 
 
 ## The intended flow
 
-Sentinel maps onto the life of a change, not a fixed pipeline — most runs touch two or three of these, not all nine:
+Sentinel maps onto the life of a change, not a fixed pipeline — most runs touch two or three of these, not all of them:
 
 ```
 BEFORE CODE        /test-plan        define the cases + layers before anything exists
@@ -88,4 +90,4 @@ For a matched situation:
 **Next in the flow:** [the natural follow-up skill, or "— this is the ship gate" for /sentinel]
 ```
 
-For empty $ARGUMENTS, output the nine-skill table and the intended-flow diagram above, then one line: "Tell me what you're trying to do and I'll point you at one."
+For empty $ARGUMENTS, output the skill table and the intended-flow diagram above, then one line: "Tell me what you're trying to do and I'll point you at one."
