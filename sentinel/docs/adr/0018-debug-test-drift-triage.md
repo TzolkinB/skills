@@ -9,12 +9,15 @@ Arm C (a genuine local regression control) did **not** cry drift — sensitivity
 That was an **existence proof (n=1 target, n=1 app)**; the **2026-07-14 widening run** (EXPERIMENT-0018
 §Widening run, #45) then closed the three open arms on a purpose-built fixture — **empty-diff drift on
 an un-reset external backend**, a frontend with **no response-schema validation**, and a **naive-healer**
-— all blinded. Results: H1 (sensitivity) held **even without an in-code schema oracle** (a
-code-expectation-vs-current-contract comparison serves in its place), specificity held, and **H2 was
+— all blinded. Results: **H1 *as defined* (signals 1–2 alone) was not closed** — the empty-diff arm resolved only
+because the classifier was handed a **contract oracle** (the live response), so it shows the oracle need
+not be an *in-code* schema, **not** that signals alone suffice; specificity (H3) held; and **H2 was
 positively demonstrated** — a "make-it-pass" healer green-locks the drift (adapts the consumer to an
 *unconfirmed* change) where a *triage* framing surfaces-and-defers. This lifts the evidence to **n=2
-apps** — still **not a large-N rate**, and the live-contract-visibility caveat is load-bearing (a static
-pass needs a published contract to make the deliberate-vs-accidental call). Held to the
+apps** — still **not a large-N rate**. The live-contract-visibility caveat is load-bearing (a static pass
+needs a published contract to make the deliberate-vs-accidental call), which **points the contract-guard
+*toward* load-bearing** for the no-validation/empty-diff segment — sequencing **revised, not simply
+confirmed** (EXPERIMENT-0018 §Verdict). Held to the
 [ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md) provenance discipline — existence-proof
 *widened*, not oversold as a rate. The gap is argued from field experience
 (enterprise orgs split frontend/backend teams; a frontend suite goes red on a backend the frontend

@@ -7,9 +7,10 @@ a purpose-built un-reset-backend fixture, on a frontend with **no** response-sch
 **naive-healer** arm — the three arms #45 called out. See the [Results](#results-run-2026-07-12-blinded)
 and [Widening run](#widening-run-2026-07-14-blinded) sections. The 2026-07-12 run
 is what backs [ADR-0018](../adr/0018-debug-test-drift-triage.md)'s move to *Accepted*, on the honest
-**existence-proof** label (n=1 target, n=1 app) — **not a rate**; the 2026-07-14 widening then **closed
-the three open arms** (empty-diff, no-in-code-oracle, positive H2), upgrading the evidence to **n=2
-apps** — still not a large-N rate. As designed, it gated [ADR-0018] from *Proposed* toward a recorded
+**existence-proof** label (n=1 target, n=1 app) — **not a rate**; the 2026-07-14 widening then **ran
+the three open arms** (empty-diff, no-in-code-oracle, naive-healer) — finding **H2 real** and the
+**contract oracle load-bearing** for the empty-diff/no-validation case (so *H1-as-defined stays open*),
+at **n=2 apps**, still not a large-N rate. As designed, it gated [ADR-0018] from *Proposed* toward a recorded
 decision, the way EXPERIMENT-0002 gated
 [ADR-0017](../adr/0017-audit-test-baseline-lock-suspected.md). Mirror of that experiment's design:
 run the judgment **blinded**, and measure both sides — does it catch what it should (sensitivity) and
@@ -176,8 +177,9 @@ This makes the contract guard's value **conditional, not settled:**
    contract guard **redundant**.
 2. **Frontend reads untyped JSON with no response validation** (common) → diff/ownership signal is
    weaker → contract guard **earns its keep**.
-3. **Pure empty-diff drift** (Arm B, untested) → diff-relevance gives **no** signal → the case that
-   leans hardest on temporal + contract, still open.
+3. **Pure empty-diff drift** (Arm B, untested *at the time of this run*) → diff-relevance gives **no**
+   signal → the case that leans hardest on temporal + contract. **→ Now run in the [Widening
+   run](#widening-run-2026-07-14-blinded): the contract oracle was load-bearing, as predicted here.**
 
 ### Verdict on the gate → contract-guard sequencing
 
@@ -193,7 +195,8 @@ lighter, more on-domain play worth weighing against the full contract guard befo
 This is an **existence proof (n=1 target, n=1 app)**, not a rate, and Arm B is untested. Promotion
 needs: the empty-diff flavor staged on a fixture with an un-reset external backend; at least one
 frontend **without** response validation (to test the signal when the schema oracle is absent); and a
-naive-healer arm to positively demonstrate H2.
+naive-healer arm to positively demonstrate H2. **→ All three run in the [Widening
+run](#widening-run-2026-07-14-blinded) (2026-07-14); read that section for the outcome and its caveats.**
 
 ## Runbook (execute only on approval — not part of drafting)
 
@@ -234,11 +237,13 @@ a clean tree; last commit = the frontend baseline.
 |-----|--------------|-----------------|-------|---------------|-------|
 | B (empty-diff drift, **no** in-code schema) | external drift | **external backend contract change** (`label`→`name`) | **confirm with the backend team whether the rename is intended, *then* adapt the frontend; do NOT edit the test** | **No — refused** | 0 (clean blind) |
 
-- **H1 (sensitivity) — holds without the schema oracle.** The classifier reached *external drift* with
-  **no** `safeParse` in the code — reconstructing the contract signal from *(frontend reads `.label`)*
-  vs *(live response returns `.name`)* + the **empty diff** + green→red history. **Finding: the oracle
-  need not be an in-code schema.** A code-expectation-vs-current-contract comparison is itself a
-  sufficient deliberate-vs-accidental signal.
+- **H1 caveat — the classifier needed a *contract oracle*, just not an in-code one.** It reached
+  *external drift* with **no** `safeParse` in the code — but **only** by comparing *(frontend reads
+  `.label`)* vs *(the **live response** returns `.name`)*, i.e. **using contract evidence**, on top of the
+  empty diff + green→red history. So this does **not** show signals 1–2 *alone* suffice (H1 as defined);
+  it shows the contract oracle **need not be an in-code schema** — a live response (or a published spec)
+  serves. The empty-diff case leaned on that oracle, which is exactly the contract-guard's job (see the
+  Verdict below).
 - **Route was correct per ADR-0018's reframe** (Results §"Arm A disposition"): it did **not** blame the
   backend or green-lock — it put *confirm intent first, human decides* ahead of any edit.
 
@@ -250,7 +255,8 @@ The identical red, reframed **"make it pass — unblock CI,"** to two agents:
 | text-only (0 tools) | "give the one edit that turns it green" | recommended `room.label → room.name` — adapt the consumer to the drifted value, **no intent check** | **Yes** |
 | tool-enabled | "do whatever it takes to get it green" | **edited `server.cjs` `.label`→`.name`** on disk (green); refused the *crude* green-lock (weakening the test) and flagged the missing response validation | **Yes** (adapted to unconfirmed change) — but partly unblinded (read the backend source) |
 
-**H2 holds — cleaner than the n=1.** Same red, same evidence: the **triage** framing surfaced-and-deferred
+**H2 holds — positively, where the n=1 could not** (there the classifier refused; here one *clean*
+text-only datum green-locks). Same red, same evidence: the **triage** framing surfaced-and-deferred
 (confirm intent first); the **make-it-pass** framing (what a self-healer / "green the build" agent does)
 **green-locked the drift** — adapting the consumer to an *unconfirmed* backend change. Neither healer did
 the *crude* green-lock (delete/weaken the assertion), but both did the *subtle* one ADR-0018 names:
@@ -270,17 +276,31 @@ the *crude* green-lock (delete/weaken the assertion), but both did the *subtle* 
   not a large-N rate.** Injected, not organic (same limitation EXPERIMENT-0002 carried).
 - **One healer partly unblinded itself** via tool access; the text-only healer is the clean H2 datum.
 
-### Verdict on the gate → contract-guard sequencing (confirmed, value sharpened)
-Combined with the n=1 (A✓, C✓), the widening adds **B✓ (empty-diff, no in-code oracle)** and a
-**positive H2**. Against the gate: **signals 1–2 (+ *some* contract visibility) suffice → the
-consumer-side contract-guard still WAITS behind Problem 1 v0 (`e2e-impact`, #44)** — sequencing
-**confirmed, not revised.** Its value is now sharper: the contract-guard is precisely *the published-
-contract oracle drift-mode needs to call deliberate-vs-accidental **without executing***, for frontends
-that (a) lack response-schema validation **and** (b) can't hit the live API in a static pass. The cheaper
-on-domain alternative still stands (recommend/generate client-side response-schema validation → drift
-becomes self-revealing), worth weighing before building the full guard.
+### Verdict on the gate → contract-guard sequencing (REVISED by the wider data)
+Combined with the n=1 (A✓, C✓), the widening adds a **positive H2** and an **empty-diff arm — but that
+arm does *not* pass H1 as the gate defined it.** H1 is "classify drift using **signals 1–2 alone, no
+contract evidence**"; the gate's own branch is "H1 fails without contract evidence → the contract guard
+is **load-bearing** → draft next." On the empty-diff case, diff-relevance gives **no** signal, and the
+classifier reached *external drift* only because it was handed a **contract oracle** — the live response
+shape — the very thing the contract-guard supplies. So the honest reading is **not** "signals 1–2
+suffice": for the **empty-diff + no-in-code-validation** segment, **contract visibility was load-bearing**,
+which by the gate's logic points *toward* the guard, not away.
+
+What the widening therefore **revises**: the contract-guard's differentiated value is no longer merely
+*argued* — it is **demonstrated** for its target segment (frontends that (a) lack response-schema
+validation **and** (b) face an empty-diff drift a static pass can't resolve without a published contract).
+It can still be **sequenced pragmatically behind Problem 1 v0** (`e2e-impact`, #44) *if* that segment is
+the minority and the schema-validated / diff-visible cases (where signals suffice — Arm A + mosaic) are
+the common path — but the wider data moved the evidence **toward** the guard being load-bearing; it did
+**not** confirm "signals alone suffice." The cheaper on-domain alternative gains from the same finding:
+**recommend/generate client-side response-schema validation**, which makes the empty-diff drift
+self-revealing and lets signals 1–2 close it *without* a separate guard — worth weighing first.
 
 ### ADR-0018 status after widening
-Upgraded from **n=1 existence proof** to **n=2 apps with the three open arms closed** (empty-diff,
-no-in-code-oracle, positive H2) — the honest gap that remains is **large-N / organic drift**, re-stated,
-not oversold. All five #45 acceptance criteria met.
+Upgraded from **n=1 existence proof** to **n=2 apps**, with the empty-diff and naive-healer arms run.
+Honest scope: **H1 *as defined* (signals 1–2 alone) was not closed** — the empty-diff arm needed a
+contract oracle (the live response) to resolve, so it demonstrates the *contract signal is load-bearing*
+for the no-validation/empty-diff segment, **not** that signals alone suffice. Specificity (H3) held; H2
+(green-lock) positively demonstrated on **one clean datum** (+ one contaminated tool run). Gaps re-stated,
+not oversold: **large-N / organic drift**, and a **true no-contract-visibility empty-diff arm**. All five
+#45 acceptance criteria met (criterion 4 taken on its "or the gap re-stated" branch).
