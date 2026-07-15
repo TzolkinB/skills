@@ -11,7 +11,7 @@ QA-focused: tools that verify behavior instead of trusting a green checkmark.
 ### [sentinel](./sentinel/) — QA-first testing skills
 
 Verify behavior, not green lights. Sentinel is a **judgement layer, not a test
-runner** — nine composable skills that reason about whether your tests actually
+runner** — a dozen composable skills that reason about whether your tests actually
 protect you, rather than producing tests or coverage themselves. Where execution
 is needed it composes with the tools that already do it (coverage
 instrumentation, Playwright, mutation testing) instead of reimplementing them.
@@ -48,7 +48,7 @@ To try it from a local checkout instead:
 ├── .claude-plugin/marketplace.json   # marketplace manifest (lists the plugins)
 ├── sentinel/                         # the Sentinel plugin
 │   ├── .claude-plugin/plugin.json
-│   ├── skills/                       # the nine skills
+│   ├── skills/                       # the skills (see sentinel/README.md)
 │   ├── docs/adr/                     # architecture decision records
 │   └── README.md                     # Sentinel's full overview
 └── README.md                         # you are here

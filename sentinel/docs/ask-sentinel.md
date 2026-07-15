@@ -4,14 +4,14 @@
 
 ## What it does
 
-Nine skills is more than anyone wants to memorize. `ask-sentinel` is the front door: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"* — and it names the one skill that answers your question, says why, and shows where that step sits in the wider QA flow.
+A dozen Sentinel skills is more than anyone wants to memorize. `ask-sentinel` is the front door: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"* — and it names the one skill that answers your question, says why, and shows where that step sits in the wider QA flow.
 
-It **routes; it doesn't analyze** — it never reads your code, runs a test, or emits a verdict; it hands you the skill that does. It is *not* one of the nine and never joins the `/sentinel` chain — it's the map, not a stop on the route. The one rule it exists to teach: [`sentinel`](./sentinel.md) is the orchestrator, not a peer; the other eight are atomic and each answer exactly one question.
+It **routes; it doesn't analyze** — it never reads your code, runs a test, or emits a verdict; it hands you the skill that does. It is *not* one of them and never joins the `/sentinel` chain — it's the map, not a stop on the route. The one rule it exists to teach: [`sentinel`](./sentinel.md) is the orchestrator, not a peer; the other atomic skills each answer exactly one question.
 
 ## When to use it
 
 - You're not sure which skill to reach for and want to be pointed at exactly one.
-- You want the whole map — run it with no argument for the nine-skill table and the intended flow.
+- You want the whole map — run it with no argument for the skill table and the intended flow.
 
 ## When *not* to use it
 
@@ -33,7 +33,7 @@ Just Claude Code — the router reads nothing and runs nothing. It only points y
 | "a Playwright test is red" | [`debug-test`](./debug-test.md) — diagnose and route the fix |
 | "about to merge" | [`sentinel`](./sentinel.md) — the ship gate, one verdict |
 
-Run `/ask-sentinel` with no argument and it prints the full nine-skill table and the flow diagram instead of routing. The complete routing signals and flow live in [`skills/ask-sentinel/SKILL.md`](../skills/ask-sentinel/SKILL.md).
+Run `/ask-sentinel` with no argument and it prints the full skill table and the flow diagram instead of routing. The complete routing signals and flow live in [`skills/ask-sentinel/SKILL.md`](../skills/ask-sentinel/SKILL.md).
 
 ## Where it fits
 
