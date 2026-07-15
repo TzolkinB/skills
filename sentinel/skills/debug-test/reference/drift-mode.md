@@ -27,7 +27,7 @@ Drift mode does **not** presume the backend erred, and does **not** heal to gree
 
 The choice — accept-and-update, or stop-and-escalate — is **always the human's.** The win is the *surfacing itself*: the earlier a frontend/backend mismatch is reported, the cheaper it is for everyone. Speed-to-surface beats auto-remediation.
 
-Drift mode **consumes** a published contract (OpenAPI/Swagger or an in-repo response schema); building a provider-independent contract check is a scoped-out follow-up ([ADR-0018](../../../docs/adr/0018-debug-test-drift-triage.md)).
+Drift mode **consumes** a published contract (OpenAPI/Swagger or an in-repo response schema) and does a *lightweight inline* check when one is at hand. When the harder job is needed — no in-code schema, an untyped frontend, or an empty-diff drift where the provider's published spec must be located, parsed, and diffed against the shape the consumer expects — **recommend `/contract-guard`** (via the `Skill` tool), the dedicated consumer-side contract check ([ADR-0021](../../../docs/adr/0021-contract-guard-consumer-side-openapi-differ.md), the scoped-out follow-up [ADR-0018](../../../docs/adr/0018-debug-test-drift-triage.md) pointed at). It produces the verdict this mode consumes; the classifier stays here, the contract comparison lives there.
 
 ## Output Format
 ```
