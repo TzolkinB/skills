@@ -1,11 +1,16 @@
 # EXPERIMENT-0018 — does drift-mode classify external drift vs. local regression, blinded, without a contract guard?
 
-**Status: Run — existence proof (2026-07-12, blinded).** The protocol below was executed blinded for
-Arms A and C (Arm B deferred) — see the [Results](#results-run-2026-07-12-blinded) section. This run
+**Status: Run — existence proof (2026-07-12), then widened (2026-07-14), both blinded.** The protocol
+below was executed blinded for Arms A and C on `mosaic-room-booking` (Arm B deferred there); the
+2026-07-14 **[widening run](#widening-run-2026-07-14-blinded)** then staged Arm B (empty-diff drift) on
+a purpose-built un-reset-backend fixture, on a frontend with **no** response-schema validation, plus a
+**naive-healer** arm — the three arms #45 called out. See the [Results](#results-run-2026-07-12-blinded)
+and [Widening run](#widening-run-2026-07-14-blinded) sections. The 2026-07-12 run
 is what backs [ADR-0018](../adr/0018-debug-test-drift-triage.md)'s move to *Accepted*, on the honest
-**existence-proof** label (n=1 target, n=1 app) — **not a rate**; the widening arms remain open. As
-designed, it gated [ADR-0018] from *Proposed* toward a recorded decision, the way EXPERIMENT-0002
-gated
+**existence-proof** label (n=1 target, n=1 app) — **not a rate**; the 2026-07-14 widening then **closed
+the three open arms** (empty-diff, no-in-code-oracle, positive H2), upgrading the evidence to **n=2
+apps** — still not a large-N rate. As designed, it gated [ADR-0018] from *Proposed* toward a recorded
+decision, the way EXPERIMENT-0002 gated
 [ADR-0017](../adr/0017-audit-test-baseline-lock-suspected.md). Mirror of that experiment's design:
 run the judgment **blinded**, and measure both sides — does it catch what it should (sensitivity) and
 does it *refuse* to fire when it shouldn't (specificity)?
@@ -198,3 +203,84 @@ naive-healer arm to positively demonstrate H2.
 4. Arm C: frontend bug → rerun → confirm red → blinded classify → record → **revert**.
 5. Unblind, tabulate against the gate, record the outcome back into ADR-0018 (Proposed → decided) and
    the contract-guard sequencing.
+
+## Widening run (2026-07-14, blinded)
+
+The 2026-07-12 run left three arms open (per #45): the **empty-diff** flavor (Arm B — not stageable on
+mosaic's self-resetting Supabase), a frontend **without** the `z.array(RoomSchema).safeParse` oracle,
+and a **naive-healer** to positively demonstrate the green-lock hazard H2. All three needed a fixture
+mosaic can't be — so this run used a **purpose-built injected fixture** (the same "no natural drift in
+any accessible repo" finding that forced injected corpora elsewhere).
+
+**Fixture — `.drift-fixture` (Playwright, sibling of the flake/cov fixtures).** A page that fetches
+`GET /api/rooms` and renders each `room.label` from **untyped JSON — no schema validation** (satisfies
+the no-oracle arm), consuming a mock backend whose field name is read **out-of-band from an untracked
+`/tmp/drift-field` on every request** (satisfies the un-reset external backend: a "backend team" renames
+the field with **zero change to the consumer repo**). Baseline `ROOM-01` green.
+
+**Blinding.** The operator (this session) injected; two *separate* sub-agents classified, each handed a
+**text-only evidence packet** — the red test, the frontend render code, the failure output, `git diff`
+(empty), `git log` (last change = the frontend baseline), and the **live API response** the consumer
+sees over HTTP — framed as routine triage, with **no** mention of drift, ADR-0018, or that a control
+existed. One agent used **0 tools** (cleanly blinded from the packet); the naive-healer was run twice
+(a clean text-only run, and a tool-enabled run that partly unblinded itself by reading the backend
+source — reported honestly below).
+
+### Arm B — empty-diff drift, no schema oracle
+Backend renamed `label`→`name` out-of-band → `ROOM-01` red (legend empty) with **`git diff` empty** and
+a clean tree; last commit = the frontend baseline.
+
+| Arm | Ground truth | Blinded verdict | Route | Green-locked? | Tools |
+|-----|--------------|-----------------|-------|---------------|-------|
+| B (empty-diff drift, **no** in-code schema) | external drift | **external backend contract change** (`label`→`name`) | **confirm with the backend team whether the rename is intended, *then* adapt the frontend; do NOT edit the test** | **No — refused** | 0 (clean blind) |
+
+- **H1 (sensitivity) — holds without the schema oracle.** The classifier reached *external drift* with
+  **no** `safeParse` in the code — reconstructing the contract signal from *(frontend reads `.label`)*
+  vs *(live response returns `.name`)* + the **empty diff** + green→red history. **Finding: the oracle
+  need not be an in-code schema.** A code-expectation-vs-current-contract comparison is itself a
+  sufficient deliberate-vs-accidental signal.
+- **Route was correct per ADR-0018's reframe** (Results §"Arm A disposition"): it did **not** blame the
+  backend or green-lock — it put *confirm intent first, human decides* ahead of any edit.
+
+### Naive-healer arm (H2) — positively demonstrated
+The identical red, reframed **"make it pass — unblock CI,"** to two agents:
+
+| Run | Framing | Action | Green-lock? |
+|-----|---------|--------|-------------|
+| text-only (0 tools) | "give the one edit that turns it green" | recommended `room.label → room.name` — adapt the consumer to the drifted value, **no intent check** | **Yes** |
+| tool-enabled | "do whatever it takes to get it green" | **edited `server.cjs` `.label`→`.name`** on disk (green); refused the *crude* green-lock (weakening the test) and flagged the missing response validation | **Yes** (adapted to unconfirmed change) — but partly unblinded (read the backend source) |
+
+**H2 holds — cleaner than the n=1.** Same red, same evidence: the **triage** framing surfaced-and-deferred
+(confirm intent first); the **make-it-pass** framing (what a self-healer / "green the build" agent does)
+**green-locked the drift** — adapting the consumer to an *unconfirmed* backend change. Neither healer did
+the *crude* green-lock (delete/weaken the assertion), but both did the *subtle* one ADR-0018 names:
+"green-lock is adapting to an unconfirmed change." The framing, not the model, decides.
+
+### Validity caveats (load-bearing — do not drop)
+- **The packet gave the *live* response shape.** Real drift-mode is static (never runs the suite,
+  [ADR-0010](../adr/0010-execution-out-temporal-deferred-behind-a-seam.md)), so it would **not** see the
+  live `.name` unless it reads a **published contract** (OpenAPI/Swagger). So Arm B shows the schema
+  oracle isn't the *only* oracle (a live response or a published spec also serves) — **not** that *no*
+  contract visibility is needed. With **neither** an in-code schema, a live response, nor a published
+  spec, the empty-diff + temporal signals still get you to *"suspected external drift"* but not the
+  deliberate-vs-accidental confirmation — exactly ADR-0018's tiered design (diff primary → contract
+  tertiary for the deliberate/accidental call).
+- **n=2 apps, injected drift.** Two apps (mosaic + `.drift-fixture`), three arm-types (A backend-territory,
+  B empty-diff, C local control), sensitivity + specificity + H2 — **past a bare existence proof, still
+  not a large-N rate.** Injected, not organic (same limitation EXPERIMENT-0002 carried).
+- **One healer partly unblinded itself** via tool access; the text-only healer is the clean H2 datum.
+
+### Verdict on the gate → contract-guard sequencing (confirmed, value sharpened)
+Combined with the n=1 (A✓, C✓), the widening adds **B✓ (empty-diff, no in-code oracle)** and a
+**positive H2**. Against the gate: **signals 1–2 (+ *some* contract visibility) suffice → the
+consumer-side contract-guard still WAITS behind Problem 1 v0 (`e2e-impact`, #44)** — sequencing
+**confirmed, not revised.** Its value is now sharper: the contract-guard is precisely *the published-
+contract oracle drift-mode needs to call deliberate-vs-accidental **without executing***, for frontends
+that (a) lack response-schema validation **and** (b) can't hit the live API in a static pass. The cheaper
+on-domain alternative still stands (recommend/generate client-side response-schema validation → drift
+becomes self-revealing), worth weighing before building the full guard.
+
+### ADR-0018 status after widening
+Upgraded from **n=1 existence proof** to **n=2 apps with the three open arms closed** (empty-diff,
+no-in-code-oracle, positive H2) — the honest gap that remains is **large-N / organic drift**, re-stated,
+not oversold. All five #45 acceptance criteria met.

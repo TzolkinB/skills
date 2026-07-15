@@ -6,11 +6,17 @@
 [EXPERIMENT-0018](../experiments/EXPERIMENT-0018-drift-triage.md), a **blinded** run in which Arm A
 (external field-rename drift) classified as external drift and routed away from local patching, while
 Arm C (a genuine local regression control) did **not** cry drift — sensitivity ✓ and specificity ✓.
-This is an **existence proof (n=1 target, n=1 app), not a rate**: widening it — the empty-diff flavor
-on an un-reset backend, a frontend without response-schema validation, and a naive-healer arm for the
-green-lock hazard — is tracked separately to upgrade the evidence, held to the
-[ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md) provenance discipline (shipped on
-the honest existence-proof label, not oversold as a rate). The gap is argued from field experience
+That was an **existence proof (n=1 target, n=1 app)**; the **2026-07-14 widening run** (EXPERIMENT-0018
+§Widening run, #45) then closed the three open arms on a purpose-built fixture — **empty-diff drift on
+an un-reset external backend**, a frontend with **no response-schema validation**, and a **naive-healer**
+— all blinded. Results: H1 (sensitivity) held **even without an in-code schema oracle** (a
+code-expectation-vs-current-contract comparison serves in its place), specificity held, and **H2 was
+positively demonstrated** — a "make-it-pass" healer green-locks the drift (adapts the consumer to an
+*unconfirmed* change) where a *triage* framing surfaces-and-defers. This lifts the evidence to **n=2
+apps** — still **not a large-N rate**, and the live-contract-visibility caveat is load-bearing (a static
+pass needs a published contract to make the deliberate-vs-accidental call). Held to the
+[ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md) provenance discipline — existence-proof
+*widened*, not oversold as a rate. The gap is argued from field experience
 (enterprise orgs split frontend/backend teams; a frontend suite goes red on a backend the frontend
 team never touched and cannot instrument). This ADR is the sibling of
 [ADR-0012](0012-debug-test-flake-mode.md): flake-mode gave `debug-test` a disposition for a
