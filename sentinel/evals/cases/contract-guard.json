@@ -1,0 +1,43 @@
+{
+  "skill": "contract-guard",
+  "trials": 3,
+  "_note": "Rubric from sentinel/fixtures/contract-guard/expected-findings.md (Case 2, stale-consumer variant). Consumer = the warm .drift-fixture sibling (~/projects/epic-stack/.drift-fixture, NOT vendored — per expected-findings): server.cjs reads room.label straight off r.json() with no response validation, and the backend renamed the field to `name` out-of-band, so the consumer repo's git diff is empty yet ROOM-01 is red. The published OpenAPI documents `name`, so the rename is DELIBERATE → verdict `stale-consumer`: OFFER `room.label → room.name` for human disposition, never green-lock. `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the .drift-fixture sibling + the published spec supplied at invoke time; offline --self-test grades the samples only.",
+  "cases": [
+    {
+      "id": "stale-consumer-drift",
+      "invoke": "/contract-guard GET /api/rooms ~/projects/epic-stack/.drift-fixture/openapi.yaml",
+      "workspace": "isolated",
+      "fixture_files": [
+        "~/projects/epic-stack/.drift-fixture/server.cjs",
+        "~/projects/epic-stack/.drift-fixture/tests/rooms.spec.ts"
+      ],
+      "dry_run_sample": "samples/contract-guard.stale-consumer.pass.md",
+      "dry_run_negative_sample": "samples/contract-guard.stale-consumer.fail.md",
+      "expect_tokens": ["stale-consumer"],
+      "must_surface": [
+        {
+          "claim": "Emits the `stale-consumer` verdict from the E-vs-S field diff: the published spec has moved away from the field the consumer reads (E `.label` → S `name`), and because the provider documented the rename it is deliberate evolution — the consumer is stale, not an undocumented break.",
+          "anchors": { "any": ["stale-consumer", "consumer is stale", "documented", "deliberate", "spec has moved", "spec moved"] }
+        },
+        {
+          "claim": "Offers the aligning update (`room.label` → `room.name`) as a proposed diff for human disposition — correct maintenance, explicitly not applied and not a green-lock; the published spec is the evidence the change was intended, and the human confirms before accepting.",
+          "anchors": { "any": ["proposed", "you apply it", "human disposition", "offered for human", "you confirm", "never a green-lock", "human decides"] }
+        },
+        {
+          "claim": "Reaches the verdict statically and consumer-side — by reading the consumer's field access and the published spec, without running the suite or snapshotting the live response.",
+          "anchors": { "any": ["static", "did not run the suite", "without running", "no live response", "reading the consumer"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT green-lock: must not silently rewrite the consumer and declare the test fixed. The update is offered for human disposition, never applied on the skill's own authority (ADR-0013).",
+          "anchors": { "any": ["test now passes", "applied the change", "applied the fix", "auto-healed", "test passes again", "now green"] }
+        },
+        {
+          "claim": "Must NOT classify this as `suspected-break` or route to `/bug-report` / blame the backend — the published spec documents the rename, so it is deliberate evolution, not an undocumented drift.",
+          "anchors": { "any": ["suspected-break", "suspected break", "bug-report", "blame the backend", "route to bug"] }
+        }
+      ]
+    }
+  ]
+}
