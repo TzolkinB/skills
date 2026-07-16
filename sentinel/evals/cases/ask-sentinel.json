@@ -1,0 +1,182 @@
+{
+  "skill": "ask-sentinel",
+  "trials": 3,
+  "_note": "Phase 1b — ask-sentinel routing eval (#47's acceptance test). Different shape from the fixture-outcome cases: each case is a SITUATION → expected ROUTE. ask-sentinel is a model-invoked router (sentinel/skills/ask-sentinel/SKILL.md) that maps a QA situation to exactly one skill via its routing signals, or — when nothing fits cleanly — says so plainly and asks one clarifying question rather than forcing a match (SKILL step 6). No fixture/expected-findings.md exists; the rubric is the router's own signals table + steps. POSITIVE cases assert the `**Use:** /skill` token + a rationale that ties the skill's single question to the situation; a mis-route fails the token. NEGATIVE cases (out-of-Sentinel-scope situations) have NO token — route-none correctness rests on must_surface (states nothing fits + asks one clarifying question) and must_not (emits no `**Use:** /` route). The 5 negatives are deliberately outside the test-credibility domain so route-none is unambiguous. Routes only target skills IN the router's current table (the newer e2e-impact / contract-guard / audit-orchestrator are not yet wired in — SKILL note — so they are not used as expected routes here). `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "cases": [
+    {
+      "id": "route-test-plan",
+      "invoke": "/ask-sentinel I'm about to build a checkout feature and want to know what to test before I write any code",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.test-plan.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.test-plan.fail.md",
+      "expect_tokens": ["/test-plan"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/test-plan` and explains why: the situation is deciding what to test before any code exists — test-plan's single question.",
+          "anchors": { "any": ["/test-plan", "before any code", "before you write", "before code"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "route-coverage-review",
+      "invoke": "/ask-sentinel the AI just generated a big test file for my API service — are the tests actually complete or missing cases?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.coverage-review.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.coverage-review.fail.md",
+      "expect_tokens": ["/coverage-review"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/coverage-review` and explains why: AI-written tests already exist and the question is which cases are missing / where assertions are loose.",
+          "anchors": { "any": ["/coverage-review", "what's missing", "missing cases", "loose assertion", "missing"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "route-audit-test",
+      "invoke": "/ask-sentinel this test passes but I don't trust it — would it still pass if the code it covers broke? prove it",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.audit-test.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.audit-test.fail.md",
+      "expect_tokens": ["/audit-test"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/audit-test` and explains why: a passing test is distrusted and the ask is to prove it catches a regression — by mutation, not reasoning.",
+          "anchors": { "any": ["/audit-test", "mutation", "prove", "would it fail", "false confidence"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "route-debug-test",
+      "invoke": "/ask-sentinel my Playwright spec is red with a locator timeout — diagnose and fix it",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.debug-test.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.debug-test.fail.md",
+      "expect_tokens": ["/debug-test"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/debug-test` and explains why: a Playwright spec is actively red (locator/timing) and needs diagnosis and routing of the fix.",
+          "anchors": { "any": ["/debug-test", "playwright", "red spec", "locator", "failing test"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "route-sentinel",
+      "invoke": "/ask-sentinel I'm about to merge this branch — am I safe to ship?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.sentinel.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.sentinel.fail.md",
+      "expect_tokens": ["/sentinel"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/sentinel` and explains why: the situation is the branch-level am-I-safe-to-merge / ship decision — the single question /sentinel answers.",
+          "anchors": { "any": ["/sentinel", "ship gate", "orchestrat"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT tell the user to run the atomic shippability skills (coverage-review, audit-test, qa-review) by hand — /sentinel calls them for you (SKILL step 4).",
+          "anchors": { "any": ["run `/coverage-review` yourself", "then run `/audit-test`", "also run `/qa-review`", "manually run", "run each of", "run these yourself"] }
+        }
+      ]
+    },
+    {
+      "id": "route-none-css",
+      "invoke": "/ask-sentinel how do I center a div with flexbox?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.none-css.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.none-css.fail.md",
+      "must_surface": [
+        {
+          "claim": "States plainly that no single Sentinel skill fits this (it's a CSS/layout question, not a test-credibility one) and asks one clarifying question rather than forcing a match.",
+          "anchors": { "any": ["nothing in sentinel", "no sentinel skill", "not a test-credibility", "isn't a qa", "could you tell me", "could you clarify"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT force a match — emits no `**Use:** /skill` route to any Sentinel skill (SKILL step 6: do not force a bad match).",
+          "anchors": { "any": ["**use:** `/"] }
+        }
+      ]
+    },
+    {
+      "id": "route-none-deploy",
+      "invoke": "/ask-sentinel my production deploy is failing on the Kubernetes rollout — help me fix the pipeline",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.none-deploy.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.none-deploy.fail.md",
+      "must_surface": [
+        {
+          "claim": "States plainly that no single Sentinel skill fits this (it's an infra/deploy problem, not test credibility) and asks one clarifying question rather than forcing a match.",
+          "anchors": { "any": ["nothing in sentinel", "no sentinel skill", "not a test-credibility", "isn't a qa", "could you tell me", "could you clarify", "not a testing"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT force a match — emits no `**Use:** /skill` route to any Sentinel skill (SKILL step 6: do not force a bad match).",
+          "anchors": { "any": ["**use:** `/"] }
+        }
+      ]
+    },
+    {
+      "id": "route-none-sql",
+      "invoke": "/ask-sentinel my SQL query is slow — how do I add the right index?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.none-sql.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.none-sql.fail.md",
+      "must_surface": [
+        {
+          "claim": "States plainly that no single Sentinel skill fits this (it's a database performance question, not test credibility) and asks one clarifying question rather than forcing a match.",
+          "anchors": { "any": ["nothing in sentinel", "no sentinel skill", "not a test-credibility", "isn't a qa", "could you tell me", "could you clarify", "not a testing"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT force a match — emits no `**Use:** /skill` route to any Sentinel skill (SKILL step 6: do not force a bad match).",
+          "anchors": { "any": ["**use:** `/"] }
+        }
+      ]
+    },
+    {
+      "id": "route-none-merge",
+      "invoke": "/ask-sentinel I have a nasty merge conflict in a rebase — how do I resolve it?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.none-merge.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.none-merge.fail.md",
+      "must_surface": [
+        {
+          "claim": "States plainly that no single Sentinel skill fits this (it's a version-control/merge question, not test credibility) and asks one clarifying question rather than forcing a match.",
+          "anchors": { "any": ["nothing in sentinel", "no sentinel skill", "not a test-credibility", "isn't a qa", "could you tell me", "could you clarify", "version control"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT force a match — emits no `**Use:** /skill` route to any Sentinel skill (SKILL step 6: do not force a bad match).",
+          "anchors": { "any": ["**use:** `/"] }
+        }
+      ]
+    },
+    {
+      "id": "route-none-copy",
+      "invoke": "/ask-sentinel can you write the marketing copy for our landing page?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.none-copy.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.none-copy.fail.md",
+      "must_surface": [
+        {
+          "claim": "States plainly that no single Sentinel skill fits this (it's a content/copywriting request, wholly outside QA) and asks one clarifying question rather than forcing a match.",
+          "anchors": { "any": ["nothing in sentinel", "no sentinel skill", "not a test-credibility", "isn't a qa", "could you tell me", "could you clarify", "outside qa"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT force a match — emits no `**Use:** /skill` route to any Sentinel skill (SKILL step 6: do not force a bad match).",
+          "anchors": { "any": ["**use:** `/"] }
+        }
+      ]
+    }
+  ]
+}
