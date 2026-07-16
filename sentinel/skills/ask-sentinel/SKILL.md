@@ -7,6 +7,8 @@ allowed-tools: [Read, Glob]
 
 The best QA-AI tooling is scattered across a dozen Sentinel skills *and* an ecosystem of external tools — more than anyone wants to memorize, and no single one is best at everything. `ask-sentinel` is the front door to the whole map: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"this passing test smells wrong"* — and it names the **one best tool for your situation and stack**, whether that's a Sentinel skill or an external tool, says why, shows its evidence label, and where that step sits in the wider QA flow. Sentinel's own skills fill the app-driven gaps the external tools can't reach; the external tools own the stages where they're strongest. This router hands you whichever fits.
 
+**Two ways to ask (the map's two readings).** Name a *single question at a single moment* — *"this passing test smells"* — and you get **one** best tool (à la carte). Describe a *change moving through its lifecycle* — *"I built this feature, walk me through QA before I merge"*, *"what's the full path to ship this safely"* — and you get an **ordered stage path** (orchestrated): the best tool per relevant stage, in the order to run them, with the escalation between them. Same router, same evidence labels; the *shape of your ask* picks the mode — and the path is always a recommendation you can take whole or lift one stage out of, never a mandate.
+
 It **routes; it doesn't analyze.** It may **read your stack manifests** — `package.json`, a `playwright.config.*` / `cypress.config.*`, a published `openapi`/`swagger` doc — to tell whether the best tool at a stage is an external one or a Sentinel gap-filler (e.g. a suspicious *unit* test → external Stryker/Tautest; a suspicious *app-driven* Playwright test → Sentinel's `audit-test`, because the external mutators can't reach it). But it never reads your test or source *logic* to judge it, never runs a test, never emits a verdict, and never runs the tool for you — it hands you the invocation. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other atomic skills run standalone, and each answers exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for the "am I safe to merge" moment.
 
 **Every recommendation carries its evidence label** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) — this is the map's *"no proof → no recommendation"* rule applied to routing:
@@ -58,10 +60,19 @@ Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best*
 1. Read the situation from $ARGUMENTS. It may be a plain description, a file path, a branch name, or empty.
 2. **If $ARGUMENTS is empty**, output the full map (both tables plus the flow below) and stop — that's valid routing guidance on its own.
 3. **Detect the stack when it changes the route** — only when the choice hinges on it (which is mainly the Audit and Triage stages, and any app-driven-vs-unit fork). Glob for `playwright.config.*` / `cypress.config.*`, read `package.json` for `@playwright/test` / `cypress` / `jest` / `vitest`, note a published `openapi`/`swagger` doc if present or named. **Read manifests only — never a test or source body.** If the stack is absent, ambiguous (both Playwright and Cypress present), or you're outside a repo, **do not fabricate one**: route on the plain-language signal, ask one clarifying question, or show the full map.
-4. Match the situation to exactly one primary tool using the routing signals below — a router that returns five options has routed nothing. If two questions are genuinely in play, prefer the one whose *single question* most directly matches what the user asked, name it first, then the secondary as a follow-up.
-5. **Attach the evidence label.** Proven/Likely → recommend it. Unexamined → surface it as a *lead, not advice*. For an external tool, **point — don't absorb**: name it, give the invocation + a one-line setup note, and never claim to run it. For the Audit stage, prefer routing *into* `/audit-orchestrator` rather than re-deriving the unit-vs-app-driven fork yourself.
-6. If the situation is the merge/ship decision over a whole branch, route to `/sentinel` and note it will call the atomic shippability skills for you — don't also tell the user to run those by hand.
-7. Output the recommendation in the format below: the tool, one line on *why* it fits, the exact invocation, its evidence label, and the natural next step in the flow.
+4. **Pick the shape of the answer — point or sequence.** A *single question at a single moment* ("this test smells", "this spec is red", "what should I test for X") → **point-route** (steps 5–6). A *lifecycle / workflow ask* — a change moving through its life, or an explicit "walk me through / end-to-end / the whole path / do this properly" → **sequence** (step 7). When it's genuinely ambiguous, prefer the point-route (the cheaper answer) and offer the sequence as a follow-up — never inflate one question into a seven-step plan.
+
+**Point-route (single question):**
+
+5. Match the situation to exactly one primary tool using the routing signals below — a router that returns five options has routed nothing. If two questions are genuinely in play, prefer the one whose *single question* most directly matches what the user asked, name it first, then the secondary as a follow-up. If the situation is the merge/ship decision over a whole branch, route to `/sentinel` and note it will call the atomic shippability skills for you — don't also tell the user to run those by hand.
+6. **Attach the evidence label.** Proven/Likely → recommend it. Unexamined → surface it as a *lead, not advice*. For an external tool, **point — don't absorb**: name it, give the invocation + a one-line setup note, and never claim to run it. For the Audit stage, prefer routing *into* `/audit-orchestrator` rather than re-deriving the unit-vs-app-driven fork yourself. Output in the point format below.
+
+**Sequence (ordered path):**
+
+7. Emit an **ordered stage path**, using the wider-map table above as the per-stage source:
+   - **Anchor the entry stage** to where the change sits *now* — before code → **Plan**; tests already exist → **Audit / Coverage**; a spec or suite is red → **Triage**; about to merge → **Audit → Gate**. Order **forward to the Gate (`/sentinel`)**, and include **only the stages that matter** for this situation — an untailored seven-stage dump is noise.
+   - For **each** stage in the path give the **best tool for the stack** with its **evidence label** (the *same* per-stage decision the point-route makes — Unexamined = a lead, self-healers only with their caveat; the Audit stage routes *into* `/audit-orchestrator`), a one-line **why it's here**, and the **escalate-if** condition to the next stage ("Audit flags false-confidence → fix those before spending Coverage").
+   - Close with the à-la-carte line: **run as few or as many as you need — each stage stands alone.** The path is a recommendation, not a funnel. Output in the sequence format below.
 8. If nothing fits cleanly, say so plainly and ask one clarifying question — do not force a bad match.
 
 ## Routing signals
@@ -110,6 +121,8 @@ ALSO STANDALONE (in the chain above, but usable alone the moment one spec goes r
 
 `/debug-test` is the one skill that lives in two places on purpose: `/sentinel` invokes it over any failing tests it finds on the branch, *and* you can run it standalone the moment a single spec goes red. That's why it sits under "also standalone" here, not under "independent."
 
+> **Sequence mode tailors this.** The ordered path a workflow ask returns is this diagram with the stages that don't apply dropped and the start anchored to where your change sits (Steps 4 and 7) — not the whole thing every time.
+
 ## Output Format
 
 For a matched situation:
@@ -125,4 +138,20 @@ For a matched situation:
 **Next in the flow:** [the natural follow-up tool, or "— this is the ship gate" for /sentinel]
 ```
 
-For empty $ARGUMENTS, output both tables and the intended-flow diagram above, then one line: "Tell me what you're trying to do — and your stack if you know it — and I'll point you at one."
+For a lifecycle / workflow ask (sequence mode):
+
+```
+**You're shipping:** [the change + where it sits in its life, incl. stack if it mattered]
+
+**The path** — run as few or as many as you need; each stage stands alone:
+
+1. **[Stage] · `/tool` or [external]** ([Proven | Likely | Unexamined]) — [why this stage, for this change]
+   ↳ escalate-if: [what result sends you on to the next stage]
+2. **[Stage] · …** ([label]) — …
+   ↳ escalate-if: …
+N. **Gate · `/sentinel`** — one PASS / CAUTION / FAIL over the branch.
+
+**Start at step 1 because:** [why the entry stage is here and the earlier stages don't apply].
+```
+
+For empty $ARGUMENTS, output both tables and the intended-flow diagram above, then one line: "Tell me what you're trying to do — a single question gets one tool, a whole workflow gets the ordered path — and your stack if you know it."
