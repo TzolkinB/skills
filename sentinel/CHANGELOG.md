@@ -51,6 +51,19 @@ release heading.
 
 ### Changed
 
+- **`ask-sentinel` becomes the whole-map router** ([ADR-0025](docs/adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
+  issue #47 first slice): it now routes to the best QA-AI tool for a situation — **external tools *and* Sentinel's own
+  skills**, not just the twelve Sentinel skills — resolving open question #2 of the orchestration map (the map graduates
+  from notes to a runnable front door, and is now **committed as the tracked evidence ledger** at
+  `docs/orchestration-map.md` — previously gitignored local notes). It is **stack-aware**: it may read build/config *manifests* (`package.json`,
+  `playwright.config.*`/`cypress.config.*`, a published OpenAPI/Swagger) to pick external-best vs Sentinel-gap-filler per
+  stage, while still never reading test/source *logic*, running a test, or emitting a verdict (contract refined, not
+  broken). Every route **carries its provenance label** (ADR-0013): Proven/Likely is advice, **Unexamined is a *lead*, not
+  advice**, and self-healers are surfaced only with their heal-to-green caveat. Wires in the three previously-orphaned
+  app-driven skills (`e2e-impact`, `audit-orchestrator`, `contract-guard`), retiring the "reach these three directly for
+  now" disclaimer. **Deferred** to later slices: emitting an ordered stage sequence, and a research pass to upgrade the
+  Unexamined external tools (TEA, Exspec, Planner/Generator agents, coverage-guard) from lead to labelled advice. The
+  matching `#74` routing-eval cases are a coordinated follow-up (left untouched here to avoid colliding with that effort).
 - **Suite trigger model** ([ADR-0020](docs/adr/0020-suite-trigger-model-leaves-user-invoked.md)): the eight leaf skills
   (`audit-test`, `coverage-review`, `debug-test`, `prune-tests`, `qa-review`, `threat-model`, `test-plan`, `bug-report`)
   are now **user-invoked** (`disable-model-invocation: true`); discovery routes through the two model-invoked entry
