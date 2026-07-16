@@ -7,12 +7,14 @@
 // touched: map the changed files → the affected skills → that skill's eval + a
 // scoped lint.
 //
-// Stance (ADR-0013, "label, don't gate"): this is REPORT-FIRST. It prints a
-// per-skill report (and a GitHub job summary in CI) and exits 0 even when an
-// eval fails to discriminate — the signal is the report, not a red X. Pass
-// `--gate` to make it exit non-zero on a lint error or a broken self-test; that
-// is reserved for after the one-time LLM-judge meta-eval has established trust
-// (the precondition the epic sets before any gating).
+// Stance (ADR-0013 → ADR-0024): the script still DEFAULTS to report-first —
+// without `--gate` it prints a per-skill report (and a GitHub job summary in CI)
+// and exits 0 even when an eval fails to discriminate, so a human run stays
+// informational. `--gate` makes it exit non-zero on a lint error or a broken
+// self-test. The epic's precondition for gating — a passing LLM-judge meta-eval
+// per case — is now met for every skill with a case (2026-07-16), so CI runs
+// with `--gate` on. The self-test grades recorded samples, so a gate failure is
+// a deterministic regression in the case or its samples, not a judgment call.
 //
 // What runs per affected skill: `run-eval.mjs --self-test cases/<skill>.json`
 // with the OFFLINE heuristic judge (no API key in CI — the LLM meta-eval is the
@@ -57,7 +59,7 @@ function main() {
   const lint = changedSkillMd.length ? runLint(changedSkillMd) : null;
   const evals = affected.map((skill) => ({ skill, ...runSelfTest_(skill) }));
 
-  const md = renderReport({ base, files, affected, coverageGaps, harnessCore, changedSkillMd, lint, evals });
+  const md = renderReport({ base, files, affected, coverageGaps, harnessCore, changedSkillMd, lint, evals, gating: flags.has('--gate') });
   console.log(md);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
 
@@ -154,7 +156,7 @@ function runSelfTest_(skill) {
 
 // ---- reporting ------------------------------------------------------------
 
-function renderReport({ base, affected, coverageGaps, harnessCore, changedSkillMd, lint, evals }) {
+function renderReport({ base, affected, coverageGaps, harnessCore, changedSkillMd, lint, evals, gating = false }) {
   const L = [];
   L.push(`## Sentinel skill-eval — changed-skill report`);
   L.push('');
@@ -183,7 +185,11 @@ function renderReport({ base, affected, coverageGaps, harnessCore, changedSkillM
   if (lint) L.push(`Lint on changed SKILL.md: ${lint.error ? '❌ error (see log)' : '✅ no errors'}`);
 
   L.push('');
-  L.push('_Report-first (ADR-0013): this check does not gate the merge. A failing self-test is a real regression in the case or its samples — read the log._');
+  L.push(
+    gating
+      ? '_Gating (ADR-0024, trust established 2026-07-16): a changed skill whose self-test does not discriminate, or a lint error, fails this check. The self-test grades recorded samples, so a failure is a real regression in the case or its samples — read the log._'
+      : '_Report-first (ADR-0013): this check does not gate the merge. A failing self-test is a real regression in the case or its samples — read the log._',
+  );
   return L.join('\n');
 }
 

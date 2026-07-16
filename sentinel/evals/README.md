@@ -17,7 +17,8 @@ on every change, cheaply.
 | **2 — experiment** | blinded sensitivity/specificity | occasional, ADR-gating | high, manual | existing, unchanged |
 
 This harness is the missing **middle** tier. On a PR, `changed.mjs` (Phase 2, [ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md))
-selects only the skills the diff touched and runs Tier 0 + Tier 1 for them — report-first, not a gate.
+selects only the skills the diff touched and runs Tier 0 + Tier 1 for them. As of 2026-07-16 CI runs
+it with `--gate`: a changed skill whose offline self-test stops discriminating fails the check.
 
 ## Grading stance (ADR-0022)
 
@@ -119,6 +120,11 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 3. ✅ **Phase 1b done** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the
    acceptance test for [#47](https://github.com/TzolkinB/skills/issues/47)), meta-eval'd green.
 4. ✅ **Phase 2 done** — `changed.mjs` + the `skill-evals` PR workflow detect the changed `SKILL.md`
-   and run only its eval + lint; report-first, gate later ([ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md)).
-5. **Next** — meta-eval the prose-only skills (`coverage-review`, `qa-review`, `prune-tests`,
-   `threat-model`); flip `changed.mjs --gate` on once the judge trust gate is met; wire `--live`.
+   and run only its eval + lint ([ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md)).
+5. ✅ **Done** — the prose-only skills (`coverage-review`, `qa-review`, `prune-tests`, `threat-model`)
+   and `audit-orchestrator` cased + meta-eval'd green. All 10 fixture-backed skills now have a
+   trust-gated eval.
+6. ✅ **Gate flipped on (2026-07-16)** — CI runs `changed.mjs --gate`; the offline self-test now blocks
+   a merge that breaks a case's discrimination.
+7. **Next** — cases for the three fixture-less skills (`test-plan`, `bug-report`, `sentinel`) need a
+   known-bad fixture built first; then wire `--live` (real agent runs, the real cost driver).
