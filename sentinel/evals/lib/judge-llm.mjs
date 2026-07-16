@@ -98,6 +98,7 @@ export async function judgeLLM(transcript, testCase) {
   const toolUse = (data.content ?? []).find((b) => b.type === 'tool_use' && b.name === 'record_grades');
   if (!toolUse) throw new Error('judge returned no record_grades tool call');
 
+  if (process.env.SENTINEL_EVAL_JUDGE_DEBUG) console.error('[judge raw]', JSON.stringify(toolUse.input));
   return groundAndMap(transcript, testCase, toolUse.input);
 }
 
@@ -117,8 +118,19 @@ function buildPrompt(transcript, surface, notItems) {
 // reading (unsupported claim → not surfaced; unsupported violation → not a
 // violation), so the judge can't rubber-stamp either way without evidence.
 function groundAndMap(transcript, testCase, input) {
-  const hay = transcript.toLowerCase();
-  const grounded = (q) => typeof q === 'string' && q.trim() !== '' && hay.includes(q.trim().toLowerCase());
+  // Normalize formatting on both sides before the substring check: the model
+  // quotes the *text* of a line, dropping the markdown emphasis (`**Proof:**` →
+  // `Proof:`) and line-wraps the transcript has. Strip `* ` ` _` and collapse
+  // whitespace so those don't defeat a faithful quote. Still requires the real
+  // words in order — this loosens formatting, not the grounding itself.
+  const norm = (s) =>
+    String(s)
+      .toLowerCase()
+      .replace(/[*`_]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  const hay = norm(transcript);
+  const grounded = (q) => typeof q === 'string' && q.trim() !== '' && hay.includes(norm(q));
   const byIndex = (arr) => new Map((arr ?? []).filter((e) => Number.isInteger(e.index)).map((e) => [e.index, e]));
 
   const sMap = byIndex(input.surfaced);

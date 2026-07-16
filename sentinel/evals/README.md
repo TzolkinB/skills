@@ -93,14 +93,15 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 - **Two judges.** `--judge=llm` (Haiku 4.5, quote-grounded) is the real grader; `--judge=heuristic`
   is an offline anchor-keyword stand-in for running without a key, and can match a keyword in the
   wrong place. **Meta-eval the LLM judge before trusting it** — `--self-test --judge=llm` must pass
-  the faithful sample and fail the hollow one. Token asserts and the lint stand on their own regardless.
+  the faithful sample and fail the hollow one (passed on `audit-test`, Haiku 4.5, 2026-07-15). Token
+  asserts and the lint stand on their own regardless.
 - **Dry-run grades a recorded transcript**, not a live skill run — it exercises the *grading pipeline*
   offline. `--live` is the real thing and is wired, but nothing here calls a model unless you pass it.
 
 ## Next (per #74)
 
-1. Meta-eval `--judge=llm` against the known-good/known-bad samples with a real key, then default to
-   it when a key is present (heuristic remains the offline fallback). ✅ judge built — this is validation.
+1. ✅ **Done** — `--judge=llm` built and meta-eval'd green on the `audit-test` samples (Haiku 4.5,
+   2026-07-15). Remaining: default to it when a key is present (heuristic stays the offline fallback).
 2. Fan out `cases/` to the other verdict-emitting skills: `debug-test`, `contract-guard`, `e2e-impact`.
 3. **Phase 1b** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the acceptance
    test for [#47](https://github.com/TzolkinB/skills/issues/47)).
