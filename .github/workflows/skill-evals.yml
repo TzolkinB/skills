@@ -1,0 +1,51 @@
+name: skill-evals
+
+# Phase 2 of the Sentinel skill-eval harness (issue #74, ADR-0024). On a PR that
+# touches a skill or the eval assets, run only what the diff affects: the changed
+# skill's fixture-outcome self-test + a scoped lint.
+#
+# Two deliberately different stances (see ADR-0024):
+#   * The HARNESS TOOL self-tests gate — they are deterministic unit checks that
+#     the linter and the change-detector themselves work; a break is a bug, not a
+#     judgment call.
+#   * The CHANGE-DETECTION REPORT does NOT gate — per ADR-0013 ("label, don't
+#     gate") the eval verdicts are surfaced as a job summary, not a red X, until
+#     the one-time LLM-judge meta-eval has established trust. It runs the OFFLINE
+#     heuristic judge (no API key here — the LLM meta-eval stays a manual step).
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'sentinel/skills/**'
+      - 'sentinel/evals/**'
+
+concurrency:
+  group: skill-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  skill-evals:
+    name: changed-skill evals
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need the PR base commit present so `git diff base...HEAD` resolves.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Gate: prove the harness tooling itself is not broken. Deterministic,
+      # offline, zero-dep — no judgment involved, so a failure fails the build.
+      - name: Harness self-tests (gating)
+        run: |
+          set -euo pipefail
+          node sentinel/evals/lint.mjs --self-test
+          node sentinel/evals/changed.mjs --self-test
+
+      # Report-first: run only the affected skills' self-tests + scoped lint and
+      # write a job summary. Does not gate (exits 0) — read the summary.
+      - name: Changed-skill report (non-gating)
+        run: node sentinel/evals/changed.mjs --base=${{ github.event.pull_request.base.sha }}
