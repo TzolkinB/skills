@@ -1,0 +1,39 @@
+{
+  "skill": "threat-model",
+  "trials": 3,
+  "_note": "Prose-only, token-less — scope is consequence-of-failure, not coverage. Rubric from sentinel/fixtures/threat-model/expected-findings.md against refund.js: a fire-and-forget refund where paymentGateway.refund is not awaited or error-checked, yet the order is marked refunded and the customer emailed. The load-bearing judgment is ranking the SILENT refund failure HIGH and first — because low detectability outranks a louder same-impact failure. The hollow sample is the boundary violation this skill must avoid: treating it as a testability/coverage question (that's /qa-review) and missing the consequence. `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "cases": [
+    {
+      "id": "fire-and-forget-refund",
+      "invoke": "/threat-model sentinel/fixtures/threat-model/refund.js",
+      "workspace": "isolated",
+      "fixture_files": ["sentinel/fixtures/threat-model/refund.js"],
+      "dry_run_sample": "samples/threat-model.refund.pass.md",
+      "dry_run_negative_sample": "samples/threat-model.refund.fail.md",
+      "must_surface": [
+        {
+          "claim": "Enumerates what the change touches: the `status: 'refunded'` write to the orders table, the payment gateway + email service (external systems), and the downstream readers of order status (reporting / reconciliation).",
+          "anchors": { "any": ["what this touches", "status: 'refunded'", "downstream", "reconciliation", "reporting"] }
+        },
+        {
+          "claim": "Names the top risk as a silent refund failure with recorded success: `paymentGateway.refund(...)` is not awaited or error-checked, yet the order is marked refunded and the customer emailed — so if the gateway call fails, money is never returned while the system records success (state and reality diverge).",
+          "anchors": { "any": ["not awaited", "fire-and-forget", "fire and forget", "no await", "never awaited", "state and reality", "records success"] }
+        },
+        {
+          "claim": "Ranks it HIGH and first for LOW detectability and hard reversibility: no error surfaces (the email already went out, the DB says success), so it outranks a louder same-impact failure; unwinding is hard because the email is already sent and the status already flipped.",
+          "anchors": { "any": ["detectability", "reversibility", "already sent", "outrank", "hard to reverse", "no error surfaces"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT re-flag testability smells (hard-coded values, non-determinism, mockability) — scope is consequence-of-failure only; testability is `/qa-review`'s job (expected-findings boundary).",
+          "anchors": { "any": ["testability", "hard-coded", "non-deterministic", "mock", "injectable"] }
+        },
+        {
+          "claim": "Must NOT invent a specific rollback plan or prescribe the code fix — reversibility is raised as an open question, not answered (this skill identifies risk, it doesn't prescribe deploy mechanics).",
+          "anchors": { "any": ["the fix is", "to fix this", "add a try/catch", "should await", "await the refund", "wrap it in", "rollback plan:"] }
+        }
+      ]
+    }
+  ]
+}
