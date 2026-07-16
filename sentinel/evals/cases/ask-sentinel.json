@@ -1,7 +1,7 @@
 {
   "skill": "ask-sentinel",
   "trials": 3,
-  "_note": "Phase 1b — ask-sentinel routing eval (#47's acceptance test). Different shape from the fixture-outcome cases: each case is a SITUATION → expected ROUTE. ask-sentinel is a model-invoked router (sentinel/skills/ask-sentinel/SKILL.md) that maps a QA situation to exactly one skill via its routing signals, or — when nothing fits cleanly — says so plainly and asks one clarifying question rather than forcing a match (SKILL step 6). No fixture/expected-findings.md exists; the rubric is the router's own signals table + steps. POSITIVE cases assert the `**Use:** /skill` token + a rationale that ties the skill's single question to the situation; a mis-route fails the token. NEGATIVE cases (out-of-Sentinel-scope situations) have NO token — route-none correctness rests on must_surface (states nothing fits + asks one clarifying question) and must_not (emits no `**Use:** /` route). The 5 negatives are deliberately outside the test-credibility domain so route-none is unambiguous. As of ADR-0025 / PR #94 the router is the WHOLE-map front door: the three app-driven skills (e2e-impact, audit-orchestrator, contract-guard) ARE wired in and now carry positive-route cases; `route-flake-heal-caveat` guards the whole-map PROVENANCE DISCIPLINE — a green-pushing self-healer must be surfaced with its heal-to-green hazard caveat, never as confident advice (the 'Unexamined/hazard = lead, not advice' rule). `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "_note": "Phase 1b — ask-sentinel routing eval (#47's acceptance test). Different shape from the fixture-outcome cases: each case is a SITUATION → expected ROUTE. ask-sentinel is a model-invoked router (sentinel/skills/ask-sentinel/SKILL.md) that maps a QA situation to exactly one skill via its routing signals, or — when nothing fits cleanly — says so plainly and asks one clarifying question rather than forcing a match (SKILL step 6). No fixture/expected-findings.md exists; the rubric is the router's own signals table + steps. POSITIVE cases assert the `**Use:** /skill` token + a rationale that ties the skill's single question to the situation; a mis-route fails the token. NEGATIVE cases (out-of-Sentinel-scope situations) have NO token — route-none correctness rests on must_surface (states nothing fits + asks one clarifying question) and must_not (emits no `**Use:** /` route). The 5 negatives are deliberately outside the test-credibility domain so route-none is unambiguous. As of ADR-0025 / PR #94 the router is the WHOLE-map front door: the three app-driven skills (e2e-impact, audit-orchestrator, contract-guard) ARE wired in and now carry positive-route cases; `route-flake-heal-caveat` guards the whole-map PROVENANCE DISCIPLINE — a green-pushing self-healer must be surfaced with its heal-to-green hazard caveat, never as confident advice (the 'Unexamined/hazard = lead, not advice' rule). As of ADR-0027 the router has a SEQUENCE mode: a lifecycle/workflow ask ('walk me through QA before merge') returns an ORDERED stage path, entry-anchored to where the change sits, not a single point-route; `seq-before-code` and `seq-pre-merge` guard it (the latter asserts entry-anchoring via must_not — a pre-merge path must NOT start at /test-plan). `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
   "cases": [
     {
       "id": "route-test-plan",
@@ -146,6 +146,49 @@
         }
       ],
       "must_not": []
+    },
+    {
+      "id": "seq-before-code",
+      "invoke": "/ask-sentinel I'm starting a new checkout feature and want to do QA properly from planning through to shipping — walk me through the whole path",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.seq-before-code.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.seq-before-code.fail.md",
+      "expect_tokens": ["/test-plan", "/sentinel"],
+      "must_surface": [
+        {
+          "claim": "Emits an ordered stage PATH (sequence mode), not a single point-route, and anchors the entry at Plan because no code exists yet.",
+          "anchors": { "any": ["the path", "start at step 1", "start at"] }
+        },
+        {
+          "claim": "States the path is a la carte — run as few or as many as you need; each stage stands alone (a recommendation, not a mandate).",
+          "anchors": { "any": ["run as few or as many", "each stage stands alone", "not a funnel"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "seq-pre-merge",
+      "invoke": "/ask-sentinel I've finished a feature and its tests — walk me through the QA steps to run, in order, before I merge",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.seq-pre-merge.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.seq-pre-merge.fail.md",
+      "expect_tokens": ["/coverage-review", "/sentinel"],
+      "must_surface": [
+        {
+          "claim": "Emits an ordered path and anchors the entry at Coverage/Audit because tests already exist — the sequence is tailored to where the change sits.",
+          "anchors": { "any": ["the path", "start at", "already exist", "/coverage-review"] }
+        },
+        {
+          "claim": "States the path is a la carte — run as few or as many as you need; each stage stands alone.",
+          "anchors": { "any": ["run as few or as many", "each stage stands alone"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Does not anchor the path at Plan — planning is past (code and tests exist), so it emits no /test-plan step (entry-anchoring, not an untailored seven-stage dump).",
+          "anchors": { "any": ["/test-plan"] }
+        }
+      ]
     },
     {
       "id": "route-none-css",

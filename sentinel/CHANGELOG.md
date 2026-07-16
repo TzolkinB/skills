@@ -51,6 +51,17 @@ release heading.
 
 ### Changed
 
+- **`ask-sentinel` gains a sequence mode** ([ADR-0027](docs/adr/0027-ask-sentinel-orchestrated-sequence-mode.md),
+  issue #47 capstone slice): the whole-map router now has a second reading. A *single question* still returns **one**
+  best tool (à la carte, ADR-0025); a *lifecycle / workflow ask* — "walk me through QA before I merge", "the full path
+  to ship this safely" — now returns an **ordered stage path** (orchestrated): the best tool per relevant stage with its
+  provenance label, the escalate-if condition between stages, closing on `/sentinel` at the Gate. The path is
+  **entry-anchored** to where the change sits (before code → Plan; tests exist → Audit/Coverage; red → Triage) and
+  **tailored** — only the stages that matter, never an untailored seven-stage dump — and it stays **à la carte** (run as
+  few or as many as you need; a recommendation, not a mandate). Reuses ADR-0025's per-stage routing + labels; no new
+  provenance machinery. Guarded by two routing-eval cases (`seq-before-code`, `seq-pre-merge` — the latter asserts
+  entry-anchoring: a pre-merge path must not start at `/test-plan`). Delivers the "tool **and** stage order" half of #47;
+  the map's "orchestrated" mode is now executable.
 - **`ask-sentinel` becomes the whole-map router** ([ADR-0025](docs/adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
   issue #47 first slice): it now routes to the best QA-AI tool for a situation — **external tools *and* Sentinel's own
   skills**, not just the twelve Sentinel skills — resolving open question #2 of the orchestration map (the map graduates
