@@ -58,31 +58,28 @@ export function judgeHeuristic(transcript, testCase) {
   return { surfaced, violations };
 }
 
-// The real judge — ADR-0022 §Decision.2. Same signature as judgeHeuristic so
-// run-eval can swap it in with --judge=llm once wired to a model call.
-export function judgeLLM() {
-  throw new Error(
-    'judge=llm is not implemented yet (ADR-0022 §Decision.2). ' +
-      'Wire a cheap-model call that grades each `claim` and returns a quoted ' +
-      'transcript line per item, then meta-eval it against a known-good and ' +
-      'known-bad sample before trusting it. Use --judge=heuristic offline.',
-  );
+// The real judge (ADR-0022 §Decision.2) lives in judge-llm.mjs and is loaded
+// lazily so the offline path never imports the API client and a missing key
+// only errors when --judge=llm is actually used.
+async function runJudge(transcript, testCase, judge) {
+  if (judge === 'llm') {
+    const { judgeLLM } = await import('./judge-llm.mjs');
+    return judgeLLM(transcript, testCase);
+  }
+  return judgeHeuristic(transcript, testCase);
 }
-
-const JUDGES = { heuristic: judgeHeuristic, llm: judgeLLM };
 
 // ---- combine into a per-transcript verdict --------------------------------
 
-export function gradeTranscript(transcript, testCase, { judge = 'heuristic' } = {}) {
-  const judgeFn = JUDGES[judge] ?? judgeHeuristic;
+export async function gradeTranscript(transcript, testCase, { judge = 'heuristic' } = {}) {
   const tokens = assertTokens(transcript, testCase);
-  const { surfaced, violations } = judgeFn(transcript, testCase);
+  const { surfaced, violations } = await runJudge(transcript, testCase, judge);
   const pass =
     tokens.every((t) => t.ok) && surfaced.every((s) => s.ok) && violations.every((v) => v.ok);
   return { pass, tokens, surfaced, violations };
 }
 
-export function gradeSampleFile(path, testCase, opts) {
+export async function gradeSampleFile(path, testCase, opts) {
   // Sample files carry an explanatory <!-- … --> header a live transcript would
   // not; strip it so the quoted evidence reflects the real output lines.
   const transcript = readFileSync(path, 'utf8').replace(/<!--[\s\S]*?-->/g, '');

@@ -12,8 +12,9 @@
 //                 grade it, and report reliability (passes/trials). Needs an
 //                 agent CLI; nothing here calls a model unless you pass --live.
 //
-// Flags: --judge=heuristic|llm (default heuristic, per ADR-0022 the llm judge is
-//        the real one but not yet wired), --trials=N, --agent="claude -p {prompt}".
+// Flags: --judge=heuristic|llm (default: llm when ANTHROPIC_API_KEY is set, else
+//        heuristic — pass --judge=heuristic to force the free offline grader),
+//        --trials=N, --agent="claude -p {prompt}".
 //
 // Usage:
 //   node sentinel/evals/run-eval.mjs --dry-run   cases/audit-test.json
@@ -37,7 +38,9 @@ const opts = Object.fromEntries(
 );
 const positional = argv.filter((a) => !a.startsWith('--'));
 const caseFile = positional[0];
-const judge = opts.judge ?? 'heuristic';
+// Default to the real LLM judge when a key is available, else the free offline
+// heuristic. Explicit --judge=… always wins. The run header prints which ran.
+const judge = opts.judge ?? (process.env.ANTHROPIC_API_KEY ? 'llm' : 'heuristic');
 
 if (!caseFile) {
   console.error('usage: run-eval.mjs [--dry-run|--self-test|--live] <case.json> [--judge=…] [--trials=N]');
@@ -51,26 +54,31 @@ const trials = Number(opts.trials ?? suite.trials ?? 3);
 console.log(`\n═══ ${suite.skill} · ${mode} · judge=${judge} ═══\n`);
 
 let ok = true;
-for (const c of suite.cases) {
-  if (mode === 'dry-run') ok = runDryRun(c) && ok;
-  else if (mode === 'self-test') ok = runSelfTest(c) && ok;
-  else ok = runLive(c) && ok;
+try {
+  for (const c of suite.cases) {
+    if (mode === 'dry-run') ok = (await runDryRun(c)) && ok;
+    else if (mode === 'self-test') ok = (await runSelfTest(c)) && ok;
+    else ok = (await runLive(c)) && ok;
+  }
+} catch (err) {
+  console.error(`\n✗ ${err.message}\n`);
+  process.exit(1);
 }
 console.log(ok ? '\n✅ suite passed\n' : '\n❌ suite failed\n');
 process.exit(ok ? 0 : 1);
 
 // ---- modes ----------------------------------------------------------------
 
-function runDryRun(c) {
+async function runDryRun(c) {
   const sample = resolveFromEvals(c.dry_run_sample);
-  const g = gradeSampleFile(sample, c, { judge });
+  const g = await gradeSampleFile(sample, c, { judge });
   printCase(c, `dry-run ← ${c.dry_run_sample}`, g);
   return g.pass;
 }
 
-function runSelfTest(c) {
-  const pos = gradeSampleFile(resolveFromEvals(c.dry_run_sample), c, { judge });
-  const neg = gradeSampleFile(resolveFromEvals(c.dry_run_negative_sample), c, { judge });
+async function runSelfTest(c) {
+  const pos = await gradeSampleFile(resolveFromEvals(c.dry_run_sample), c, { judge });
+  const neg = await gradeSampleFile(resolveFromEvals(c.dry_run_negative_sample), c, { judge });
   const discriminates = pos.pass === true && neg.pass === false;
   printCase(c, `self-test · pass-sample`, pos);
   printCase(c, `self-test · negative-sample (must FAIL)`, neg);
@@ -81,11 +89,11 @@ function runSelfTest(c) {
   return discriminates;
 }
 
-function runLive(c) {
+async function runLive(c) {
   let passes = 0;
   for (let i = 1; i <= trials; i++) {
     const transcript = runInIsolatedWorktree(c);
-    const g = gradeTranscript(transcript, c, { judge });
+    const g = await gradeTranscript(transcript, c, { judge });
     if (g.pass) passes++;
     printCase(c, `live · trial ${i}/${trials}`, g);
   }

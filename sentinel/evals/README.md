@@ -23,9 +23,11 @@ This harness is the missing **middle** tier.
 - **Assert on tokens, not prose.** Deterministic regex over the `**Verdict:**` emoji, a route name,
   a filename — cheap, model-free, fails fast.
 - **Judge the prose against the fixture rubric.** Each `must_surface` / `must_not` item comes
-  straight from the skill's `expected-findings.md`. The real judge (an LLM that quotes the supporting
-  line) is wired but not yet built; the default is an **offline heuristic stand-in** so the pipeline
-  runs without an API key. The heuristic screens by anchor keywords — a scaffold, not the design.
+  straight from the skill's `expected-findings.md`. `--judge=llm` is the real grader
+  (ADR-0022 §Decision.2): a cheap model (Haiku 4.5) scores each item and must quote a **verbatim**
+  transcript line, which the harness re-checks is a real substring before it counts — the
+  anti-rubber-stamp gate. `--judge` defaults to **`llm` when `ANTHROPIC_API_KEY` is set**, else the
+  **offline anchor-keyword `heuristic`**; pass `--judge=heuristic` to force the free offline grader.
 - **Never diff prose.** No golden files, no snapshots — this upholds [`fixtures/README.md`](../fixtures/README.md).
 - **Outcomes, not paths. Isolated runs. N trials → a reliability number. Label, don't gate** (yet).
 
@@ -35,7 +37,8 @@ This harness is the missing **middle** tier.
 evals/
   lint.mjs                     Tier 0 — static SKILL.md lint
   run-eval.mjs                 Tier 1 — fixture-outcome runner
-  lib/grade.mjs                token asserts + judge (heuristic | llm-slot)
+  lib/grade.mjs                token asserts + judge dispatch (heuristic | llm)
+  lib/judge-llm.mjs            LLM judge — zero-dep fetch to the Messages API, quote-grounded
   cases/audit-test.json        a case = verdict token + must_surface + must_not (from expected-findings)
   samples/
     audit-test.*.pass.md       faithful run — dry-run grades this, expects PASS
@@ -50,9 +53,14 @@ evals/
 node sentinel/evals/lint.mjs
 node sentinel/evals/lint.mjs --self-test        # prove the detectors fire on a seeded skill
 
-# Tier 1 — grade offline against recorded samples (no API key needed)
-node sentinel/evals/run-eval.mjs --dry-run   cases/audit-test.json
-node sentinel/evals/run-eval.mjs --self-test cases/audit-test.json   # proves the grader discriminates
+# Tier 1 — grade against recorded samples. Uses the LLM judge when ANTHROPIC_API_KEY
+#          is set; add --judge=heuristic to force the free offline grader.
+node sentinel/evals/run-eval.mjs --dry-run   cases/audit-test.json --judge=heuristic
+node sentinel/evals/run-eval.mjs --self-test cases/audit-test.json --judge=heuristic   # proves discrimination, free
+
+# Tier 1 — real LLM judge (needs ANTHROPIC_API_KEY). --self-test IS the judge meta-eval:
+# it must PASS the faithful sample and FAIL the hollow one before you trust the judge.
+ANTHROPIC_API_KEY=… node sentinel/evals/run-eval.mjs --self-test cases/audit-test.json --judge=llm
 
 # Tier 1 — live: isolated worktree + real agent, N trials, reliability report
 node sentinel/evals/run-eval.mjs --live cases/audit-test.json --trials=3 \
@@ -63,17 +71,40 @@ node sentinel/evals/run-eval.mjs --live cases/audit-test.json --trials=3 \
 and **fails** a hollow one (wrong verdict, missing findings, or a boundary violation like proposing to
 delete the test). If that ever stops discriminating, the harness is broken.
 
+## Cost
+
+Free paths cost nothing: all of `lint.mjs`, and any run with `--judge=heuristic`. Only `--judge=llm`
+and `--live` spend — and note **`--judge` defaults to `llm` when `ANTHROPIC_API_KEY` is set**, so
+`--dry-run` / `--self-test` do make API calls in a key-exported shell unless you pass `--judge=heuristic`.
+
+- **The LLM judge is negligible.** Each call is ~830–945 input + ~180 output tokens on Haiku 4.5
+  ($1 / 1M in, $5 / 1M out) ≈ **$0.0018 / call**. A judge meta-eval (`--self-test --judge=llm`, 2
+  calls) ≈ **$0.004**; a full fan-out (~6 skills × 2 cases × 3 trials ≈ 36 calls) ≈ **$0.07**. Billed
+  as prepaid **usage credits** (Console → Billing, $5 minimum — which covers ~2,700 judge calls); no
+  subscription is needed for the raw API.
+- **`--live` is the real cost driver — and may not hit your API key at all.** Before grading, it runs
+  a real coding agent (`claude -p "/audit-test …"`) to *produce* each transcript: roughly
+  **$0.20–$0.40 / trial on Opus 4.8** (~150× the judge). If your Claude Code is authenticated via a
+  **Claude Pro/Max subscription**, those agent runs cost **$0 in API credits** and only the judge's
+  raw `fetch` bills the key; if Claude Code is **API-key-billed**, the agent runs are the whole bill.
+
+Figures are estimates from a chars/token heuristic; `messages/count_tokens` gives exact numbers.
+
 ## What's honest about this skeleton
 
-- **The heuristic judge is a stand-in.** It can match a keyword in the wrong place; the ADR-0022 LLM
-  judge (with quote-grounding + a one-time meta-eval) is the real Tier-1 deliverable. Token asserts
-  and the lint stand on their own regardless.
+- **Two judges.** `--judge=llm` (Haiku 4.5, quote-grounded) is the real grader and the default when
+  `ANTHROPIC_API_KEY` is set; `--judge=heuristic` is the free offline fallback (anchor-keyword
+  matching — can match in the wrong place). **Meta-eval the LLM judge before trusting it** —
+  `--self-test --judge=llm` must pass
+  the faithful sample and fail the hollow one (passed on `audit-test`, Haiku 4.5, 2026-07-15). Token
+  asserts and the lint stand on their own regardless.
 - **Dry-run grades a recorded transcript**, not a live skill run — it exercises the *grading pipeline*
   offline. `--live` is the real thing and is wired, but nothing here calls a model unless you pass it.
 
 ## Next (per #74)
 
-1. Wire `--judge=llm` (cheap model, quote-grounded) + meta-eval it.
+1. ✅ **Done** — `--judge=llm` built, meta-eval'd green (Haiku 4.5, 2026-07-15), and now the default
+   when `ANTHROPIC_API_KEY` is set; `heuristic` is the free offline fallback.
 2. Fan out `cases/` to the other verdict-emitting skills: `debug-test`, `contract-guard`, `e2e-impact`.
 3. **Phase 1b** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the acceptance
    test for [#47](https://github.com/TzolkinB/skills/issues/47)).
