@@ -6,7 +6,7 @@
 **You're at:** the merge gate — you want one answer on whether the branch is safe to ship.
 
 **Use:** `/sentinel`
-**Why:** this is the branch-level "am I safe to merge" moment, and `/sentinel` is the orchestrator that returns a single PASS / CAUTION / FAIL verdict.
+**Why:** this is the branch-level am-I-safe-to-merge decision, and `/sentinel` is the orchestrator that returns a single PASS / CAUTION / FAIL verdict — the one question it answers.
 **Run:** `/sentinel`
 
 It orchestrates coverage-review, qa-review, audit-test and debug-test into that one verdict for you — no need to invoke them separately.

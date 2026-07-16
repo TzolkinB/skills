@@ -72,7 +72,7 @@
       "expect_tokens": ["/sentinel"],
       "must_surface": [
         {
-          "claim": "Routes to `/sentinel` (the branch-level ship/merge decision) and notes that /sentinel orchestrates the atomic shippability skills into one verdict for the user.",
+          "claim": "Routes to `/sentinel` and explains why: the situation is the branch-level am-I-safe-to-merge / ship decision — the single question /sentinel answers.",
           "anchors": { "any": ["/sentinel", "ship gate", "orchestrat"] }
         }
       ],
