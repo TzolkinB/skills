@@ -1,9 +1,11 @@
 # Sentinel fixtures
 
-Lightweight, per-skill **known-bad inputs** — one tiny fixture per skill that consumes
-code/tests. Each fixture is a small, self-contained source and/or test file that deliberately
-contains the exact smell its skill is designed to catch, paired with an `expected-findings.md`
-naming what a correct run should surface.
+Lightweight, per-skill **known-bad inputs** — one tiny fixture per skill, paired with an
+`expected-findings.md` naming what a correct run should surface. Most are a small, self-contained
+source and/or test file that deliberately contains the exact smell its skill is designed to catch.
+The skills that don't consume code (`test-plan`, `bug-report`, `sentinel`) instead have a
+**scenario/prompt fixture** — a feature ticket, a bug observation, or a branch scenario — carrying
+the same role: an input whose correct handling is spelled out in `expected-findings.md`.
 
 ## What these are for
 
@@ -46,17 +48,25 @@ Then compare the run to that fixture's `expected-findings.md`.
 | `prune-tests` | `cart.spec.js` + `cart.js` | Redundant pair to merge, over-mock of an internal collaborator, a stale name/intent mismatch, and one genuine keeper |
 | `debug-test` | `checkout.spec.ts` | Failing Playwright test with a missing `await` on a web-first assertion — caught by Step 2 heuristics, no routing |
 | `threat-model` | `refund.js` | Fire-and-forget refund: silent failure, all-refunds blast radius, hard reversibility (email sent, status flipped) |
-| `test-plan` | `discount-code.md` *(scenario fixture — a ticket, not code)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |
+| `test-plan` | `discount-code.md` *(scenario — a ticket)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |
+| `bug-report` | `report-export.md` *(scenario — an observation)* | A report that fabricates the sparse input's missing fields — a specific browser/OS/version, an exact `TypeError`, a confident root cause — instead of marking them `Unknown — not provided` (the anti-guess rule) |
+| `sentinel` | `branch-scenario.md` *(scenario — a branch)* | Softening a proven-hollow test on a **sacred** path to 🟡 CAUTION ("shippable with notes") instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
 
-## Skills with no fixture here (intentionally excluded)
+Three more skills route/detect against a **warm sibling repo** and so keep only an
+`expected-findings.md` (no vendored input): `e2e-impact`, `contract-guard`, and
+`audit-orchestrator` (targets in `~/projects/`, hand-traced — see each skill's `expected-findings.md`).
 
-These two skills do **not** consume a code/test fixture, so a known-bad code input does not fit
-them:
+## Fixture kinds
 
-- **`bug-report`** — consumes a bug observation / repro narrative to file an issue.
-- **`sentinel`** — the orchestrator; it consumes the *output of the other skills*, not a raw
-  code/test file.
+- **Code fixture** — a vendored source/test file (the rows above without a *scenario* tag). Feed it to
+  the skill directly.
+- **Scenario/prompt fixture** — a ticket / observation / branch scenario for the skills that consume a
+  description, not code (`test-plan`, `bug-report`, `sentinel`).
+- **Warm-sibling fixture** — an `expected-findings.md` that traces against a real sibling repo in
+  `~/projects/` (not vendored), used by the repo-context skills (`e2e-impact`, `contract-guard`,
+  `audit-orchestrator`).
 
-If these gain a fixture later, it would be a **scenario/prompt fixture**, not a source file — as
-`test-plan` now has (a feature ticket in `test-plan/discount-code.md`, paired with its
-`expected-findings.md`).
+Every fixture — whichever kind — is now also an executable eval case under
+[`sentinel/evals/`](../evals/) (issue #74): its `expected-findings.md` is the rubric, graded by an
+LLM judge that must quote the transcript. The manual dogfood check below still stands; the eval is
+the automated regression guard on top.
