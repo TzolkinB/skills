@@ -1,7 +1,7 @@
 {
   "skill": "ask-sentinel",
   "trials": 3,
-  "_note": "Phase 1b — ask-sentinel routing eval (#47's acceptance test). Different shape from the fixture-outcome cases: each case is a SITUATION → expected ROUTE. ask-sentinel is a model-invoked router (sentinel/skills/ask-sentinel/SKILL.md) that maps a QA situation to exactly one skill via its routing signals, or — when nothing fits cleanly — says so plainly and asks one clarifying question rather than forcing a match (SKILL step 6). No fixture/expected-findings.md exists; the rubric is the router's own signals table + steps. POSITIVE cases assert the `**Use:** /skill` token + a rationale that ties the skill's single question to the situation; a mis-route fails the token. NEGATIVE cases (out-of-Sentinel-scope situations) have NO token — route-none correctness rests on must_surface (states nothing fits + asks one clarifying question) and must_not (emits no `**Use:** /` route). The 5 negatives are deliberately outside the test-credibility domain so route-none is unambiguous. Routes only target skills IN the router's current table (the newer e2e-impact / contract-guard / audit-orchestrator are not yet wired in — SKILL note — so they are not used as expected routes here). `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "_note": "Phase 1b — ask-sentinel routing eval (#47's acceptance test). Different shape from the fixture-outcome cases: each case is a SITUATION → expected ROUTE. ask-sentinel is a model-invoked router (sentinel/skills/ask-sentinel/SKILL.md) that maps a QA situation to exactly one skill via its routing signals, or — when nothing fits cleanly — says so plainly and asks one clarifying question rather than forcing a match (SKILL step 6). No fixture/expected-findings.md exists; the rubric is the router's own signals table + steps. POSITIVE cases assert the `**Use:** /skill` token + a rationale that ties the skill's single question to the situation; a mis-route fails the token. NEGATIVE cases (out-of-Sentinel-scope situations) have NO token — route-none correctness rests on must_surface (states nothing fits + asks one clarifying question) and must_not (emits no `**Use:** /` route). The 5 negatives are deliberately outside the test-credibility domain so route-none is unambiguous. As of ADR-0025 / PR #94 the router is the WHOLE-map front door: the three app-driven skills (e2e-impact, audit-orchestrator, contract-guard) ARE wired in and now carry positive-route cases; `route-flake-heal-caveat` guards the whole-map PROVENANCE DISCIPLINE — a green-pushing self-healer must be surfaced with its heal-to-green hazard caveat, never as confident advice (the 'Unexamined/hazard = lead, not advice' rule). `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
   "cases": [
     {
       "id": "route-test-plan",
@@ -82,6 +82,70 @@
           "anchors": { "any": ["run `/coverage-review` yourself", "then run `/audit-test`", "also run `/qa-review`", "manually run", "run each of", "run these yourself"] }
         }
       ]
+    },
+    {
+      "id": "route-e2e-impact",
+      "invoke": "/ask-sentinel I changed the checkout API and some shared components — which of my Playwright E2E specs actually exercise this diff?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.e2e-impact.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.e2e-impact.fail.md",
+      "expect_tokens": ["/e2e-impact"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/e2e-impact` and explains why: there is a diff and the question is which Playwright/Cypress E2E specs it plausibly hits — e2e-impact's single question.",
+          "anchors": { "any": ["/e2e-impact", "which specs", "specs this diff", "spec it hits", "relevance map"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "route-audit-orchestrator",
+      "invoke": "/ask-sentinel I've got a suspicious passing test and I'm not sure whether Stryker, Tautest, or something else is the right prover for my stack — pick the tool for me",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.audit-orchestrator.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.audit-orchestrator.fail.md",
+      "expect_tokens": ["/audit-orchestrator"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/audit-orchestrator` and explains why: the ask is to pick the right prover for the stack (unit -> Stryker/Tautest, app-driven -> audit-test) — its stack-aware routing, distinct from reaching for /audit-test directly.",
+          "anchors": { "any": ["/audit-orchestrator", "right prover", "pick the", "for your stack", "stack-aware"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "route-contract-guard",
+      "invoke": "/ask-sentinel my frontend E2E suite went red and I think the backend team changed a field in the API response — does it still match the contract?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.contract-guard.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.contract-guard.fail.md",
+      "expect_tokens": ["/contract-guard"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/contract-guard` and explains why: a frontend E2E went red on a suspected backend response/contract change, and the question is whether the response still matches the published contract — contract-guard's single question.",
+          "anchors": { "any": ["/contract-guard", "published contract", "openapi", "published spec", "contract still"] }
+        }
+      ],
+      "must_not": []
+    },
+    {
+      "id": "route-flake-heal-caveat",
+      "invoke": "/ask-sentinel my Playwright tests are flaky — should I just use a self-healing tool to auto-fix them?",
+      "workspace": "isolated",
+      "dry_run_sample": "samples/ask-sentinel.flake-heal-caveat.pass.md",
+      "dry_run_negative_sample": "samples/ask-sentinel.flake-heal-caveat.fail.md",
+      "expect_tokens": ["/debug-test"],
+      "must_surface": [
+        {
+          "claim": "Routes to `/debug-test` flake mode (detect -> quarantine -> route the cause) rather than a self-healer.",
+          "anchors": { "any": ["/debug-test", "--flake", "quarantine"] }
+        },
+        {
+          "claim": "Surfaces self-healers only with their heal-to-green / masks-a-regression caveat — a credibility hazard, not advice (the provenance discipline for a green-pushing tool).",
+          "anchors": { "any": ["heal to green", "heal-to-green", "masks a regression", "mask a real regression", "hazard", "green-lock", "hide"] }
+        }
+      ],
+      "must_not": []
     },
     {
       "id": "route-none-css",
