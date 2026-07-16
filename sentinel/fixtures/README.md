@@ -46,15 +46,17 @@ Then compare the run to that fixture's `expected-findings.md`.
 | `prune-tests` | `cart.spec.js` + `cart.js` | Redundant pair to merge, over-mock of an internal collaborator, a stale name/intent mismatch, and one genuine keeper |
 | `debug-test` | `checkout.spec.ts` | Failing Playwright test with a missing `await` on a web-first assertion — caught by Step 2 heuristics, no routing |
 | `threat-model` | `refund.js` | Fire-and-forget refund: silent failure, all-refunds blast radius, hard reversibility (email sent, status flipped) |
+| `test-plan` | `discount-code.md` *(scenario fixture — a ticket, not code)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |
 
 ## Skills with no fixture here (intentionally excluded)
 
-These three skills do **not** consume a code/test fixture, so a known-bad code input does not fit
+These two skills do **not** consume a code/test fixture, so a known-bad code input does not fit
 them:
 
-- **`test-plan`** — consumes a *feature description*, not existing code, and produces a plan.
 - **`bug-report`** — consumes a bug observation / repro narrative to file an issue.
 - **`sentinel`** — the orchestrator; it consumes the *output of the other skills*, not a raw
   code/test file.
 
-If these gain a fixture later, it would be a scenario/prompt fixture, not a source file.
+If these gain a fixture later, it would be a **scenario/prompt fixture**, not a source file — as
+`test-plan` now has (a feature ticket in `test-plan/discount-code.md`, paired with its
+`expected-findings.md`).
