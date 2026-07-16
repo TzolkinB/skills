@@ -1,9 +1,17 @@
 # Skill-eval CI runs only the diff's affected skills, and reports before it gates
 
-**Status: Proposed (2026-07-15).** Implements the "runs on every edit" half of
+**Status: Accepted (2026-07-15).** Implements the "runs on every edit" half of
 [ADR-0022](0022-skill-eval-harness-asserts-tokens-judges-prose.md) — the three-tier rigor model —
 by wiring Tier 0 (lint) and Tier 1 (fixture-outcome) into CI. Where ADR-0022 decided *how* a run is
 graded, this decides *which* runs happen on a PR and *whether the result blocks the merge*.
+
+> **Update (2026-07-16) — gate flipped on.** The precondition this ADR set for gating the
+> change-detection step — a passing one-time LLM-judge meta-eval *per case* — is now met for every
+> skill with a case (all 10 fixture-backed skills). CI therefore runs `changed.mjs --gate`: a changed
+> skill whose offline self-test stops discriminating, or a lint error on a changed `SKILL.md`, now
+> fails the check. This gates only the **deterministic** offline self-test over recorded samples (the
+> data-integrity guard); it does **not** gate live skill behavior, which still needs `--live` + the
+> LLM judge and stays a manual step. `changed.mjs` still defaults to report-first without `--gate`.
 
 ## Context
 
