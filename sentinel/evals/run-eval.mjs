@@ -12,8 +12,9 @@
 //                 grade it, and report reliability (passes/trials). Needs an
 //                 agent CLI; nothing here calls a model unless you pass --live.
 //
-// Flags: --judge=heuristic|llm (default heuristic, per ADR-0022 the llm judge is
-//        the real one but not yet wired), --trials=N, --agent="claude -p {prompt}".
+// Flags: --judge=heuristic|llm (default: llm when ANTHROPIC_API_KEY is set, else
+//        heuristic — pass --judge=heuristic to force the free offline grader),
+//        --trials=N, --agent="claude -p {prompt}".
 //
 // Usage:
 //   node sentinel/evals/run-eval.mjs --dry-run   cases/audit-test.json
@@ -37,7 +38,9 @@ const opts = Object.fromEntries(
 );
 const positional = argv.filter((a) => !a.startsWith('--'));
 const caseFile = positional[0];
-const judge = opts.judge ?? 'heuristic';
+// Default to the real LLM judge when a key is available, else the free offline
+// heuristic. Explicit --judge=… always wins. The run header prints which ran.
+const judge = opts.judge ?? (process.env.ANTHROPIC_API_KEY ? 'llm' : 'heuristic');
 
 if (!caseFile) {
   console.error('usage: run-eval.mjs [--dry-run|--self-test|--live] <case.json> [--judge=…] [--trials=N]');

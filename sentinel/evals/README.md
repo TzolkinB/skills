@@ -26,8 +26,8 @@ This harness is the missing **middle** tier.
   straight from the skill's `expected-findings.md`. `--judge=llm` is the real grader
   (ADR-0022 §Decision.2): a cheap model (Haiku 4.5) scores each item and must quote a **verbatim**
   transcript line, which the harness re-checks is a real substring before it counts — the
-  anti-rubber-stamp gate. The default `--judge=heuristic` is an **offline anchor-keyword stand-in** so
-  the pipeline runs without an API key.
+  anti-rubber-stamp gate. `--judge` defaults to **`llm` when `ANTHROPIC_API_KEY` is set**, else the
+  **offline anchor-keyword `heuristic`**; pass `--judge=heuristic` to force the free offline grader.
 - **Never diff prose.** No golden files, no snapshots — this upholds [`fixtures/README.md`](../fixtures/README.md).
 - **Outcomes, not paths. Isolated runs. N trials → a reliability number. Label, don't gate** (yet).
 
@@ -53,9 +53,10 @@ evals/
 node sentinel/evals/lint.mjs
 node sentinel/evals/lint.mjs --self-test        # prove the detectors fire on a seeded skill
 
-# Tier 1 — grade offline against recorded samples (no API key needed)
-node sentinel/evals/run-eval.mjs --dry-run   cases/audit-test.json
-node sentinel/evals/run-eval.mjs --self-test cases/audit-test.json   # proves the grader discriminates
+# Tier 1 — grade against recorded samples. Uses the LLM judge when ANTHROPIC_API_KEY
+#          is set; add --judge=heuristic to force the free offline grader.
+node sentinel/evals/run-eval.mjs --dry-run   cases/audit-test.json --judge=heuristic
+node sentinel/evals/run-eval.mjs --self-test cases/audit-test.json --judge=heuristic   # proves discrimination, free
 
 # Tier 1 — real LLM judge (needs ANTHROPIC_API_KEY). --self-test IS the judge meta-eval:
 # it must PASS the faithful sample and FAIL the hollow one before you trust the judge.
@@ -72,8 +73,9 @@ delete the test). If that ever stops discriminating, the harness is broken.
 
 ## Cost
 
-Offline paths — `--judge=heuristic`, `--dry-run` / `--self-test` against the recorded samples, and
-all of `lint.mjs` — make **zero API calls and cost nothing**. Only `--judge=llm` and `--live` spend.
+Free paths cost nothing: all of `lint.mjs`, and any run with `--judge=heuristic`. Only `--judge=llm`
+and `--live` spend — and note **`--judge` defaults to `llm` when `ANTHROPIC_API_KEY` is set**, so
+`--dry-run` / `--self-test` do make API calls in a key-exported shell unless you pass `--judge=heuristic`.
 
 - **The LLM judge is negligible.** Each call is ~830–945 input + ~180 output tokens on Haiku 4.5
   ($1 / 1M in, $5 / 1M out) ≈ **$0.0018 / call**. A judge meta-eval (`--self-test --judge=llm`, 2
@@ -90,9 +92,10 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 
 ## What's honest about this skeleton
 
-- **Two judges.** `--judge=llm` (Haiku 4.5, quote-grounded) is the real grader; `--judge=heuristic`
-  is an offline anchor-keyword stand-in for running without a key, and can match a keyword in the
-  wrong place. **Meta-eval the LLM judge before trusting it** — `--self-test --judge=llm` must pass
+- **Two judges.** `--judge=llm` (Haiku 4.5, quote-grounded) is the real grader and the default when
+  `ANTHROPIC_API_KEY` is set; `--judge=heuristic` is the free offline fallback (anchor-keyword
+  matching — can match in the wrong place). **Meta-eval the LLM judge before trusting it** —
+  `--self-test --judge=llm` must pass
   the faithful sample and fail the hollow one (passed on `audit-test`, Haiku 4.5, 2026-07-15). Token
   asserts and the lint stand on their own regardless.
 - **Dry-run grades a recorded transcript**, not a live skill run — it exercises the *grading pipeline*
@@ -100,8 +103,8 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 
 ## Next (per #74)
 
-1. ✅ **Done** — `--judge=llm` built and meta-eval'd green on the `audit-test` samples (Haiku 4.5,
-   2026-07-15). Remaining: default to it when a key is present (heuristic stays the offline fallback).
+1. ✅ **Done** — `--judge=llm` built, meta-eval'd green (Haiku 4.5, 2026-07-15), and now the default
+   when `ANTHROPIC_API_KEY` is set; `heuristic` is the free offline fallback.
 2. Fan out `cases/` to the other verdict-emitting skills: `debug-test`, `contract-guard`, `e2e-impact`.
 3. **Phase 1b** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the acceptance
    test for [#47](https://github.com/TzolkinB/skills/issues/47)).
