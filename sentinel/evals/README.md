@@ -13,10 +13,11 @@ on every change, cheaply.
 | Tier | What | When | Cost | Status |
 |---|---|---|---|---|
 | **0 — lint** | static checks over `SKILL.md` | every commit | free, no model | ✅ built (`lint.mjs`) |
-| **1 — fixture-outcome** | run a skill on its fixture, grade the run | every *changed* skill | 1 agent run × trials | ✅ `audit-test` slice (`run-eval.mjs`) |
+| **1 — fixture-outcome** | run a skill on its fixture, grade the run | every *changed* skill | 1 agent run × trials | ✅ `run-eval.mjs` · 5 cases |
 | **2 — experiment** | blinded sensitivity/specificity | occasional, ADR-gating | high, manual | existing, unchanged |
 
-This harness is the missing **middle** tier.
+This harness is the missing **middle** tier. On a PR, `changed.mjs` (Phase 2, [ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md))
+selects only the skills the diff touched and runs Tier 0 + Tier 1 for them — report-first, not a gate.
 
 ## Grading stance (ADR-0022)
 
@@ -37,13 +38,16 @@ This harness is the missing **middle** tier.
 evals/
   lint.mjs                     Tier 0 — static SKILL.md lint
   run-eval.mjs                 Tier 1 — fixture-outcome runner
+  changed.mjs                  Phase 2 — diff → affected skills → scoped lint + self-test (report-first)
   lib/grade.mjs                token asserts + judge dispatch (heuristic | llm)
   lib/judge-llm.mjs            LLM judge — zero-dep fetch to the Messages API, quote-grounded
-  cases/audit-test.json        a case = verdict token + must_surface + must_not (from expected-findings)
+  cases/<skill>.json           a case = verdict/route token + must_surface + must_not (from expected-findings)
+                               audit-test · debug-test · contract-guard · e2e-impact · ask-sentinel
   samples/
-    audit-test.*.pass.md       faithful run — dry-run grades this, expects PASS
-    audit-test.*.fail.md       hollow run  — self-test grades this, expects FAIL
+    <skill>.*.pass.md          faithful run — dry-run grades this, expects PASS
+    <skill>.*.fail.md          hollow run  — self-test grades this, expects FAIL
     lint/noop-skill/SKILL.md   seeded no-op + dead link for lint --self-test
+../../.github/workflows/skill-evals.yml   CI: runs changed.mjs on PRs touching skills/ or evals/
 ```
 
 ## Run it
@@ -65,6 +69,12 @@ ANTHROPIC_API_KEY=… node sentinel/evals/run-eval.mjs --self-test cases/audit-t
 # Tier 1 — live: isolated worktree + real agent, N trials, reliability report
 node sentinel/evals/run-eval.mjs --live cases/audit-test.json --trials=3 \
      --agent='claude -p {prompt}'
+
+# Phase 2 — change detection: map the diff → affected skills → scoped lint + self-test.
+# Report-first (exits 0); --gate makes it exit non-zero on a lint error or broken self-test.
+node sentinel/evals/changed.mjs                 # diff main...HEAD + working tree
+node sentinel/evals/changed.mjs --base=origin/main
+node sentinel/evals/changed.mjs --self-test     # prove the classifier maps a diff correctly
 ```
 
 `--self-test` is the harness's own regression guard: it confirms the grader **passes** a faithful run
@@ -103,9 +113,12 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 
 ## Next (per #74)
 
-1. ✅ **Done** — `--judge=llm` built, meta-eval'd green (Haiku 4.5, 2026-07-15), and now the default
-   when `ANTHROPIC_API_KEY` is set; `heuristic` is the free offline fallback.
-2. Fan out `cases/` to the other verdict-emitting skills: `debug-test`, `contract-guard`, `e2e-impact`.
-3. **Phase 1b** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the acceptance
-   test for [#47](https://github.com/TzolkinB/skills/issues/47)).
-4. **Phase 2** — detect the changed `SKILL.md` and run only its eval + lint; report first, gate later.
+1. ✅ **Done** — `--judge=llm` built, meta-eval'd green (Haiku 4.5), and now the default when
+   `ANTHROPIC_API_KEY` is set; `heuristic` is the free offline fallback.
+2. ✅ **Done** — fan-out to the verdict-emitting skills: `debug-test`, `contract-guard`, `e2e-impact`.
+3. ✅ **Phase 1b done** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the
+   acceptance test for [#47](https://github.com/TzolkinB/skills/issues/47)), meta-eval'd green.
+4. ✅ **Phase 2 done** — `changed.mjs` + the `skill-evals` PR workflow detect the changed `SKILL.md`
+   and run only its eval + lint; report-first, gate later ([ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md)).
+5. **Next** — meta-eval the prose-only skills (`coverage-review`, `qa-review`, `prune-tests`,
+   `threat-model`); flip `changed.mjs --gate` on once the judge trust gate is met; wire `--live`.
