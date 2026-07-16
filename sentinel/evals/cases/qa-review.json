@@ -12,15 +12,15 @@
       "dry_run_negative_sample": "samples/qa-review.pricing.fail.md",
       "must_surface": [
         {
-          "claim": "Flags the non-determinism: `new Date().getHours()` makes the flash-sale branch time-dependent, and unseeded `Math.random()` makes promo eligibility non-deterministic, so tests pass or fail by the clock/RNG.",
+          "claim": "Flags `new Date().getHours()` as non-determinism — it makes the flash-sale branch time-dependent, so tests pass or fail by the wall clock.",
           "anchors": { "any": ["gethours", "math.random", "non-deterministic", "non-determinism", "time-dependent", "flash-sale", "flash sale"] }
         },
         {
-          "claim": "Flags the hidden / uninjectable dependencies: the hard-coded prod `API_URL` and the inline `fetch(...)` can't be pointed at a mock server without editing the code, and the `setTimeout(..., 3000)` is an uncontrolled timer.",
+          "claim": "Flags the hard-coded prod `API_URL` with its inline `fetch(...)` as a hidden, uninjectable dependency — the network call can't be pointed at a mock server without editing the code.",
           "anchors": { "any": ["api_url", "api.prod.example.com", "hard-coded", "not injectable", "settimeout", "uncontrolled timer", "inline `fetch`"] }
         },
         {
-          "claim": "Flags the brittleness: `body.includes('rate limit exceeded')` is a fragile string match on an external error message, and `JSON.parse(body).surcharge` assumes a response shape with no null/parse guard.",
+          "claim": "Flags `body.includes('rate limit exceeded')` as brittleness — a fragile string match on an external error message that can change without notice.",
           "anchors": { "any": ["rate limit exceeded", "fragile string", "string match", "json.parse", "surcharge", "no null", "parse guard", "response shape"] }
         }
       ],
