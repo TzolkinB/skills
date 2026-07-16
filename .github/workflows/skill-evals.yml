@@ -4,14 +4,16 @@ name: skill-evals
 # touches a skill or the eval assets, run only what the diff affects: the changed
 # skill's fixture-outcome self-test + a scoped lint.
 #
-# Two deliberately different stances (see ADR-0024):
-#   * The HARNESS TOOL self-tests gate — they are deterministic unit checks that
-#     the linter and the change-detector themselves work; a break is a bug, not a
-#     judgment call.
-#   * The CHANGE-DETECTION REPORT does NOT gate — per ADR-0013 ("label, don't
-#     gate") the eval verdicts are surfaced as a job summary, not a red X, until
-#     the one-time LLM-judge meta-eval has established trust. It runs the OFFLINE
-#     heuristic judge (no API key here — the LLM meta-eval stays a manual step).
+# Both steps gate (see ADR-0024, gate flipped on 2026-07-16 once every case had a
+# passing LLM-judge meta-eval):
+#   * The HARNESS TOOL self-tests — deterministic unit checks that the linter and
+#     the change-detector themselves work.
+#   * The CHANGE-DETECTION step (`--gate`) — a changed skill whose offline
+#     self-test stops discriminating, or a lint error, fails the check. The
+#     self-test grades RECORDED samples with the OFFLINE heuristic judge (no API
+#     key here — the LLM meta-eval stays a manual step), so a failure is a
+#     deterministic regression in the case or its samples, never a judgment call.
+#     The per-skill job summary is still written before the gate is applied.
 on:
   pull_request:
     branches: [main]
@@ -45,7 +47,8 @@ jobs:
           node sentinel/evals/lint.mjs --self-test
           node sentinel/evals/changed.mjs --self-test
 
-      # Report-first: run only the affected skills' self-tests + scoped lint and
-      # write a job summary. Does not gate (exits 0) — read the summary.
-      - name: Changed-skill report (non-gating)
-        run: node sentinel/evals/changed.mjs --base=${{ github.event.pull_request.base.sha }}
+      # Gate: run only the affected skills' self-tests + scoped lint, write the
+      # job summary, then fail the check if any self-test stopped discriminating
+      # or lint errored. Trust established via per-case LLM-judge meta-evals.
+      - name: Changed-skill evals (gating)
+        run: node sentinel/evals/changed.mjs --base=${{ github.event.pull_request.base.sha }} --gate
