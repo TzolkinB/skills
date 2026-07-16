@@ -13,7 +13,7 @@ on every change, cheaply.
 | Tier | What | When | Cost | Status |
 |---|---|---|---|---|
 | **0 — lint** | static checks over `SKILL.md` | every commit | free, no model | ✅ built (`lint.mjs`) |
-| **1 — fixture-outcome** | run a skill on its fixture, grade the run | every *changed* skill | 1 agent run × trials | ✅ `run-eval.mjs` · 5 cases |
+| **1 — fixture-outcome** | run a skill on its fixture, grade the run | every *changed* skill | 1 agent run × trials | ✅ `run-eval.mjs` · all 13 skills cased |
 | **2 — experiment** | blinded sensitivity/specificity | occasional, ADR-gating | high, manual | existing, unchanged |
 
 This harness is the missing **middle** tier. On a PR, `changed.mjs` (Phase 2, [ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md))
@@ -43,7 +43,7 @@ evals/
   lib/grade.mjs                token asserts + judge dispatch (heuristic | llm)
   lib/judge-llm.mjs            LLM judge — zero-dep fetch to the Messages API, quote-grounded
   cases/<skill>.json           a case = verdict/route token + must_surface + must_not (from expected-findings)
-                               audit-test · debug-test · contract-guard · e2e-impact · ask-sentinel
+                               one per skill — all 13 (verdict, router, prose-only, and scenario-fixture)
   samples/
     <skill>.*.pass.md          faithful run — dry-run grades this, expects PASS
     <skill>.*.fail.md          hollow run  — self-test grades this, expects FAIL
@@ -122,9 +122,9 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 4. ✅ **Phase 2 done** — `changed.mjs` + the `skill-evals` PR workflow detect the changed `SKILL.md`
    and run only its eval + lint ([ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md)).
 5. ✅ **Done** — the prose-only skills (`coverage-review`, `qa-review`, `prune-tests`, `threat-model`)
-   and `audit-orchestrator` cased + meta-eval'd green. All 10 fixture-backed skills now have a
-   trust-gated eval.
+   and `audit-orchestrator` cased + meta-eval'd green.
 6. ✅ **Gate flipped on (2026-07-16)** — CI runs `changed.mjs --gate`; the offline self-test now blocks
    a merge that breaks a case's discrimination.
-7. **Next** — cases for the three fixture-less skills (`test-plan`, `bug-report`, `sentinel`) need a
-   known-bad fixture built first; then wire `--live` (real agent runs, the real cost driver).
+7. ✅ **Done** — scenario/prompt fixtures + cases for the three non-code skills (`test-plan`,
+   `bug-report`, `sentinel`), meta-eval'd green. **All 13 skills now have a trust-gated eval.**
+8. **Next** — wire `--live` (real agent runs, the real cost driver); the harness is otherwise complete.
