@@ -70,6 +70,24 @@ node sentinel/evals/run-eval.mjs --live cases/audit-test.json --trials=3 \
 and **fails** a hollow one (wrong verdict, missing findings, or a boundary violation like proposing to
 delete the test). If that ever stops discriminating, the harness is broken.
 
+## Cost
+
+Offline paths — `--judge=heuristic`, `--dry-run` / `--self-test` against the recorded samples, and
+all of `lint.mjs` — make **zero API calls and cost nothing**. Only `--judge=llm` and `--live` spend.
+
+- **The LLM judge is negligible.** Each call is ~830–945 input + ~180 output tokens on Haiku 4.5
+  ($1 / 1M in, $5 / 1M out) ≈ **$0.0018 / call**. A judge meta-eval (`--self-test --judge=llm`, 2
+  calls) ≈ **$0.004**; a full fan-out (~6 skills × 2 cases × 3 trials ≈ 36 calls) ≈ **$0.07**. Billed
+  as prepaid **usage credits** (Console → Billing, $5 minimum — which covers ~2,700 judge calls); no
+  subscription is needed for the raw API.
+- **`--live` is the real cost driver — and may not hit your API key at all.** Before grading, it runs
+  a real coding agent (`claude -p "/audit-test …"`) to *produce* each transcript: roughly
+  **$0.20–$0.40 / trial on Opus 4.8** (~150× the judge). If your Claude Code is authenticated via a
+  **Claude Pro/Max subscription**, those agent runs cost **$0 in API credits** and only the judge's
+  raw `fetch` bills the key; if Claude Code is **API-key-billed**, the agent runs are the whole bill.
+
+Figures are estimates from a chars/token heuristic; `messages/count_tokens` gives exact numbers.
+
 ## What's honest about this skeleton
 
 - **Two judges.** `--judge=llm` (Haiku 4.5, quote-grounded) is the real grader; `--judge=heuristic`
