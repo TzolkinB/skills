@@ -43,17 +43,17 @@ Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best*
 | Stage | The question | Reach for (best for your stack) | Label |
 |---|---|---|---|
 | **1 · Plan** | What should I test / what's the blast radius? | `/test-plan`, `/threat-model` | advice · Proven (own) |
-| | | *lead:* Playwright **Planner** agent, **TEA** risk tables | lead · Unexamined |
-| **2 · Author** | Write the tests | External first-party generators own this (Playwright **Generator**, **Cypress AI**) — authoring is commodity | lead · Unexamined |
+| | | Playwright **Planner** agent (app → Markdown plan), **TEA** risk tables (P0–P3; TEA also serves the Gate) | advice · Proven (external) |
+| **2 · Author** | Write the tests | Playwright **Generator** agent, **Cypress AI** (Studio AI auto-assert; `cy.prompt()` **self-heals → caveat**) — first-party authoring (commodity) | advice · Proven (external) |
 | | Is what they wrote *testable*? | `/qa-review` | advice · Proven (own) |
-| **3 · Audit** | Is this *passing* test real? | **unit JS/TS →** `Tautest` (PR diff-mutation) / `StrykerJS` (full) · **app-driven →** `/audit-test`. Let `/audit-orchestrator` pick. | advice · Tautest **Proven**, Stryker **Likely**, audit-test **Proven** |
+| **3 · Audit** | Is this *passing* test real? | **unit JS/TS →** `Tautest` / `StrykerJS` · **app-driven →** `/audit-test` (let `/audit-orchestrator` pick) · static pre-screen: **Exspec** (structural smells, no mutation) | advice · Tautest / audit-test / Exspec **Proven**, Stryker **Likely** |
 | **4 · Coverage** | What's untested? | `/coverage-review` (assertion quality, app-driven paths) | advice · own |
-| | | *lead:* `coverage-guard` (external AI skill) | lead · Unexamined |
+| | | *caveat-lead:* `coverage-guard` — auto-generates tests looping to 100% line coverage → **manufactured-confidence hazard**; pair with `/coverage-review` | hazard, not advice |
 | **5 · Flake** | Is this run stable? | `/debug-test --flake` (detect → quarantine → **route**, never heal-to-hide); Playwright **`flaky` flag** for retry-then-pass | advice · Likely |
 | | | *caveat-lead:* self-healers (Healenium, Cypress self-heal) — **heal to green, can mask a regression** | hazard, not advice |
 | **6 · Triage** | Why did it fail? | `/debug-test`, `/diagnosing-bugs`, `/bug-report`; `/e2e-impact` (which specs a diff hits); `/contract-guard` (contract drift). Evidence sources: Playwright **trace viewer / Test Replay**, **cypress-flaky-test-audit** (per-command runtime, diagnosis-only) | advice · Proven |
 | | | *caveat-lead:* Playwright **Healer** agent — heals/skips to green | hazard, not advice |
-| **7 · Gate** | Am I safe to ship? | `/sentinel` (net verdict across the chain) | advice · own |
+| **7 · Gate** | Am I safe to ship? | `/sentinel` (net verdict across the chain); **TEA** categorical governance gate (PASS/CONCERNS/FAIL/WAIVED + compliance audit trail) | advice · own + TEA **Proven** |
 
 ## Steps
 

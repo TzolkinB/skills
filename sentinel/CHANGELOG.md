@@ -51,6 +51,15 @@ release heading.
 
 ### Changed
 
+- **External-tool provenance pass** (issue #47 follow-up): six external tools the map named only as *Unexamined leads*
+  were verified against their **primary sources** and promoted per ADR-0013. Now **advice (Proven)**: **TEA**
+  (BMAD Test Architect — risk tables + governance gate; a *credibility-side ally*), **Playwright Planner/Generator**
+  agents, **Cypress AI** (`cy.prompt()` surfaced **with its self-heal hazard caveat**), and **Exspec** (static
+  test-quality linter — a cheap credibility pre-screen for `qa-review`/`coverage-review`). **coverage-guard** was
+  verified but stays a **hazard-caveat lead, not advice** — it auto-generates tests looping to 100% line coverage
+  (manufactured confidence, the exact slop `coverage-review`/`audit-test` counter). Updates the orchestration-map
+  Evidence Ledger + the `ask-sentinel` wider-map table; corrects the map's earlier (wrong) claim that Exspec/coverage-guard
+  had no owning source. TEA↔Sentinel/Witness integration seams captured in #96.
 - **`ask-sentinel` gains a sequence mode** ([ADR-0027](docs/adr/0027-ask-sentinel-orchestrated-sequence-mode.md),
   issue #47 capstone slice): the whole-map router now has a second reading. A *single question* still returns **one**
   best tool (à la carte, ADR-0025); a *lifecycle / workflow ask* — "walk me through QA before I merge", "the full path
