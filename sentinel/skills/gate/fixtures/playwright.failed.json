@@ -1,0 +1,12 @@
+{
+  "config": { "version": "1.48.0" },
+  "stats": {
+    "startTime": "2026-07-17T10:00:00.000Z",
+    "duration": 7042,
+    "expected": 8,
+    "unexpected": 2,
+    "flaky": 0,
+    "skipped": 1
+  },
+  "suites": []
+}
