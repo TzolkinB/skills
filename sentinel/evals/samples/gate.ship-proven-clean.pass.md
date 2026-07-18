@@ -17,10 +17,10 @@ subject: pr-head `abc1234`  ·  3 entries
 
 ### Rationale
 - playwright PASSED → ship-baseline
-- audit-test PASSED + proven → ship-eligible (execution-proven clean: deep audits ran, no hollow tests)
+- audit-test PASSED + proven → ship-eligible — no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health)
 - worst-wins over {ship} → ship
 
-> `ship` earned: Playwright passed and `audit-test` is execution-proven clean (deep audits ran, no hollow tests).
+> `ship` earned: playwright passed and `audit-test` found no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health).
 > Advisory / report-first: a recommendation, not a build failure.
 
 Bundle written to `witness-bundle.json`

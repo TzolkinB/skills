@@ -18,5 +18,5 @@
     "unexamined": { "type": "integer", "minimum": 0, "description": "triaged clean, never mutated — NOT evidence of health" }
   },
   "additionalProperties": true,
-  "$comment": "Witness derives: result = provenHollow>0 ? FAILED : (likelyHollow>0 || baselineLock>0) ? WARNED : PASSED. label = (provenSolid>0 || provenHollow>0) ? proven : deepAudited>0 ? likely : unexamined. ship-eligible ⟺ result=PASSED AND label=proven. NO confidence/score field — its arrival is the signal calibration has landed (schemaVersion bump)."
+  "$comment": "Witness derives: result = provenHollow>0 ? FAILED : (likelyHollow>0 || baselineLock>0) ? WARNED : PASSED. label = (provenSolid>0 || provenHollow>0) ? proven : deepAudited>0 ? likely : unexamined. ship-eligible ⟺ result=PASSED AND label=proven. NO confidence/score field — its arrival is the signal calibration has landed (schemaVersion bump). INGEST GUARDS (#111): `schema` is matched EXACTLY (a model produced this — a bogus `witness-audit-test/v999` is rejected, not accepted by prefix), and the counts must be internally consistent or the whole emission is rejected (degrades to opaque/absent, never a silent upgrade): audited === deepAudited + unexamined, and provenSolid+provenHollow+likelyHollow+baselineLock ≤ deepAudited. So `{provenSolid:1, deepAudited:0}` can never derive `proven`."
 }

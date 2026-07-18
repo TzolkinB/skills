@@ -135,6 +135,30 @@ release heading.
   harness (e.g. Cypress `cypress/included`, or a built/CI server) or a dev-server restart — before
   trusting a *survival* as 🔴, closing a false-🔴 (and flaky-🟡) window where an HMR edit hadn't
   propagated to every assertion in a run. A `sleep`/settle doesn't fix it. (issue #54)
+- **Witness `ship` now states its examined-vs-unexamined scope** (#112). The ship rationale, the report note,
+  and the `gate` SKILL bullet spell out how much of the suite `audit-test` actually mutation-audited (e.g.
+  "no hollow tests among the deep-audited subset — 4 of 12 mutation-audited; 8 unexamined — not evidence of
+  health"), so `ship` no longer implies the *whole* suite was proven. Counts ride in prose only — honesty-guard
+  #3 (no numeric field in the gate predicate) is untouched.
+- **Evidence-bundle contract v0 → v0.1** ([ADR-0031](docs/adr/0031-witness-evidence-bundle-v0.1-empty-result.md)).
+  Additive and backward-compatible: the new `EMPTY` execution result (see Fixed, #111) widens the `result` enum,
+  so the schema — `schemaVersion`, `$id`, and both `result` enums — bumps to record it rather than let the
+  published contract lie about a value the producer emits. First bump of the #102-locked contract; the reserved
+  `confidence`/calibration bump signal (a MAJOR event, still blocked by honesty-guard #3) is unaffected — this
+  is a MINOR enum widening with no number.
+
+### Fixed
+
+- **Witness no longer launders non-evidence into a green `ship`** (#111, from the pre-launch critique
+  `references/critique-synthesis.md`). Two disclosed exploits closed: (1) an **empty / zero-test / unrun
+  execution report** (`{}`, a wrong `--playwright` path, a suite that never ran) used to derive `PASSED` and
+  propose `ship-baseline`; it now derives the new **`EMPTY`** result → `hold`. (2) `parseAuditEmission` accepted
+  any `witness-audit-test/*` prefix and any non-negative counts, so a hand-written `{provenSolid:1, deepAudited:0}`
+  (arithmetically impossible) reached `PASSED`+`proven`+`ship`; it now matches the schema version **exactly** and
+  **rejects inconsistent tallies** (`audited == deepAudited + unexamined`; `Σ(outcomes) ≤ deepAudited`), degrading
+  a malformed emission to opaque/absent — never a silent upgrade. Advisory decision on the exploits: empty+fake →
+  `hold`, impossible-tally → `canary`; the legit green-Playwright + real-proven-audit path still ships. 11 new
+  gate self-test rows (81 total).
 
 ## [0.2.0] - 2026-07-13
 
