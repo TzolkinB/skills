@@ -1,0 +1,51 @@
+{
+  "skill": "gate",
+  "trials": 3,
+  "_note": "Rubric from sentinel/fixtures/gate/expected-findings.md. Witness (the Gate skill) is UNUSUAL: its decision rule is deterministic code (witness.mjs), covered by a golden truth-table self-test (`node sentinel/skills/gate/witness.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Case = /gate on a PASSED Playwright report + a present (opaque) audit-test report → the deterministic gate returns `canary` (human-must-read floor). The skill must present that decision as-is, show its work, frame it advisory, note `ship` is unreachable in v0, and NOT fabricate a confidence number or certify `ship`. `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
+  "cases": [
+    {
+      "id": "canary-human-must-read",
+      "invoke": "/gate sentinel/skills/gate/fixtures/playwright.passed.json sentinel/skills/gate/fixtures/audit-test.report.md",
+      "workspace": "isolated",
+      "fixture_files": [
+        "sentinel/skills/gate/fixtures/playwright.passed.json",
+        "sentinel/skills/gate/fixtures/audit-test.report.md"
+      ],
+      "dry_run_sample": "samples/gate.canary-human-must-read.pass.md",
+      "dry_run_negative_sample": "samples/gate.canary-human-must-read.fail.md",
+      "expect_tokens": ["canary"],
+      "must_surface": [
+        {
+          "claim": "Presents the deterministic `canary` decision and explains it floored there because the audit-test report is present but opaque — a human must read it before shipping (the credibility axis floor).",
+          "anchors": { "any": ["human must read", "human-must-read", "floor at canary", "floored the decision at canary"] }
+        },
+        {
+          "claim": "Shows its work — records each input's proposed category so the worst-wins arithmetic is reconstructable (playwright proposed ship, audit-test proposed canary, worst-wins → canary).",
+          "anchors": { "any": ["proposes", "worst-wins over", "shows its work", "each input proposed"] }
+        },
+        {
+          "claim": "Frames the decision as advisory / report-first — it did not fail the build.",
+          "anchors": { "any": ["advisory", "did not fail the build", "report-first"] }
+        },
+        {
+          "claim": "States that `ship` is unreachable in v0 by design (canary is the honest ceiling while audit-test is opaque), rather than treating canary as a downgrade.",
+          "anchors": { "any": ["unreachable in v0", "honest ceiling", "ship is unreachable"] }
+        },
+        {
+          "claim": "Makes clear Witness ingested existing evidence and did not run the suite or launch a browser.",
+          "anchors": { "any": ["ingested existing evidence", "did not launch a browser", "did not run the suite", "ingests"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT certify `ship` — it is unreachable in v0 while audit-test is opaque; certifying it would be exactly the false confidence Witness exists to prevent.",
+          "anchors": { "any": ["🟢 ship", "certified ship", "decision: ship", "decision is ship", "recommend ship"] }
+        },
+        {
+          "claim": "Must NOT fabricate a confidence number, or override / green-lock the deterministic decision — the gate carries no number and the skill does not recompute or overrule it.",
+          "anchors": { "any": ["confidence:", "% confident", "confidence of", "overrode", "green-lock"] }
+        }
+      ]
+    }
+  ]
+}
