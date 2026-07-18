@@ -159,6 +159,12 @@ release heading.
   appears in both the README skill table and the **privacy table** — that table asserts completeness, so
   an unlisted executing skill was a real gap. Count reconciled to **fourteen skill directories** (thirteen
   skills + the `/ask-sentinel` router) across the README and `evals/README` (was 12 / 13 / 14). Docs only.
+- **Fine-print gaps closed** (#115). Three places where a load-bearing caveat contradicted the pitch above
+  it: the TEA note's **TL;DR** now marks Witness's calibrated/learning half as a **design, not a live
+  feature** (matching the body's own caveat); the reviewer quick-start (`REVIEWERS.md`) surfaces the
+  **warm-dev-server / HMR** caveat (an unconfirmed-live survival is 🟡, not 🔴) instead of leaving it only in
+  `reachability-check`; and the README `audit-test` pitch states the **`@cypress/grep`** single-test-isolation
+  requirement instead of burying it in `run-one-test`. Docs only.
 
 ### Fixed
 
