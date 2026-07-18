@@ -34,7 +34,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (witness:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'witness-evidence-bundle/v0.1'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` execution result (#111)
+const SCHEMA_VERSION = 'witness-evidence-bundle/v0.1'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` execution result (#111, ADR-0031)
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://witness.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://witness.local/gate/v0';
