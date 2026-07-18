@@ -31,10 +31,19 @@ release heading.
   SKILL documents the tiny `cypress.run()` wrapper that produces the result file and **why** it's required over
   `cypress run --reporter json` (the mocha reporter has no `attempts`, so it would silently drop the flake).
   No schema-version bump — `stage` is a free string (contract Q1), the exact additive extension v0 was designed
-  to absorb. Verified: 67/67 gate self-tests (Cypress derivation truth table, attempts-based flake incl. the
+  to absorb. Verified: 70/70 gate self-tests (Cypress derivation truth table, attempts-based flake incl. the
   ended-failed-is-not-a-flake guard, Cypress-only + both-frameworks worst-wins, fixture e2e) + real-CLI drive
   of the ship/hold/mixed paths. Schema-faithful fixtures + verified docs (native Cypress run is macOS-blocked,
   Docker-only — matching how Playwright ingest was validated).
+
+- **Positioning note: "Why not *just* TEA?"** ([`docs/comparisons/tea.md`](docs/comparisons/tea.md),
+  issue #96 Part B). Reviewer-facing / README-adjacent writeup answering why Sentinel/Witness earns its
+  keep alongside [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) (the
+  free BMAD Test Architect method, which overlaps most map stages). Held to the repo's evidence bar —
+  every "TEA can't" is a *verified absence* (TEA docs, 2026-07-17): leads with the two uncontested gaps
+  (**mutation proof** via `audit-test`, **calibrated risk-weighted confidence** via Witness), concedes
+  the soft overlaps (`coverage-review`, static quality vs `test-review`/Exspec), and carries the
+  load-bearing caveat that the Witness half is **design-not-proven**. First of the `comparisons/` notes.
 
 - **`contract-guard`** skill (consumer-side contract check, issue #48 / spec #71): gives the *stranded*
   enterprise frontend team the coverage Pact structurally can't (Pact needs provider participation). Tiered,
