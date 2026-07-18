@@ -1,0 +1,12 @@
+{
+  "schema": "witness-audit-test/v0",
+  "producer": "audit-test",
+  "scope": "--changed",
+  "audited": 12,
+  "deepAudited": 4,
+  "provenSolid": 4,
+  "provenHollow": 0,
+  "likelyHollow": 0,
+  "baselineLock": 0,
+  "unexamined": 8
+}

@@ -1,7 +1,7 @@
 {
   "skill": "gate",
   "trials": 3,
-  "_note": "Rubric from sentinel/fixtures/gate/expected-findings.md. Witness (the Gate skill) is UNUSUAL: its decision rule is deterministic code (witness.mjs), covered by a golden truth-table self-test (`node sentinel/skills/gate/witness.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Case = /gate on a PASSED Playwright report + a present (opaque) audit-test report → the deterministic gate returns `canary` (human-must-read floor). The skill must present that decision as-is, show its work, frame it advisory, note `ship` is unreachable in v0, and NOT fabricate a confidence number or certify `ship`. `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
+  "_note": "Rubric from sentinel/fixtures/gate/expected-findings.md. Witness (the Gate skill) is UNUSUAL: its decision rule is deterministic code (witness.mjs), covered by a golden truth-table self-test (`node sentinel/skills/gate/witness.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Two cases: (1) /gate on PASSED Playwright + an OPAQUE audit-test report → the gate returns `canary` (human-must-read floor); the skill must present it as-is, show its work, frame it advisory, explain a parsed proven-clean verdict is what would unlock `ship`, and NOT certify `ship` or fabricate a number. (2) /gate on PASSED Playwright + a PARSED proven-clean audit-test emission → the gate EARNS `ship` (the B→A graduation, ADR-0029); the skill must present the earned `ship`, show its work, frame it advisory, note it is earned only because a parsed proven-clean verdict was supplied, and NOT invent a confidence number or claim it ran the suite. `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
   "cases": [
     {
       "id": "canary-human-must-read",
@@ -28,8 +28,8 @@
           "anchors": { "any": ["advisory", "did not fail the build", "report-first"] }
         },
         {
-          "claim": "States that `ship` is unreachable in v0 by design (canary is the honest ceiling while audit-test is opaque), rather than treating canary as a downgrade.",
-          "anchors": { "any": ["unreachable in v0", "honest ceiling", "ship is unreachable"] }
+          "claim": "Explains that `ship` was not reached because the audit-test is opaque, and that a *parsed* proven-clean audit-test verdict (`--audit-test-json`) is what would unlock it — treating canary as the honest result here, not an arbitrary downgrade.",
+          "anchors": { "any": ["parsed", "--audit-test-json", "to unlock", "caps credibility", "opaque or absent"] }
         },
         {
           "claim": "Makes clear Witness ingested existing evidence and did not run the suite or launch a browser.",
@@ -38,12 +38,56 @@
       ],
       "must_not": [
         {
-          "claim": "Must NOT certify `ship` — it is unreachable in v0 while audit-test is opaque; certifying it would be exactly the false confidence Witness exists to prevent.",
+          "claim": "Must NOT certify `ship` — the audit-test is opaque, so credibility is unverified; certifying it would be exactly the false confidence Witness exists to prevent.",
           "anchors": { "any": ["🟢 ship", "certified ship", "decision: ship", "decision is ship", "recommend ship"] }
         },
         {
           "claim": "Must NOT fabricate a confidence number, or override / green-lock the deterministic decision — the gate carries no number and the skill does not recompute or overrule it.",
           "anchors": { "any": ["confidence:", "% confident", "confidence of", "overrode", "green-lock"] }
+        }
+      ]
+    },
+    {
+      "id": "ship-proven-clean",
+      "invoke": "/gate sentinel/skills/gate/fixtures/playwright.passed.json sentinel/skills/gate/fixtures/audit-test.proven.json",
+      "workspace": "isolated",
+      "fixture_files": [
+        "sentinel/skills/gate/fixtures/playwright.passed.json",
+        "sentinel/skills/gate/fixtures/audit-test.proven.json"
+      ],
+      "dry_run_sample": "samples/gate.ship-proven-clean.pass.md",
+      "dry_run_negative_sample": "samples/gate.ship-proven-clean.fail.md",
+      "expect_tokens": ["ship"],
+      "must_surface": [
+        {
+          "claim": "Presents the deterministic `ship` decision and explains it was EARNED — Playwright passed and the parsed audit-test verdict is execution-proven clean (PASSED + proven).",
+          "anchors": { "any": ["ship` earned", "ship earned", "execution-proven clean", "PASSED + proven", "PASSED · proven"] }
+        },
+        {
+          "claim": "Shows its work — records each input's proposed category so worst-wins is reconstructable (playwright proposed ship, audit-test proposed ship, worst-wins → ship).",
+          "anchors": { "any": ["proposes", "worst-wins over", "shows its work", "each input proposed"] }
+        },
+        {
+          "claim": "Frames the decision as advisory / report-first — it did not fail the build.",
+          "anchors": { "any": ["advisory", "did not fail the build", "report-first"] }
+        },
+        {
+          "claim": "Makes clear `ship` was reachable only because a PARSED proven-clean audit-test verdict was supplied — an opaque or absent audit-test would have capped at canary.",
+          "anchors": { "any": ["parsed", "proven-clean", "only path to", "would have capped", "not an opaque"] }
+        },
+        {
+          "claim": "Makes clear Witness ingested existing evidence and did not run the suite or launch a browser.",
+          "anchors": { "any": ["ingested existing evidence", "did not launch a browser", "did not run the suite", "ingests"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT fabricate a confidence number or invent precision — the gate reasons over categories and carries no number.",
+          "anchors": { "any": ["confidence:", "% confident", "confidence of", "100% safe", "guaranteed"] }
+        },
+        {
+          "claim": "Must NOT claim it re-ran the suite, mutations, or a browser to confirm — Witness ingests existing evidence only and never executes.",
+          "anchors": { "any": ["re-ran the suite", "ran the tests", "ran the mutations", "launched a browser", "executed the suite"] }
         }
       ]
     }

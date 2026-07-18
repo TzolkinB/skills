@@ -85,6 +85,39 @@ For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code co
 
 Single-test mode always shows its verdict, including 🟢. **Batch mode** reports a provenance tally instead — Unexamined tests are never folded into the proven-solid greens; see [reference/batch-mode.md](reference/batch-mode.md) for its format ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
 
+## Structured emission (`--emit-json=<path>`) — for Witness / the Gate
+
+When `--emit-json=<path>` is present in $ARGUMENTS, **also** write the run's provenance tally as a small
+`witness-audit-test/v0` JSON file at that path — *in addition to* the human report, which is unchanged. This is
+the **parsed** credibility input the Gate skill (`/gate`, Witness) ingests: a *parsed* proven-clean verdict is
+the only thing that lets Witness lift a release decision to `ship` (the B→A graduation,
+[ADR-0029](../../docs/adr/0029-witness-parsed-audit-test-graduation.md)). Emit **only the counts** — never a
+prose scrape and never a confidence number; Witness derives the category itself
+([schema](../gate/schema/audit-test-emission.v0.schema.json)):
+
+```json
+{
+  "schema": "witness-audit-test/v0",
+  "producer": "audit-test",
+  "scope": "--changed",
+  "audited": 47,
+  "deepAudited": 5,
+  "provenSolid": 2,
+  "provenHollow": 1,
+  "likelyHollow": 1,
+  "baselineLock": 1,
+  "unexamined": 42
+}
+```
+
+The counts map 1:1 to the batch tally's verdict classes: `provenSolid` = 🟢, `provenHollow` = 🔴,
+`likelyHollow` = 🟡, `baselineLock` = ⚠️, `unexamined` = triaged-but-never-mutated; `deepAudited` = how many
+advanced past triage, `audited` = total triaged. **The counts must be truthful and consistent** — in
+particular, if you deep-audited nothing, `deepAudited` is `0` (Witness derives `unexamined` → the run can
+never reach `ship`). For an **INCONCLUSIVE** run (no recognized test files), emit all-zero counts. Emission is
+mechanical bookkeeping of the verdicts you already assigned — it introduces **no** new judgment, so it works in
+single-test mode too (the tally is just that one test's class).
+
 ## Explain Mode (`--explain`)
 
 Usage: `/audit-test tests/booking.spec.ts --explain`. When present, append after the standard report:
