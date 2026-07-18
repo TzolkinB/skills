@@ -155,6 +155,10 @@ release heading.
   machine**" → "adds no network calls of its own" — Sentinel runs *inside* Claude Code, so your code reaches
   Anthropic's API like any session (the README privacy note now says so, and names the eval harness as the
   one maintainer-tooling Anthropic call).
+- **Witness `gate` listed in the README; skill counts reconciled** (#116). The release-gate skill now
+  appears in both the README skill table and the **privacy table** — that table asserts completeness, so
+  an unlisted executing skill was a real gap. Count reconciled to **fourteen skill directories** (thirteen
+  skills + the `/ask-sentinel` router) across the README and `evals/README` (was 12 / 13 / 14). Docs only.
 
 ### Fixed
 
