@@ -1,7 +1,7 @@
 ---
 name: gate
-description: "Witness — the Gate stage (stage 7). Ingest a PR's existing Playwright JSON + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Certifies ship only when tests are execution-proven trustworthy; caps at canary while credibility is unread; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, auditable release recommendation."
-argument-hint: "[path to Playwright results.json] [optional: path to an audit-test emission .json or report .md]"
+description: "Witness — the Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Certifies ship only when tests are execution-proven trustworthy; caps at canary while credibility is unread; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, auditable release recommendation."
+argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
 ---
@@ -14,8 +14,9 @@ speak shippability ([#99](https://github.com/TzolkinB/skills/issues/99)).
 hollow → `/audit-test` (Witness *consumes* its report); which specs a diff hits → `/e2e-impact`; diagnosing a
 red spec → `/debug-test`.
 
-Witness reads what a PR already produced — a Playwright JSON report, and (if you ran it) an `audit-test`
-report — binds them into **one readable evidence bundle** (in-toto Statements over a single subject, the PR
+Witness reads what a PR already produced — an E2E result (a Playwright JSON report and/or a Cypress
+`CypressRunResult`), and (if you ran it) an `audit-test` report — binds them into **one readable evidence
+bundle** (in-toto Statements over a single subject, the PR
 head commit), and derives one **categorical, advisory** release decision by taking the **most conservative**
 category any input proposes (worst-wins). The decision rule is **deterministic code** (`witness.mjs`), not a
 judgment call: the same bundle always yields the same decision, because a release gate must be reproducible.
@@ -23,10 +24,30 @@ judgment call: the same bundle always yields the same decision, because a releas
 ## Steps
 
 ### 1. Resolve the evidence inputs
-- **Playwright report** (required): the JSON reporter's output — from `$ARGUMENTS`, or discover it
-  (`Glob` for `test-results/results.json`, or the `outputFile` in `playwright.config.*`). If there is no
-  Playwright JSON report, tell the user to run their suite with the `json` reporter first — Witness ingests a
-  report, it does not run the suite.
+
+**Execution evidence — at least one E2E result is required** (both may be given; the gate takes
+worst-wins across them, so ship needs *every* suite green):
+
+- **Playwright report** (`--playwright`): the JSON reporter's output — from `$ARGUMENTS`, or discover it
+  (`Glob` for `test-results/results.json`, or the `outputFile` in `playwright.config.*`).
+- **Cypress result** (`--cypress`): the aggregate object `cypress.run()` resolves to (a `CypressRunResult`).
+  Cypress does not write this to a file on its own, so produce it with a tiny Node wrapper:
+  ```js
+  // save-cypress-result.mjs  →  node save-cypress-result.mjs
+  import cypress from 'cypress';
+  import { writeFileSync } from 'node:fs';
+  const r = await cypress.run();                 // runs the suite, resolves to CypressRunResult
+  writeFileSync('cypress-results.json', JSON.stringify(r, null, 2));
+  ```
+  **Why the Module API result and not `cypress run --reporter json`?** Only the Module API result preserves
+  per-test `attempts[]` — the *only* place a **flaky** (failed-then-passed-on-retry) test is recorded, because
+  Cypress emits no aggregate `flaky` count. Witness derives the WARNED signal from those attempts; the plain
+  mocha `json` reporter has no attempts and would silently drop the flake (a false green). Verified against the
+  Cypress Module API + test-retries docs (2026-07-17).
+
+If there is no E2E result at all, tell the user to run their suite first — Witness ingests a report, it does
+not run the suite.
+
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
   - **Parsed emission** (`--audit-test-json`): a `witness-audit-test/v0` tally written by `/audit-test --emit-json=<path>`.
     This is the **graduated** input — a *parsed* proven-clean verdict is the only thing that can lift the ceiling to `ship`.
@@ -43,10 +64,11 @@ judgment call: the same bundle always yields the same decision, because a releas
 Run the bundled script from **this skill's base directory** (shown to you when the skill was invoked):
 
 ```
-node "<skill base dir>/witness.mjs" --playwright=<results.json> \
+node "<skill base dir>/witness.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
      [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
      --commit=<sha> --out=witness-bundle.json
 ```
+(Pass `--playwright`, `--cypress`, or both — at least one is required.)
 
 The script ([`witness.mjs`](./witness.mjs)) ingests, assembles the bundle, runs the worst-wins gate, appends a
 `witness.local/gate/v0` entry, validates against the honesty guard
@@ -57,9 +79,9 @@ The script ([`witness.mjs`](./witness.mjs)) ingests, assembles the bundle, runs 
 Show the script's report: the decision, the per-input proposals (it **shows its work**), and the rationale.
 Tell the user where the bundle was written. Then interpret it honestly:
 
-- **`hold`** — a Playwright failure (or no execution evidence) dominates. Route the red to `/debug-test`;
-  the gate is not the place to fix it. (A proven-hollow `audit-test` finding is a `canary`, not a `hold` —
-  the code may be fine; it's the *test* that needs fixing.)
+- **`hold`** — an E2E failure (Playwright or Cypress) or no execution evidence at all dominates. Route the
+  red to `/debug-test`; the gate is not the place to fix it. (A proven-hollow `audit-test` finding is a
+  `canary`, not a `hold` — the code may be fine; it's the *test* that needs fixing.)
 - **`canary`** — release cautiously with monitoring / a human gate. Read the rationale for *why* it floored:
   - `human-must-read`: an **opaque** `audit-test` report is present — a human must read it (Witness carries it
     but does not machine-read it). Re-gate with a **parsed** emission (`--audit-test-json`) to let Witness read it.
@@ -68,9 +90,10 @@ Tell the user where the bundle was written. Then interpret it honestly:
     test(s) (`/audit-test` names them), then re-gate.
   - examined-nothing / reasoning-only: the audit ran but proved nothing (deep-audited 0, or the env wasn't
     runnable) — nothing was execution-verified, so credibility is unproven.
-- **`ship`** — the tests are **execution-proven trustworthy**: Playwright passed **and** a *parsed* `audit-test`
-  verdict is `PASSED` + `proven` (deep audits ran, killed their mutations, found no hollow tests). This is the
-  one path to `ship`, and it is deliberately hard to reach — an opaque, absent, or vacuous audit never gets here.
+- **`ship`** — the tests are **execution-proven trustworthy**: *every* E2E suite you passed in (Playwright
+  and/or Cypress) is green **and** a *parsed* `audit-test` verdict is `PASSED` + `proven` (deep audits ran,
+  killed their mutations, found no hollow tests). This is the one path to `ship`, and it is deliberately hard
+  to reach — a single red suite, or an opaque, absent, or vacuous audit, never gets here.
 
 The decision is **advisory** — it never fails the build (blocking is a future opt-in,
 [ADR-0026](../../docs/adr/0026-live-evals-opt-in-pr-and-scheduled-drift.md)).
@@ -123,7 +146,12 @@ Bundle written to witness-bundle.json
 - **Ingests, never executes** ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)).
   Witness reads a Playwright report and a Markdown file — pure consumption. It never launches a browser or a
   suite. Snapshotting a *live* response is an execution-layer artifact, out of scope.
-- **Playwright JSON only in v0.** Cypress ingest is a later increment — stated, not faked.
+- **Two E2E frameworks on one execution axis.** Playwright (JSON report) and Cypress (Module API
+  `CypressRunResult`) both ingest to the same result → proposal mapping; the gate takes worst-wins across
+  every suite present, so a green Playwright can't paper over a red Cypress. **The one asymmetry is honest,
+  not hidden:** Playwright reports `stats.flaky` directly; Cypress has no such count, so Witness *derives*
+  the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
+  labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
 - **`audit-test` rides in two grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
   batch tally as `witness-audit-test/v0` structured data — the per-class **counts**, not prose. Witness derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and

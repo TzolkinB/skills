@@ -1,0 +1,28 @@
+{
+  "cypressVersion": "13.15.0",
+  "startedTestsAt": "2026-07-17T10:00:00.000Z",
+  "endedTestsAt": "2026-07-17T10:00:38.000Z",
+  "totalDuration": 38000,
+  "totalSuites": 2,
+  "totalTests": 12,
+  "totalPassed": 10,
+  "totalFailed": 2,
+  "totalPending": 0,
+  "totalSkipped": 0,
+  "runs": [
+    {
+      "spec": { "name": "booking.cy.ts", "relative": "cypress/e2e/booking.cy.ts" },
+      "error": null,
+      "stats": { "suites": 2, "tests": 12, "passes": 10, "pending": 0, "skipped": 0, "failures": 2, "duration": 38000 },
+      "tests": [
+        {
+          "title": ["booking", "rejects overlapping bookings"],
+          "state": "failed",
+          "displayError": "AssertionError: expected 200 to equal 409",
+          "attempts": [{ "state": "failed" }, { "state": "failed" }]
+        },
+        { "title": ["booking", "confirms a valid booking"], "state": "passed", "displayError": null, "attempts": [{ "state": "passed" }] }
+      ]
+    }
+  ]
+}

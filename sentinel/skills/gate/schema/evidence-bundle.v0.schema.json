@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://witness.local/schema/evidence-bundle/v0",
   "title": "Witness evidence bundle (v0)",
-  "description": "One readable JSON document binding per-stage in-toto Statement entries to a single digest-addressed subject (the PR head commit). Contract v0 (LOCKED) — resolution of TzolkinB/skills#102. Playwright JSON only; no numeric confidence. audit-test rides either OPAQUE (Markdown inline, caps at canary) or PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+proven unlocks ship). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
+  "description": "One readable JSON document binding per-stage in-toto Statement entries to a single digest-addressed subject (the PR head commit). Contract v0 (LOCKED) — resolution of TzolkinB/skills#102. Execution evidence = Playwright JSON and/or a Cypress Module API result (added additively per contract Q1: `stage` is a free string, so a new framework needs no schema change or version bump); no numeric confidence. audit-test rides either OPAQUE (Markdown inline, caps at canary) or PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+proven unlocks ship). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
   "type": "object",
   "required": ["schemaVersion", "subject", "producedOn", "entries"],
   "properties": {

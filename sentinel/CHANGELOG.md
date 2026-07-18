@@ -19,6 +19,23 @@ release heading.
 
 ### Added
 
+- **Witness ingests Cypress** — a second E2E framework on the execution axis
+  ([ADR-0030](docs/adr/0030-witness-cypress-ingest.md), epic #49). `witness.mjs` gains a `--cypress` input
+  that reads the **Cypress Module API result** (`CypressRunResult`, what `cypress.run()` resolves to) and maps
+  it to the same `PASSED/WARNED/FAILED → ship-baseline/canary/hold` scale as Playwright. The gate generalises
+  from a Playwright-only branch to an **execution axis** (`{playwright, cypress}`) taken **worst-wins across
+  every suite present** — so `ship` now requires *every* E2E suite green (a green Playwright can't paper over a
+  red Cypress). **Honest asymmetry, documented not hidden:** Playwright emits `stats.flaky`; Cypress emits no
+  flaky count, so Witness **derives** the WARNED signal by scanning per-test `attempts[]` for a
+  failed-then-passed retry (the pattern Cypress's own docs show) and labels the metric `flakyDerived`. The
+  SKILL documents the tiny `cypress.run()` wrapper that produces the result file and **why** it's required over
+  `cypress run --reporter json` (the mocha reporter has no `attempts`, so it would silently drop the flake).
+  No schema-version bump — `stage` is a free string (contract Q1), the exact additive extension v0 was designed
+  to absorb. Verified: 67/67 gate self-tests (Cypress derivation truth table, attempts-based flake incl. the
+  ended-failed-is-not-a-flake guard, Cypress-only + both-frameworks worst-wins, fixture e2e) + real-CLI drive
+  of the ship/hold/mixed paths. Schema-faithful fixtures + verified docs (native Cypress run is macOS-blocked,
+  Docker-only — matching how Playwright ingest was validated).
+
 - **`contract-guard`** skill (consumer-side contract check, issue #48 / spec #71): gives the *stranded*
   enterprise frontend team the coverage Pact structurally can't (Pact needs provider participation). Tiered,
   cheapest-first — **Tier 0** detect existing response validation (schema present → drift self-revealing,
