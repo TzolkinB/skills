@@ -2,11 +2,14 @@
 
 **TL;DR** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
 what it's genuinely good at: risk planning, static test review, traceability, scaffolding, and a
-governance gate with a compliance audit trail. Reach for Sentinel/Witness for the two things TEA's
-own docs show it **cannot** do — **prove a passing test isn't hollow** (`audit-test`, by mutation),
-and turn that proof plus live execution into a **risk-weighted, calibrated** release confidence that
-**learns from your gate overrides** (Witness). TEA plans and governs; it doesn't prove, and it doesn't
-learn. Those two gaps slot *into* TEA's gate rather than replacing it.
+governance gate with a compliance audit trail. Reach for Sentinel/Witness for what TEA's own docs show
+it **cannot** do — **prove a passing test isn't hollow** (`audit-test`, by mutation; a shipping skill
+today). The second gap — aggregating that proof plus live execution into a **risk-weighted, calibrated**
+release confidence that **learns from your gate overrides** — is where Witness is *headed*, but read it as
+a **design, not a live feature**: Witness ships today as a categorical advisory ship/canary/hold gate, and
+the calibrated/learning layer is parked until there's a labelled history to calibrate against (see the
+load-bearing caveat below). TEA plans and governs; it doesn't prove. Those gaps slot *into* TEA's gate
+rather than replacing it.
 
 This is a "why ours, not just theirs?" note, held to the same bar as the rest of the repo: **no claim
 here that isn't a verified TEA absence.** Every "TEA can't" below was confirmed against TEA's own

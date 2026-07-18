@@ -29,6 +29,11 @@ Its differentiator is honesty in both directions on **app-driven (Playwright/Cyp
      the fly — `npm run dev`, `vite`, `next dev`, `ng serve`. Check your Playwright
      `webServer.command` in `playwright.config` (or however you start the app for Cypress): if it's
      your **dev** command, you're set.
+   - ⚠️ **Warm dev server (HMR) — one more step:** a watch-mode dev server (Vite/webpack HMR) can
+     propagate an edit *asynchronously*, so a survival that wasn't confirmed live is **inconclusive, not
+     🔴**. `/audit-test` forces the mutation live first — a fresh-boot-per-run harness (e.g.
+     `cypress/included`, or a built/CI server) or a dev-server restart/hard-reload; a `sleep` doesn't fix
+     it ([reachability-check](./skills/audit-test/reference/reachability-check.md)).
    - ❌ **Build-served / deployed (won't work):** the test runs against a pre-built or deployed copy —
      `build && preview`, a served `dist/` or `build/` folder, `next start`, or a live `https://…` URL.
      Your source edit never reaches that running app, so the audit can't prove anything. **audit-test

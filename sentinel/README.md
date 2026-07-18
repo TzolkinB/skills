@@ -59,7 +59,7 @@ Interrogates a *passing* test: would it actually fail if the code it covers brok
 - **Honest in both directions** — the part nothing else does on app-driven tests:
   - won't fake a 🔴 on a stale/served app where the mutation never reaches the running code *(reachability guard, [ADR-0016](./docs/adr/0016-audit-test-reachability-guard.md))*
   - flags a 🟢 that looks **pinned to a regression** — the trap a self-healer leaves when it "fixes" a red test by editing the expected value — and raises it for you to confirm *(baseline-lock: a heuristic suspicion raised for human review, not yet a proven catch — [ADR-0017](./docs/adr/0017-audit-test-baseline-lock-suspected.md))*
-- Runs on **dev-served Playwright/Cypress**, not just unit tests — the credibility gap first-party test agents (which optimize toward green) structurally leave open.
+- Runs on **dev-served Playwright/Cypress**, not just unit tests — the credibility gap first-party test agents (which optimize toward green) structurally leave open. *(Cypress needs single-test isolation for a clean proof — a one-test spec or the `@cypress/grep` plugin; without it `cypress run --spec` runs the whole file and the audit falls back to 🟡.)*
 
 Distinct from `coverage-review` (finds *missing* coverage) — this hunts tests that exist but protect nothing.
 
