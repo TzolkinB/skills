@@ -22,7 +22,7 @@ When the project already produces coverage instrumentation (lcov, istanbul/c8, J
 
 ## Prerequisites
 
-Just Claude Code. It reads your test and code files, plus any coverage report the project already produces (lcov, istanbul/c8, JaCoCo) — it never runs your suite to generate one, and no report just means it reasons statically instead. Nothing to install, nothing leaves your machine.
+Just Claude Code. It reads your test and code files, plus any coverage report the project already produces (lcov, istanbul/c8, JaCoCo) — it never runs your suite to generate one, and no report just means it reasons statically instead. Nothing to install, and it adds no network calls of its own.
 
 ## Worked example
 

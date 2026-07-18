@@ -146,6 +146,15 @@ release heading.
   published contract lie about a value the producer emits. First bump of the #102-locked contract; the reserved
   `confidence`/calibration bump signal (a MAJOR event, still blocked by honesty-guard #3) is unaffected — this
   is a MINOR enum widening with no number.
+- **Honesty pass on trust wording** (#114, from the pre-launch critique). Reworded overclaiming copy to
+  match what the code actually does — **no behavior change**: `audit-test`'s "**proof, not reasoning**" →
+  "an execution-grounded counterexample, not reasoning (one mutation, not a suite-wide score)"; the gate's
+  "certifies ship … execution-proven trustworthy" → "recommends ship … a shape-checked self-report, not an
+  independent re-verification"; baseline-lock's "**catches** a 🟢 pinned to a regression" → "**flags** … a
+  heuristic suspicion raised for human review, not yet a proven catch"; and every "**Nothing leaves your
+  machine**" → "adds no network calls of its own" — Sentinel runs *inside* Claude Code, so your code reaches
+  Anthropic's API like any session (the README privacy note now says so, and names the eval harness as the
+  one maintainer-tooling Anthropic call).
 
 ### Fixed
 

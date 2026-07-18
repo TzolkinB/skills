@@ -20,7 +20,7 @@ Its value is that a vague "it's broken" is the number-one reason bugs bounce bac
 
 ## Prerequisites
 
-Just Claude Code — it structures the failure description you provide. Nothing to install, nothing runs, nothing leaves your machine.
+Just Claude Code — it structures the failure description you provide. Nothing to install, nothing runs, and it adds no network calls of its own.
 
 ## Worked example
 

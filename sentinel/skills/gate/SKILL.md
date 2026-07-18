@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "Witness — the Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Certifies ship only when tests are execution-proven trustworthy; caps at canary while credibility is unread; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, auditable release recommendation."
+description: "Witness — the Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread or unparsed; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, auditable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true

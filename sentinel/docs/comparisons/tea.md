@@ -44,7 +44,7 @@ self-healer leaves behind). Static review — TEA's or anyone's — reads the te
 whether the test would *fail if the code broke*, because it never breaks the code.
 
 `audit-test` does exactly that: it proposes the single most-likely-breaking change, runs that one
-targeted mutation, and checks whether the test goes red — **proof, not reasoning**. TEA has no
+targeted mutation, and checks whether the test goes red — **execution-grounded, not reasoning**. TEA has no
 mutation step of any kind. This is the cleanest, least-contested ground in the whole comparison:
 mutation proof is a capability TEA's docs simply don't contain.
 
