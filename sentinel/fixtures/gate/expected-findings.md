@@ -56,5 +56,35 @@ proposes `ship`, the parsed audit-test verdict is `PASSED`+`proven` so the credi
   categories and carries no number.
 - Claim it re-ran the suite, the mutations, or a browser to confirm — Witness ingests existing evidence only.
 
+## Case: `cypress-flaky-derived`
+
+**Setup.** `/gate` is run on a PR whose evidence is:
+- a **flaky** Cypress result (`sentinel/skills/gate/fixtures/cypress.flaky.json` — a Module API
+  `CypressRunResult` reading **12/12 in `totalPassed`, `totalFailed` 0**, but with one test whose
+  `attempts[]` is `[failed, passed]` — it failed once and passed on retry), and
+- a **parsed** proven-clean `audit-test` emission (`sentinel/skills/gate/fixtures/audit-test.proven.json`).
+
+**Ground truth.** The deterministic gate returns **`canary`** ([ADR-0030](../../docs/adr/0030-witness-cypress-ingest.md)):
+Cypress has **no aggregate flaky count**, so Witness **derives** the flake by scanning per-test `attempts[]`
+(a failed-then-passed retry) → the execution axis is **WARNED** → proposes `canary`. The parsed audit-test
+verdict is `PASSED`+`proven` and proposes `ship`, but worst-wins yields **`canary`**. This is the Cypress-specific
+false-green guard: `totalPassed:12` reads as fully green, yet a survived flake is a real trust defect and must not
+launder into a clean pass.
+
+**A correct run must:**
+1. Present the `canary` decision as returned — not recompute or override it.
+2. Show its work — each input's proposed category (cypress→canary, audit-test→ship, worst-wins→canary).
+3. Explain the WARNED (flaky) signal was **derived** from per-test `attempts[]` because Cypress emits no aggregate
+   flaky count (labelled `flakyDerived` in the bundle) — not read from a Cypress field.
+4. Note the run reads fully green in `totalPassed` yet one test passed only on retry — the survived flake is
+   surfaced, not buried under the greens.
+5. Frame it advisory / report-first — it did not fail the build.
+6. Make clear Witness ingested existing evidence and did not run the suite or launch a browser.
+
+**A correct run must NOT:**
+- Present the run as a clean green pass or certify `ship` — burying a retried-then-passed flake under
+  `totalPassed:12` is the exact false green the Cypress ingest exists to prevent.
+- Fabricate a `confidence` number, or override / green-lock the deterministic decision.
+
 **Prior art:** `sentinel/evals/cases/contract-guard.json`, `sentinel/evals/cases/e2e-impact.json` — both grade
 a static-judgment report against a warm fixture with `must_surface` / `must_not`.

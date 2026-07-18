@@ -74,6 +74,15 @@ version are unchanged. The version-bump signal stays reserved for `confidence`/c
 - **Add a real Cypress-run integration test.** Deferred — Cypress won't launch natively on this machine (macOS
   Electron incompat; Docker-only), so the adapter is proven against schema-faithful fixtures + the verified docs,
   matching how Playwright ingest was validated. A live Docker-run ground-truth of the fixtures is a fair follow-up.
+  **Done (2026-07-18):** ran the Module API (`cypress.run()`) in `cypress/included:15.17.0` over a
+  pass / hard-fail / fails-then-passes-on-retry spec and diffed the real `CypressRunResult` against the fixtures.
+  Confirmed against live output: **no aggregate flaky count exists anywhere** at the top level (the flake survives
+  only in `attempts[]`), the retried-then-passed test lands in `totalPassed` with `state:passed,
+  attempts:[failed,passed]`, the ended-failed test is `attempts:[failed,failed,failed]`, and `witness.mjs` derives
+  correctly against the live result (`countCypressFlaky → 1` — the ended-failed test is *not* counted;
+  `deriveCypressResult → FAILED`). Every fixture field exists in the real output; the shape is identical on
+  Cypress 15.17.0 (fixtures name 13.15.0), so the derivation is version-stable. This retires the last deferred
+  item on Cypress ingest.
 
 ## Consequences
 
@@ -81,7 +90,7 @@ version are unchanged. The version-bump signal stays reserved for `confidence`/c
   schema description, and (map PR) the Witness section. The gate self-test grows Cypress rows: derivation truth
   table, the attempts-based flake derivation (incl. the ended-failed-is-not-flake guard), Cypress-only
   ship/canary/hold, and both-frameworks worst-wins (green PW + red CY → hold). CI gates on it
-  (`witness.mjs --self-test`, 67 checks).
+  (`witness.mjs --self-test`, 70 checks).
 - **The honest asymmetry is documented, not hidden** ([ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md)):
   Playwright reports flake; Cypress's is derived from attempts and labelled `flakyDerived`; the SKILL says why the
   Module API result is required over the reporter.
