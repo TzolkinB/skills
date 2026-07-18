@@ -46,7 +46,9 @@ worst-wins across them, so ship needs *every* suite green):
   Cypress Module API + test-retries docs (2026-07-17).
 
 If there is no E2E result at all, tell the user to run their suite first — Witness ingests a report, it does
-not run the suite.
+not run the suite. An **empty or zero-test report** (nothing executed to a pass/fail verdict — e.g. a suite
+that never ran, or a wrong `--playwright` path) is treated as **no execution evidence → `hold`**, never as a
+pass: a green-looking `{}` is exactly the false confidence Witness exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
   - **Parsed emission** (`--audit-test-json`): a `witness-audit-test/v0` tally written by `/audit-test --emit-json=<path>`.
@@ -79,9 +81,10 @@ The script ([`witness.mjs`](./witness.mjs)) ingests, assembles the bundle, runs 
 Show the script's report: the decision, the per-input proposals (it **shows its work**), and the rationale.
 Tell the user where the bundle was written. Then interpret it honestly:
 
-- **`hold`** — an E2E failure (Playwright or Cypress) or no execution evidence at all dominates. Route the
-  red to `/debug-test`; the gate is not the place to fix it. (A proven-hollow `audit-test` finding is a
-  `canary`, not a `hold` — the code may be fine; it's the *test* that needs fixing.)
+- **`hold`** — an E2E failure (Playwright or Cypress), an **empty/zero-test report**, or no execution
+  evidence at all dominates. Route the red to `/debug-test`; the gate is not the place to fix it. (A
+  proven-hollow `audit-test` finding is a `canary`, not a `hold` — the code may be fine; it's the *test*
+  that needs fixing.)
 - **`canary`** — release cautiously with monitoring / a human gate. Read the rationale for *why* it floored:
   - `human-must-read`: an **opaque** `audit-test` report is present — a human must read it (Witness carries it
     but does not machine-read it). Re-gate with a **parsed** emission (`--audit-test-json`) to let Witness read it.
@@ -90,10 +93,13 @@ Tell the user where the bundle was written. Then interpret it honestly:
     test(s) (`/audit-test` names them), then re-gate.
   - examined-nothing / reasoning-only: the audit ran but proved nothing (deep-audited 0, or the env wasn't
     runnable) — nothing was execution-verified, so credibility is unproven.
-- **`ship`** — the tests are **execution-proven trustworthy**: *every* E2E suite you passed in (Playwright
-  and/or Cypress) is green **and** a *parsed* `audit-test` verdict is `PASSED` + `proven` (deep audits ran,
-  killed their mutations, found no hollow tests). This is the one path to `ship`, and it is deliberately hard
-  to reach — a single red suite, or an opaque, absent, or vacuous audit, never gets here.
+- **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green **and** a *parsed*
+  `audit-test` verdict is `PASSED` + `proven`: the deep audits ran, killed their mutations, and found no
+  hollow tests **among the deep-audited subset** (the tests triage flagged as worth mutating). This proves
+  that subset, not the whole suite — `unexamined` tests are *not* evidence of health, and the report states
+  the examined/unexamined split so the scope is never oversold. This is the one path to `ship`, and it is
+  deliberately hard to reach — a single red suite, an **empty/zero-test** report, or an opaque, absent, or
+  vacuous audit, never gets here.
 
 The decision is **advisory** — it never fails the build (blocking is a future opt-in,
 [ADR-0026](../../docs/adr/0026-live-evals-opt-in-pr-and-scheduled-drift.md)).
@@ -133,10 +139,10 @@ subject: pr-head `<sha>`  ·  3 entries
 
 ### Rationale
 - playwright PASSED → ship-baseline
-- audit-test PASSED + proven → ship-eligible (execution-proven clean: deep audits ran, no hollow tests)
+- audit-test PASSED + proven → ship-eligible — no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health)
 - worst-wins over {ship} → ship
 
-> `ship` earned: Playwright passed and `audit-test` is execution-proven clean. Advisory / report-first.
+> `ship` earned: playwright passed and `audit-test` found no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health). Advisory / report-first.
 
 Bundle written to witness-bundle.json
 ```

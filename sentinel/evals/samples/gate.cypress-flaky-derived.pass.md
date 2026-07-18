@@ -17,7 +17,7 @@ subject: pr-head `abc1234`  ·  3 entries
 
 ### Rationale
 - cypress WARNED (flaky) → canary (a trust defect, not buried under a note)
-- audit-test PASSED + proven → ship-eligible (execution-proven clean: deep audits ran, no hollow tests)
+- audit-test PASSED + proven → ship-eligible — no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health)
 - worst-wins over {canary, ship} → canary
 
 > Advisory / report-first: a recommendation, not a build failure (blocking is a future opt-in, ADR-0026).

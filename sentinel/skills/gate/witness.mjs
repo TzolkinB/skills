@@ -34,7 +34,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (witness:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'witness-evidence-bundle/v0';
+const SCHEMA_VERSION = 'witness-evidence-bundle/v0.1'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` execution result (#111)
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://witness.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://witness.local/gate/v0';
@@ -46,9 +46,12 @@ const EXECUTION_STAGES = new Set(['playwright', 'cypress']);
 
 // ---- ingest: Playwright (mechanical fact-restatement, contract v0) ----------
 
+// 0 tests executed → EMPTY (an empty/unrun report is NOT a pass — #111); else
 // stats.unexpected > 0 → FAILED; else stats.flaky > 0 → WARNED; else PASSED.
 // `flaky` NEVER appears in `unexpected` — it must be read explicitly.
 export function deriveResult(stats = {}) {
+  const executed = Number(stats.expected ?? 0) + Number(stats.unexpected ?? 0) + Number(stats.flaky ?? 0);
+  if (executed === 0) return 'EMPTY'; // `{}`, `{stats:{}}`, or all-skipped: nothing ran to a verdict
   if (Number(stats.unexpected ?? 0) > 0) return 'FAILED';
   if (Number(stats.flaky ?? 0) > 0) return 'WARNED';
   return 'PASSED';
@@ -91,10 +94,13 @@ export function countCypressFlaky(result = {}) {
   return flaky;
 }
 
-// totalFailed>0 → FAILED; else any DERIVED flaky → WARNED; else PASSED. Same ordering as
-// deriveResult (Playwright): a hard failure dominates a flake; a survived flake is a WARN,
-// never folded into the greens.
+// 0 tests produced a pass/fail verdict → EMPTY (#111); else totalFailed>0 → FAILED; else any
+// DERIVED flaky → WARNED; else PASSED. Same ordering as deriveResult (Playwright): an empty/unrun
+// result is not a pass, a hard failure dominates a flake, and a survived flake is a WARN never
+// folded into the greens.
 export function deriveCypressResult(result = {}) {
+  const executed = Number(result.totalPassed ?? 0) + Number(result.totalFailed ?? 0);
+  if (executed === 0) return 'EMPTY'; // no test resolved to passed/failed (0 tests, or all pending/skipped)
   if (Number(result.totalFailed ?? 0) > 0) return 'FAILED';
   if (countCypressFlaky(result) > 0) return 'WARNED';
   return 'PASSED';
@@ -144,6 +150,7 @@ export function auditTestEntry(markdown) {
 // the label HERE (not trusting a skill-supplied label) is what makes the theater
 // guard structural: a run that deep-audited nothing derives `unexamined` → the gate
 // floors it at canary, so a parsed-but-vacuous audit still cannot reach `ship`.
+const AUDIT_EMISSION_SCHEMA = 'witness-audit-test/v0'; // exact match — the published schema pins `schema` to this const
 const AUDIT_COUNTS = ['audited', 'deepAudited', 'provenSolid', 'provenHollow', 'likelyHollow', 'baselineLock', 'unexamined'];
 
 // Any proven-hollow test is a proven credibility FAILURE; a likely-hollow or a
@@ -175,13 +182,23 @@ export function parseAuditEmission(raw) {
     return null;
   }
   if (!obj || typeof obj !== 'object') return null;
-  if (typeof obj.schema !== 'string' || !obj.schema.startsWith('witness-audit-test/')) return null;
+  // Exact schema version, not a prefix (#111): `startsWith('witness-audit-test/')` let a bogus
+  // `witness-audit-test/v999` through; the published schema pins `schema` to a const.
+  if (obj.schema !== AUDIT_EMISSION_SCHEMA) return null;
   const tally = {};
   for (const k of AUDIT_COUNTS) {
     const v = Number(obj[k] ?? 0);
     if (!Number.isFinite(v) || v < 0 || !Number.isInteger(v)) return null;
     tally[k] = v;
   }
+  // Cross-field consistency (#111): reject an arithmetically impossible tally rather than silently
+  // deriving `proven` from it. A model produced these counts, so `{provenSolid:1, deepAudited:0}`
+  // must not slip through. These are the counts' own definitions, not a trust/authenticity check:
+  //   • every triaged test is either deep-audited or not →  audited === deepAudited + unexamined
+  //   • each outcome class is a subset of the deep audits →  Σ(outcomes) ≤ deepAudited
+  const outcomes = tally.provenSolid + tally.provenHollow + tally.likelyHollow + tally.baselineLock;
+  if (tally.deepAudited + tally.unexamined !== tally.audited) return null;
+  if (outcomes > tally.deepAudited) return null;
   return tally;
 }
 
@@ -214,6 +231,16 @@ export function assembleBundle({ commit, entries, producedOn }) {
 
 // ---- gate: worst-wins ordinal min (gate spec v0) ---------------------------
 
+// Human-readable scope of an audit-test verdict, drawn from the evidence entry's own metrics
+// (#112): `ship` proves only the DEEP-AUDITED subset, so the rationale/report must say how much
+// of the suite that was and how much rode along `unexamined` (not evidence of health). Returns a
+// plain string — the digits live in prose, never as a numeric field in the gate predicate.
+function auditScope(auditEntry) {
+  const m = Object.fromEntries((auditEntry?.predicate?.verdict?.metrics ?? []).map((x) => [x.name, x.value]));
+  if (m.deepAudited === undefined || m.audited === undefined) return 'the deep-audited subset';
+  return `the deep-audited subset (${m.deepAudited} of ${m.audited} triaged tests mutation-audited; ${m.unexamined ?? 0} unexamined — not evidence of health)`;
+}
+
 export function gate(bundle) {
   const entries = bundle.entries ?? [];
   const stageOf = (e) => e.predicate?.stage;
@@ -234,14 +261,16 @@ export function gate(bundle) {
     for (const e of execEntries) {
       const stage = stageOf(e);
       const result = e.predicate?.verdict?.result ?? 'FAILED';
-      const proposed = result === 'FAILED' ? 'hold' : result === 'WARNED' ? 'canary' : 'ship';
+      const proposed = result === 'FAILED' || result === 'EMPTY' ? 'hold' : result === 'WARNED' ? 'canary' : 'ship';
       inputs.push({ stage, result, proposed });
       rationale.push(
         result === 'FAILED'
           ? `${stage} FAILED → hold (execution failed — dominates)`
-          : result === 'WARNED'
-            ? `${stage} WARNED (flaky) → canary (a trust defect, not buried under a note)`
-            : `${stage} PASSED → ship-baseline`,
+          : result === 'EMPTY'
+            ? `${stage} produced no test results (empty/zero-test report) → hold (an unrun or empty report is not a pass — #111)`
+            : result === 'WARNED'
+              ? `${stage} WARNED (flaky) → canary (a trust defect, not buried under a note)`
+              : `${stage} PASSED → ship-baseline`,
       );
     }
   }
@@ -258,7 +287,7 @@ export function gate(bundle) {
     inputs.push({ stage: 'audit-test', result: auditResult, label, proposed });
     rationale.push(
       proposed === 'ship'
-        ? 'audit-test PASSED + proven → ship-eligible (execution-proven clean: deep audits ran, no hollow tests)'
+        ? `audit-test PASSED + proven → ship-eligible — no hollow tests among ${auditScope(audit)}`
         : auditResult === 'FAILED'
           ? 'audit-test FAILED (proven false-confidence) → canary (a hollow test — fix it; not a red build)'
           : auditResult === 'WARNED'
@@ -371,7 +400,8 @@ export function renderReport(bundle, gateEntry) {
   if (d === 'ship') {
     const execStages = gateEntry.predicate.inputs.filter((i) => EXECUTION_STAGES.has(i.stage)).map((i) => i.stage);
     const suites = execStages.join(' + ') || 'the E2E suite';
-    L.push(`> \`ship\` earned: ${suites} passed and \`audit-test\` is execution-proven clean (deep audits ran, no hollow tests).`);
+    const auditEv = bundle.entries.find((e) => e.predicate?.stage === 'audit-test');
+    L.push(`> \`ship\` earned: ${suites} passed and \`audit-test\` found no hollow tests among ${auditScope(auditEv)}.`);
   } else if (auditOpaqueOrAbsent) {
     L.push('> `ship` needs a *parsed* proven-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
@@ -447,10 +477,13 @@ function runSelfTest() {
   const check = (name, cond) => R.push({ name, ok: !!cond });
 
   // deriveResult
-  check('deriveResult: unexpected>0 → FAILED', deriveResult({ unexpected: 2, flaky: 0 }) === 'FAILED');
-  check('deriveResult: flaky>0 → WARNED (read explicitly)', deriveResult({ unexpected: 0, flaky: 1 }) === 'WARNED');
-  check('deriveResult: clean → PASSED', deriveResult({ unexpected: 0, flaky: 0 }) === 'PASSED');
+  check('deriveResult: unexpected>0 → FAILED', deriveResult({ expected: 8, unexpected: 2, flaky: 0 }) === 'FAILED');
+  check('deriveResult: flaky>0 → WARNED (read explicitly)', deriveResult({ expected: 10, unexpected: 0, flaky: 1 }) === 'WARNED');
+  check('deriveResult: clean run → PASSED', deriveResult({ expected: 12, unexpected: 0, flaky: 0 }) === 'PASSED');
   check('deriveResult: flaky not masked by expected count', deriveResult({ expected: 10, unexpected: 0, flaky: 3 }) === 'WARNED');
+  // #111 — an empty / unrun / all-skipped report is NOT a pass
+  check('deriveResult: empty {} → EMPTY (unrun report is not a pass)', deriveResult({}) === 'EMPTY');
+  check('deriveResult: all-skipped (0 executed) → EMPTY', deriveResult({ expected: 0, unexpected: 0, flaky: 0, skipped: 5 }) === 'EMPTY');
 
   const mkPw = (result) =>
     playwrightEntry({
@@ -515,6 +548,14 @@ function runSelfTest() {
   ];
   check('ship reachable ONLY via playwright PASSED + parsed proven-clean', decideP('PASSED', T.provenClean) === 'ship' && !shipElsewhere.includes('ship'));
 
+  // #111 — empty/impossible evidence can never ship (the two disclosed exploits, defeated)
+  const emptyPw = playwrightEntry({}); // `{}` → EMPTY
+  check('empty Playwright report alone → hold (not a pass)', gate(assembleBundle({ commit: 'x', entries: [emptyPw] })).decision === 'hold');
+  check('exploit: empty {} Playwright + parsed proven-clean → hold (empty exec dominates, never ship)',
+    gate(assembleBundle({ commit: 'x', entries: [emptyPw, auditTestParsedEntry(T.provenClean)] })).decision === 'hold');
+  check('exploit: impossible {provenSolid:1,deepAudited:0} emission is rejected (never derives proven)',
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 0, deepAudited: 0, provenSolid: 1, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+
   // ---- Cypress ingest — same execution axis as Playwright, but flake is DERIVED --------
   const CY = {
     passed: { totalTests: 12, totalPassed: 12, totalFailed: 0, totalPending: 0, totalSkipped: 0,
@@ -530,6 +571,8 @@ function runSelfTest() {
   check('deriveCypressResult: totalFailed>0 → FAILED', deriveCypressResult(CY.failed) === 'FAILED');
   check('deriveCypressResult: derived flaky → WARNED', deriveCypressResult(CY.flaky) === 'WARNED');
   check('deriveCypressResult: clean → PASSED', deriveCypressResult(CY.passed) === 'PASSED');
+  check('deriveCypressResult: no pass/fail verdict → EMPTY (#111)', deriveCypressResult({ totalTests: 0, totalPassed: 0, totalFailed: 0 }) === 'EMPTY');
+  check('deriveCypressResult: only pending → EMPTY (#111)', deriveCypressResult({ totalPending: 3, totalPassed: 0, totalFailed: 0 }) === 'EMPTY');
   check('countCypressFlaky: retried-then-passed counts as flaky', countCypressFlaky(CY.flaky) === 1);
   check('countCypressFlaky: clean pass is not flaky', countCypressFlaky(CY.passed) === 0);
   check('countCypressFlaky: a test that ENDED failed is a failure, not a flake', countCypressFlaky(CY.hardFailRetried) === 0);
@@ -574,6 +617,10 @@ function runSelfTest() {
   check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', provenSolid: -1 })) === null);
   check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', provenSolid: 1.5 })) === null);
   check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', ...T.provenClean })) !== null);
+  // #111 — exact schema version (not a prefix) + cross-field consistency
+  check('parseAuditEmission: rejects a bogus version (v999 — exact match, not prefix)', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v999', ...T.provenClean })) === null);
+  check('parseAuditEmission: rejects impossible provenSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', audited: 0, deepAudited: 0, provenSolid: 1, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', audited: 12, deepAudited: 4, provenSolid: 4, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
 
   // honesty guard #3 — clean validates; a smuggled number is rejected. Holds for the
   // PARSED path too: the audit label/result are string categories, so the raw counts
@@ -611,6 +658,7 @@ function runSelfTest() {
   check('fixture e2e: ship bundle validates', validateBundle(shipB).length === 0);
   const shipReport = renderReport(shipB, gShip.gateEntry);
   check('ship report says ship earned', /`ship` earned/i.test(shipReport));
+  check('ship report states examined/unexamined scope (#112)', /deep-audited subset/i.test(shipReport) && /unexamined/i.test(shipReport));
   check('ship report carries no manufactured number', !/\bconfidence\b\s*[:=]\s*\d/i.test(shipReport));
 
   const passed = R.every((r) => r.ok);
