@@ -16,7 +16,7 @@ Built by a QA professional who got tired of:
 
 ## What You Get
 
-Twelve QA-focused skills — eleven you run standalone, plus the `/sentinel` orchestrator that composes the shippability ones into a single verdict (with `/ask-sentinel` as the front-door router). **Find your situation in the "When to use it" column**, then open the skill's **doc page** (what it does, when to use / when not, a worked example against the fixtures, anti-patterns) or its agent-facing **`SKILL.md`** (the instructions Claude runs). The three most recent additions (`/e2e-impact`, `/audit-orchestrator`, `/contract-guard`) are agent-instructions-only for now — doc pages pending:
+Thirteen QA-focused skills — twelve you run standalone, plus the `/sentinel` orchestrator that composes the shippability ones into a single verdict (with `/ask-sentinel` as the front-door router — fourteen skill directories in all). **Find your situation in the "When to use it" column**, then open the skill's **doc page** (what it does, when to use / when not, a worked example against the fixtures, anti-patterns) or its agent-facing **`SKILL.md`** (the instructions Claude runs). Four (`/e2e-impact`, `/audit-orchestrator`, `/contract-guard`, and Witness/`gate`) are agent-instructions-only for now — doc pages pending:
 
 | Skill | When to use it | Docs | Agent instructions |
 |-------|----------------|------|--------------------|
@@ -32,6 +32,7 @@ Twelve QA-focused skills — eleven you run standalone, plus the `/sentinel` orc
 | `/audit-orchestrator` | A suspicious passing test — route it to the tool that can actually prove it (Tautest/StrykerJS or `/audit-test`) | — | [SKILL.md](./skills/audit-orchestrator/SKILL.md) |
 | `/contract-guard` | A frontend suite reddens on backend drift — check the consumer's expectations against the provider's published OpenAPI | — | [SKILL.md](./skills/contract-guard/SKILL.md) |
 | `/sentinel` | Before you merge — one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate) | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
+| `/gate` (Witness) | At the end of a PR — bind your existing Playwright/Cypress results + an `audit-test` verdict into one advisory ship/canary/hold release gate | — | [SKILL.md](./skills/gate/SKILL.md) |
 | `/ask-sentinel` (router) | Not sure which to reach for — describe the situation, get routed | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
 
 ### `/test-plan`
@@ -139,7 +140,7 @@ The orchestrator — the only skill that does no original analysis of its own. I
 `/threat-model` and `/bug-report` are deliberately *not* in the `/sentinel` chain — they answer questions (what breaks in production; how to hand off) that are orthogonal to shippability. `/sentinel` is a layer above the atomic skills, not a peer of them.
 
 ### `/ask-sentinel` (router)
-Not one of the twelve — the front door. Describe your situation (*"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"*) and it points you at the one skill that answers your question and shows where it sits in the flow. It routes; it never analyzes, runs, or emits a verdict, and it never joins the `/sentinel` chain. Run `/ask-sentinel` with no argument for the full map.
+Not one of the thirteen — the front door. Describe your situation (*"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"*) and it points you at the one skill that answers your question and shows where it sits in the flow. It routes; it never analyzes, runs, or emits a verdict, and it never joins the `/sentinel` chain. Run `/ask-sentinel` with no argument for the full map.
 
 ## Dependencies
 
@@ -174,6 +175,7 @@ Sentinel adds no network calls of its own — no skill sends your code to a thir
 | `/contract-guard` | The consumer code + the published contract (a local file, or a URL you point it at) | Reads the spec — a local file, or a read-only `GET` on the URL you supply | Routes to `/bug-report` locally; the only network touch is fetching the published-spec URL you provide — your code is never sent out |
 | `/debug-test` | The failing Playwright test + code | Runs the Playwright test locally | **Yes** — routes to the Playwright healer agent and to Matt Pocock's `diagnosing-bugs` skill (both run locally in your session; see [Dependencies](#dependencies)) |
 | `/sentinel` | Files in the change | Composes the skills above; runs only what they run | Only whatever `/debug-test` routes to, and only when a failing test is present |
+| `/gate` (Witness) | A Playwright/Cypress result file + (optional) an `audit-test` emission/report you pass in | `witness.mjs` locally (Node) + `git rev-parse HEAD` for the subject | Nothing |
 
 `/debug-test` and `/audit-orchestrator` are the skills that hand work to external tooling; `/contract-guard` may fetch a published OpenAPI spec from a URL you supply, but never sends your code anywhere. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay surgical and gated on a clean git tree.
 
