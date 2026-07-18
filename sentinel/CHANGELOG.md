@@ -33,8 +33,18 @@ release heading.
   No schema-version bump — `stage` is a free string (contract Q1), the exact additive extension v0 was designed
   to absorb. Verified: 70/70 gate self-tests (Cypress derivation truth table, attempts-based flake incl. the
   ended-failed-is-not-a-flake guard, Cypress-only + both-frameworks worst-wins, fixture e2e) + real-CLI drive
-  of the ship/hold/mixed paths. Schema-faithful fixtures + verified docs (native Cypress run is macOS-blocked,
-  Docker-only — matching how Playwright ingest was validated).
+  of the ship/hold/mixed paths. Schema-faithful fixtures + verified docs, now backed by a **Docker ground-truth
+  run** (`cypress/included`, 2026-07-18): a real `cypress.run()` over a pass / hard-fail / retried-then-passed spec
+  confirmed the live `CypressRunResult` matches every fixture assumption — no aggregate flaky count anywhere, the
+  flake surviving only in `attempts[]`, and `witness.mjs` deriving correctly against it (native Cypress run is
+  macOS-blocked, Docker-only — matching how Playwright ingest was validated; see ADR-0030 follow-up).
+
+- **`gate` eval — Cypress false-green case** (follow-up to ADR-0030, harness #74). A third `gate` eval case
+  (`cypress-flaky-derived`) grades the Cypress-specific honesty surface the arithmetic self-test can't: on a
+  Cypress run that reads **12/12 in `totalPassed`** but hides a retried-then-passed flake, the skill must present
+  the **derived** `canary` (WARNED from `attempts[]`, not a Cypress field) and must **not** launder
+  `totalPassed:12` into a clean-green `ship`. Faithful + hollow samples; offline self-test discriminates (the CI
+  gate), keeping the Cypress reporting path trust-gated like the Playwright cases.
 
 - **Positioning note: "Why not *just* TEA?"** ([`docs/comparisons/tea.md`](docs/comparisons/tea.md),
   issue #96 Part B). Reviewer-facing / README-adjacent writeup answering why Sentinel/Witness earns its

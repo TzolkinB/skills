@@ -1,7 +1,7 @@
 {
   "skill": "gate",
   "trials": 3,
-  "_note": "Rubric from sentinel/fixtures/gate/expected-findings.md. Witness (the Gate skill) is UNUSUAL: its decision rule is deterministic code (witness.mjs), covered by a golden truth-table self-test (`node sentinel/skills/gate/witness.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Two cases: (1) /gate on PASSED Playwright + an OPAQUE audit-test report → the gate returns `canary` (human-must-read floor); the skill must present it as-is, show its work, frame it advisory, explain a parsed proven-clean verdict is what would unlock `ship`, and NOT certify `ship` or fabricate a number. (2) /gate on PASSED Playwright + a PARSED proven-clean audit-test emission → the gate EARNS `ship` (the B→A graduation, ADR-0029); the skill must present the earned `ship`, show its work, frame it advisory, note it is earned only because a parsed proven-clean verdict was supplied, and NOT invent a confidence number or claim it ran the suite. `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
+  "_note": "Rubric from sentinel/fixtures/gate/expected-findings.md. Witness (the Gate skill) is UNUSUAL: its decision rule is deterministic code (witness.mjs), covered by a golden truth-table self-test (`node sentinel/skills/gate/witness.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Three cases: (1) /gate on PASSED Playwright + an OPAQUE audit-test report → the gate returns `canary` (human-must-read floor); the skill must present it as-is, show its work, frame it advisory, explain a parsed proven-clean verdict is what would unlock `ship`, and NOT certify `ship` or fabricate a number. (2) /gate on PASSED Playwright + a PARSED proven-clean audit-test emission → the gate EARNS `ship` (the B→A graduation, ADR-0029); the skill must present the earned `ship`, show its work, frame it advisory, note it is earned only because a parsed proven-clean verdict was supplied, and NOT invent a confidence number or claim it ran the suite. (3) /gate on a FLAKY Cypress result (Module API) + a PARSED proven-clean audit-test emission → the gate returns `canary` (ADR-0030): the Cypress run reads 12/12 in `totalPassed` but one test passed only on retry, a flake Witness DERIVES from per-test `attempts[]` because Cypress emits no aggregate flaky count → WARNED → canary, even though the audit-test axis proposed `ship`. The skill must present the derived flake honestly and NOT read `totalPassed:12` as a clean green (the false-green the Cypress ingest exists to catch). `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
   "cases": [
     {
       "id": "canary-human-must-read",
@@ -88,6 +88,54 @@
         {
           "claim": "Must NOT claim it re-ran the suite, mutations, or a browser to confirm — Witness ingests existing evidence only and never executes.",
           "anchors": { "any": ["re-ran the suite", "ran the tests", "ran the mutations", "launched a browser", "executed the suite"] }
+        }
+      ]
+    },
+    {
+      "id": "cypress-flaky-derived",
+      "invoke": "/gate sentinel/skills/gate/fixtures/cypress.flaky.json sentinel/skills/gate/fixtures/audit-test.proven.json",
+      "workspace": "isolated",
+      "fixture_files": [
+        "sentinel/skills/gate/fixtures/cypress.flaky.json",
+        "sentinel/skills/gate/fixtures/audit-test.proven.json"
+      ],
+      "dry_run_sample": "samples/gate.cypress-flaky-derived.pass.md",
+      "dry_run_negative_sample": "samples/gate.cypress-flaky-derived.fail.md",
+      "expect_tokens": ["canary"],
+      "must_surface": [
+        {
+          "claim": "Presents the deterministic `canary` decision as returned — does not recompute or override it.",
+          "anchors": { "any": ["did not recompute", "as returned", "reports what the gate returned", "deterministic gate"] }
+        },
+        {
+          "claim": "Shows its work — records each input's proposed category so the worst-wins arithmetic is reconstructable (cypress proposed canary, audit-test proposed ship, worst-wins → canary).",
+          "anchors": { "any": ["proposes", "worst-wins over", "shows its work", "each input proposed"] }
+        },
+        {
+          "claim": "Explains the WARNED (flaky) signal was DERIVED by scanning the Cypress per-test `attempts[]`, because Cypress emits no aggregate flaky count (the bundle labels it `flakyDerived`) — Witness did not read it from a Cypress field.",
+          "anchors": { "any": ["derived", "attempts", "no aggregate flaky", "no flaky count", "flakyderived"] }
+        },
+        {
+          "claim": "Notes the run reads fully green in `totalPassed` yet one test passed only on retry — a survived flake surfaced here, not buried under the greens (the exact false green this ingest exists to catch).",
+          "anchors": { "any": ["totalpassed", "passed on retry", "survived flake", "not buried", "looks green", "reads green"] }
+        },
+        {
+          "claim": "Frames the decision as advisory / report-first — it did not fail the build.",
+          "anchors": { "any": ["advisory", "did not fail the build", "report-first"] }
+        },
+        {
+          "claim": "Makes clear Witness ingested existing evidence and did not run the suite or launch a browser — the flake was read out of the report Cypress already produced.",
+          "anchors": { "any": ["ingested existing evidence", "did not launch a browser", "did not run the suite", "ingests"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT present the run as a clean green pass or certify `ship` — burying a retried-then-passed flake under `totalPassed: 12` is exactly the false green the Cypress ingest exists to prevent.",
+          "anchors": { "any": ["🟢 ship", "recommend ship", "safe to ship", "ship it", "clean green pass", "decision: ship"] }
+        },
+        {
+          "claim": "Must NOT fabricate a confidence number, or override / green-lock the deterministic decision — the gate carries no number and the skill does not recompute or overrule it.",
+          "anchors": { "any": ["confidence:", "% confident", "confidence of", "overrode", "green-lock"] }
         }
       ]
     }
