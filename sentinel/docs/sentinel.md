@@ -20,7 +20,7 @@ The verdict is a categorical judgment, never a numeric score. A proven false-con
 
 ## Prerequisites
 
-Claude Code for the orchestration itself. Because it *composes* the atomic skills, it inherits their prerequisites — most notably [`debug-test`](./debug-test.md)'s Playwright tooling, and only when the branch actually has a failing test to diagnose. Everything else it runs is local static analysis plus [`audit-test`](./audit-test.md)'s surgical mutations on a clean tree. Nothing leaves your machine.
+Claude Code for the orchestration itself. Because it *composes* the atomic skills, it inherits their prerequisites — most notably [`debug-test`](./debug-test.md)'s Playwright tooling, and only when the branch actually has a failing test to diagnose. Everything else it runs is local static analysis plus [`audit-test`](./audit-test.md)'s surgical mutations on a clean tree. It adds no network calls of its own beyond the Claude Code session itself.
 
 ## Worked example
 

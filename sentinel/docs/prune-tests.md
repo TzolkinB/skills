@@ -22,7 +22,7 @@ It's the **subtractive** counterpart to [`coverage-review`](./coverage-review.md
 
 ## Prerequisites
 
-Just Claude Code to get the proposal — it reads your tests and proposes, deleting nothing. `--apply` edits or removes tests, so it requires a **clean git tree** and reruns the affected tests locally afterward. Nothing leaves your machine.
+Just Claude Code to get the proposal — it reads your tests and proposes, deleting nothing. `--apply` edits or removes tests, so it requires a **clean git tree** and reruns the affected tests locally afterward. It adds no network calls of its own.
 
 ## Worked example
 

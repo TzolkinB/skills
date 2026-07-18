@@ -24,7 +24,7 @@ It reads a *description*, not code — so it's the wrong tool once the code and 
 
 ## Prerequisites
 
-Just Claude Code. `test-plan` reads the feature description you give it and writes a plan — it runs no code, needs nothing installed, and nothing leaves your machine.
+Just Claude Code. `test-plan` reads the feature description you give it and writes a plan — it runs no code, needs nothing installed, and adds no network calls of its own.
 
 ## Worked example
 

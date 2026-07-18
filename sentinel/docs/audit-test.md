@@ -24,7 +24,7 @@ It also flags a subtler failure the mutation alone can't see — a **baseline-lo
 
 ## Prerequisites
 
-Claude Code, plus — for a **Proven** verdict — a runnable test environment and a **clean git tree**: the deep audit mutates one source file, runs a single test, and reverts immediately. Without a clean tree or a runnable env it won't guess; it falls back to a reasoned 🟡 **Likely** verdict. Nothing leaves your machine.
+Claude Code, plus — for a **Proven** verdict — a runnable test environment and a **clean git tree**: the deep audit mutates one source file, runs a single test, and reverts immediately. Without a clean tree or a runnable env it won't guess; it falls back to a reasoned 🟡 **Likely** verdict. It adds no network calls of its own.
 
 ## Worked example
 

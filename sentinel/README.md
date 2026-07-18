@@ -2,7 +2,7 @@
 
 **QA-first testing skills for Claude Code.** Verify behavior, not green lights.
 
-> **Reviewing this, or new here?** Start with the flagship — **[`/audit-test`](./docs/audit-test.md)** — the one skill that *proves* (by running a mutation, not by reasoning) whether a passing test would actually catch a real break. See [`REVIEWERS.md`](./REVIEWERS.md) for a 10-minute try-it path.
+> **Reviewing this, or new here?** Start with the flagship — **[`/audit-test`](./docs/audit-test.md)** — the one skill that runs a real mutation to *show* whether a passing test would catch the single most-likely break to the code it covers: execution-grounded evidence, not reasoning. See [`REVIEWERS.md`](./REVIEWERS.md) for a 10-minute try-it path.
 
 ## What Is Sentinel?
 
@@ -54,10 +54,10 @@ The opposite of "make it pass."
 
 ### `/audit-test` — the sharpest skill, and the one to look at first
 Interrogates a *passing* test: would it actually fail if the code it covers broke?
-- Proposes the single most-likely-breaking change, runs that targeted mutation, and checks whether the test stays green — **proof, not reasoning**. Labels findings **Proven** vs **Likely**, never an invented score.
+- Proposes the single most-likely-breaking change, runs that targeted mutation, and checks whether the test stays green — an **execution-grounded counterexample, not reasoning** (one mutation, not a suite-wide score). Labels findings **Proven** vs **Likely**, never an invented score.
 - **Honest in both directions** — the part nothing else does on app-driven tests:
   - won't fake a 🔴 on a stale/served app where the mutation never reaches the running code *(reachability guard, [ADR-0016](./docs/adr/0016-audit-test-reachability-guard.md))*
-  - catches a 🟢 that's been **pinned to a regression** — the trap a self-healer leaves when it "fixes" a red test by editing the expected value *(baseline-lock, [ADR-0017](./docs/adr/0017-audit-test-baseline-lock-suspected.md))*
+  - flags a 🟢 that looks **pinned to a regression** — the trap a self-healer leaves when it "fixes" a red test by editing the expected value — and raises it for you to confirm *(baseline-lock: a heuristic suspicion raised for human review, not yet a proven catch — [ADR-0017](./docs/adr/0017-audit-test-baseline-lock-suspected.md))*
 - Runs on **dev-served Playwright/Cypress**, not just unit tests — the credibility gap first-party test agents (which optimize toward green) structurally leave open.
 
 Distinct from `coverage-review` (finds *missing* coverage) — this hunts tests that exist but protect nothing.
@@ -158,7 +158,7 @@ Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-test
 
 ## Privacy — what each skill reads, runs, and routes externally
 
-Sentinel is local-first. No skill sends your code to any third-party service, and nothing here calls a network API on your behalf. The table below spells out exactly what each skill touches so you can run it on private code with confidence.
+Sentinel adds no network calls of its own — no skill sends your code to a third-party service or hits a network API on your behalf. It runs *inside* Claude Code, so your code is processed by Anthropic's API exactly as in any Claude Code session (that transport is the platform, not a Sentinel call); the only Anthropic call in this repo is maintainer tooling — the eval harness ([`evals/lib/judge-llm.mjs`](./evals/lib/judge-llm.mjs)), not a skill you run. The table below spells out exactly what each skill touches so you can run it on private code with confidence.
 
 | Skill | Reads | Runs (executes) | Routes externally |
 |-------|-------|-----------------|-------------------|

@@ -21,7 +21,7 @@ For everything a change touches — data writes, external systems, downstream de
 
 ## Prerequisites
 
-Just Claude Code — it reads the change or diff and reasons about consequence. It runs nothing, prescribes no rollback it can't see, and nothing leaves your machine.
+Just Claude Code — it reads the change or diff and reasons about consequence. It runs nothing, prescribes no rollback it can't see, and adds no network calls of its own.
 
 ## Worked example
 

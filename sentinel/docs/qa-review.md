@@ -21,7 +21,7 @@ The point is that testability is orthogonal to code quality. Beautiful code can 
 
 ## Prerequisites
 
-Just Claude Code — `qa-review` reads the code statically and runs nothing. Nothing to install, nothing leaves your machine.
+Just Claude Code — `qa-review` reads the code statically and runs nothing. Nothing to install, and it adds no network calls of its own.
 
 ## Worked example
 
