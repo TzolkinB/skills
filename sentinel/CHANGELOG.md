@@ -19,6 +19,15 @@ release heading.
 
 ### Added
 
+- **Positioning note: "Why not *just* TEA?"** ([`docs/comparisons/tea.md`](docs/comparisons/tea.md),
+  issue #96 Part B). Reviewer-facing / README-adjacent writeup answering why Sentinel/Witness earns its
+  keep alongside [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) (the
+  free BMAD Test Architect method, which overlaps most map stages). Held to the repo's evidence bar —
+  every "TEA can't" is a *verified absence* (TEA docs, 2026-07-17): leads with the two uncontested gaps
+  (**mutation proof** via `audit-test`, **calibrated risk-weighted confidence** via Witness), concedes
+  the soft overlaps (`coverage-review`, static quality vs `test-review`/Exspec), and carries the
+  load-bearing caveat that the Witness half is **design-not-proven**. First of the `comparisons/` notes.
+
 - **`contract-guard`** skill (consumer-side contract check, issue #48 / spec #71): gives the *stranded*
   enterprise frontend team the coverage Pact structurally can't (Pact needs provider participation). Tiered,
   cheapest-first — **Tier 0** detect existing response validation (schema present → drift self-revealing,
