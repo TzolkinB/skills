@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 // Witness — the deterministic core of the Gate skill (Sentinel stage 7).
 //
-// Ingests the evidence a PR already produced (a Playwright JSON report + an
-// audit-test verdict — either a PARSED emission or an opaque Markdown report),
-// binds it into one readable evidence bundle (in-toto Statements over one subject —
-// the PR head commit), and derives a categorical, advisory release decision —
-// `ship | canary | hold` — by worst-wins (ordinal min under hold < canary < ship).
+// Ingests the evidence a PR already produced (E2E execution evidence — a Playwright
+// JSON report and/or a Cypress Module API result — plus an audit-test verdict, either a
+// PARSED emission or an opaque Markdown report), binds it into one readable evidence
+// bundle (in-toto Statements over one subject — the PR head commit), and derives a
+// categorical, advisory release decision — `ship | canary | hold` — by worst-wins
+// (ordinal min under hold < canary < ship).
 // It appends its reasoning back into the bundle as a `witness.local/gate/v0` entry
 // that shows its work, carries NO number anywhere, and NEVER fails the build
 // (advisory / report-first).
@@ -21,9 +22,9 @@
 // #103; parsed audit-test = #49 (ADR-0029). Zero external deps by design.
 //
 // Usage:
-//   node witness.mjs --playwright=<results.json> \
+//   node witness.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
 //                    [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
-//                    [--commit=<sha>] [--out=<bundle.json>]
+//                    [--commit=<sha>] [--out=<bundle.json>]   # ≥1 execution report; both allowed
 //   node witness.mjs --self-test        # golden truth-table gate (deterministic)
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -38,6 +39,10 @@ const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://witness.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://witness.local/gate/v0';
 const RANK = { hold: 0, canary: 1, ship: 2 }; // worst-wins ordinal: hold < canary < ship
+// E2E frameworks that produce execution evidence on the same axis (result → proposal).
+// Both feed the gate identically; worst-wins across all present (a green Playwright can't
+// paper over a red Cypress). audit-test is the separate CREDIBILITY axis, not here.
+const EXECUTION_STAGES = new Set(['playwright', 'cypress']);
 
 // ---- ingest: Playwright (mechanical fact-restatement, contract v0) ----------
 
@@ -59,6 +64,60 @@ export function playwrightEntry(report, { uri = 'test-results/results.json' } = 
     producer: { id: 'witness://playwright@1.x', startedOn: stats.startTime },
     verdict: { result: deriveResult(stats), metrics }, // raw counts only; NO confidence (Q6)
     byproducts: [{ name: 'playwright-json', uri, mediaType: 'application/json' }],
+    annotations: {},
+  });
+}
+
+// ---- ingest: Cypress (Module API CypressRunResult — mechanical fact-restatement) --
+//
+// Cypress's official aggregate result — what `cypress.run()` resolves to — is the analog
+// of Playwright's JSON report, but with ONE load-bearing asymmetry: it has NO `flaky`
+// count. A flaky test (failed an attempt, then passed on retry) ends up in `totalPassed`,
+// its earlier failure preserved only in that test's `attempts[]`. So flake must be
+// DERIVED by scanning per-test attempts — the exact check Cypress's own retries docs show
+// (`_.some(test.attempts, {state:'failed'})`) — not read from a stats field. Verified
+// against the Module API + test-retries docs (docs.cypress.io, 2026-07-17). Everything
+// else parallels Playwright: hard failure dominates, a survived flake is surfaced not buried.
+
+// A test is flaky iff it did NOT end failed but has ≥1 failed attempt (retried→passed).
+// Scans runs[].tests[].attempts[] because there is no aggregate flaky count to read.
+export function countCypressFlaky(result = {}) {
+  let flaky = 0;
+  for (const run of result.runs ?? []) {
+    for (const t of run.tests ?? []) {
+      if (t?.state !== 'failed' && (t?.attempts ?? []).some((a) => a?.state === 'failed')) flaky += 1;
+    }
+  }
+  return flaky;
+}
+
+// totalFailed>0 → FAILED; else any DERIVED flaky → WARNED; else PASSED. Same ordering as
+// deriveResult (Playwright): a hard failure dominates a flake; a survived flake is a WARN,
+// never folded into the greens.
+export function deriveCypressResult(result = {}) {
+  if (Number(result.totalFailed ?? 0) > 0) return 'FAILED';
+  if (countCypressFlaky(result) > 0) return 'WARNED';
+  return 'PASSED';
+}
+
+export function cypressEntry(result, { uri = 'cypress-results.json' } = {}) {
+  const metrics = [
+    ['totalTests', result.totalTests],
+    ['totalPassed', result.totalPassed],
+    ['totalFailed', result.totalFailed],
+    ['totalPending', result.totalPending],
+    ['totalSkipped', result.totalSkipped],
+  ]
+    .filter(([, v]) => v !== undefined)
+    .map(([name, v]) => ({ name, value: Number(v) }));
+  // `flaky` is DERIVED (Cypress emits no such count) — labelled so the bundle doesn't
+  // imply the source reported it. Raw/derived counts only; NO confidence (Q6).
+  metrics.push({ name: 'flakyDerived', value: countCypressFlaky(result) });
+  return statement(EVIDENCE_PREDICATE, {
+    stage: 'cypress',
+    producer: { id: 'witness://cypress@1.x', startedOn: result.startedTestsAt },
+    verdict: { result: deriveCypressResult(result), metrics },
+    byproducts: [{ name: 'cypress-json', uri, mediaType: 'application/json' }],
     annotations: {},
   });
 }
@@ -158,28 +217,33 @@ export function assembleBundle({ commit, entries, producedOn }) {
 export function gate(bundle) {
   const entries = bundle.entries ?? [];
   const stageOf = (e) => e.predicate?.stage;
-  const known = new Set(['playwright', 'audit-test', 'gate']);
-  const pw = entries.find((e) => stageOf(e) === 'playwright');
+  const known = new Set([...EXECUTION_STAGES, 'audit-test', 'gate']);
+  const execEntries = entries.filter((e) => EXECUTION_STAGES.has(stageOf(e)));
   const audit = entries.find((e) => stageOf(e) === 'audit-test');
 
   const inputs = [];
   const rationale = [];
 
-  // Playwright axis
-  if (!pw) {
-    inputs.push({ stage: 'playwright', proposed: 'hold' });
-    rationale.push('no playwright entry → hold (no execution evidence)');
+  // Execution axis — every E2E result present (Playwright and/or Cypress) proposes on the
+  // same scale: FAILED → hold, WARNED (flaky) → canary, PASSED → ship-baseline. Worst-wins
+  // across them, so ship requires EVERY execution suite green; one red suite dominates.
+  if (execEntries.length === 0) {
+    inputs.push({ stage: 'execution', proposed: 'hold' });
+    rationale.push('no execution evidence (no Playwright or Cypress report) → hold');
   } else {
-    const result = pw.predicate?.verdict?.result ?? 'FAILED';
-    const proposed = result === 'FAILED' ? 'hold' : result === 'WARNED' ? 'canary' : 'ship';
-    inputs.push({ stage: 'playwright', result, proposed });
-    rationale.push(
-      result === 'FAILED'
-        ? 'playwright FAILED → hold (execution failed — dominates)'
-        : result === 'WARNED'
-          ? 'playwright WARNED (flaky) → canary (a trust defect, not buried under a note)'
-          : 'playwright PASSED → ship-baseline',
-    );
+    for (const e of execEntries) {
+      const stage = stageOf(e);
+      const result = e.predicate?.verdict?.result ?? 'FAILED';
+      const proposed = result === 'FAILED' ? 'hold' : result === 'WARNED' ? 'canary' : 'ship';
+      inputs.push({ stage, result, proposed });
+      rationale.push(
+        result === 'FAILED'
+          ? `${stage} FAILED → hold (execution failed — dominates)`
+          : result === 'WARNED'
+            ? `${stage} WARNED (flaky) → canary (a trust defect, not buried under a note)`
+            : `${stage} PASSED → ship-baseline`,
+      );
+    }
   }
 
   // Credibility axis. A PARSED audit-test verdict (result+label, both categories the
@@ -305,7 +369,9 @@ export function renderReport(bundle, gateEntry) {
   const audit = gateEntry.predicate.inputs.find((i) => i.stage === 'audit-test');
   const auditOpaqueOrAbsent = audit && !('label' in audit);
   if (d === 'ship') {
-    L.push('> `ship` earned: Playwright passed and `audit-test` is execution-proven clean (deep audits ran, no hollow tests).');
+    const execStages = gateEntry.predicate.inputs.filter((i) => EXECUTION_STAGES.has(i.stage)).map((i) => i.stage);
+    const suites = execStages.join(' + ') || 'the E2E suite';
+    L.push(`> \`ship\` earned: ${suites} passed and \`audit-test\` is execution-proven clean (deep audits ran, no hollow tests).`);
   } else if (auditOpaqueOrAbsent) {
     L.push('> `ship` needs a *parsed* proven-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
@@ -323,14 +389,25 @@ function main(argv) {
 
   if (flags.has('--self-test')) process.exit(runSelfTest() ? 0 : 1);
 
-  if (flags.has('--help') || !opts.playwright) {
-    console.log('usage: witness.mjs --playwright=<results.json> [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
+  const hasExec = opts.playwright || opts.cypress;
+  if (flags.has('--help') || !hasExec) {
+    console.log('usage: witness.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>)  # ≥1 required, both allowed');
+    console.log('                   [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
     console.log('       witness.mjs --self-test');
-    process.exit(opts.playwright ? 0 : 2);
+    process.exit(hasExec ? 0 : 2);
   }
 
-  const report = JSON.parse(readFileSync(abs(opts.playwright), 'utf8'));
-  const entries = [playwrightEntry(report, { uri: opts.playwright })];
+  // Execution evidence: Playwright JSON report and/or Cypress Module API result. At least
+  // one is required; both may be present (worst-wins across them in the gate).
+  const entries = [];
+  if (opts.playwright) {
+    const report = JSON.parse(readFileSync(abs(opts.playwright), 'utf8'));
+    entries.push(playwrightEntry(report, { uri: opts.playwright }));
+  }
+  if (opts.cypress) {
+    const cyResult = JSON.parse(readFileSync(abs(opts.cypress), 'utf8'));
+    entries.push(cypressEntry(cyResult, { uri: opts.cypress }));
+  }
 
   // Credibility evidence: prefer a PARSED audit-test emission (can unlock `ship`);
   // fall back to the OPAQUE Markdown report (floors at canary). A malformed emission
@@ -437,6 +514,59 @@ function runSelfTest() {
     decide('PASSED', true), decide('PASSED', false), // opaque + absent never ship
   ];
   check('ship reachable ONLY via playwright PASSED + parsed proven-clean', decideP('PASSED', T.provenClean) === 'ship' && !shipElsewhere.includes('ship'));
+
+  // ---- Cypress ingest — same execution axis as Playwright, but flake is DERIVED --------
+  const CY = {
+    passed: { totalTests: 12, totalPassed: 12, totalFailed: 0, totalPending: 0, totalSkipped: 0,
+      runs: [{ tests: [{ state: 'passed', attempts: [{ state: 'passed' }] }] }] },
+    failed: { totalTests: 12, totalPassed: 10, totalFailed: 2, totalPending: 0, totalSkipped: 0,
+      runs: [{ tests: [{ state: 'failed', attempts: [{ state: 'failed' }, { state: 'failed' }] }] }] },
+    flaky: { totalTests: 12, totalPassed: 12, totalFailed: 0, totalPending: 0, totalSkipped: 0,
+      runs: [{ tests: [{ state: 'passed', attempts: [{ state: 'failed' }, { state: 'passed' }] }] }] },
+    // ended failed AND had failed attempts → a FAILURE, never a flake (guards the derive rule)
+    hardFailRetried: { totalTests: 1, totalPassed: 0, totalFailed: 1,
+      runs: [{ tests: [{ state: 'failed', attempts: [{ state: 'failed' }, { state: 'failed' }] }] }] },
+  };
+  check('deriveCypressResult: totalFailed>0 → FAILED', deriveCypressResult(CY.failed) === 'FAILED');
+  check('deriveCypressResult: derived flaky → WARNED', deriveCypressResult(CY.flaky) === 'WARNED');
+  check('deriveCypressResult: clean → PASSED', deriveCypressResult(CY.passed) === 'PASSED');
+  check('countCypressFlaky: retried-then-passed counts as flaky', countCypressFlaky(CY.flaky) === 1);
+  check('countCypressFlaky: clean pass is not flaky', countCypressFlaky(CY.passed) === 0);
+  check('countCypressFlaky: a test that ENDED failed is a failure, not a flake', countCypressFlaky(CY.hardFailRetried) === 0);
+  check('cypressEntry: derived verdict lands on the entry', cypressEntry(CY.flaky).predicate.verdict.result === 'WARNED');
+  check('cypressEntry: flaky metric is labelled DERIVED (Cypress emits no such count)',
+    cypressEntry(CY.flaky).predicate.verdict.metrics.some((m) => m.name === 'flakyDerived' && m.value === 1));
+
+  const bundleWith = (entries) => assembleBundle({ commit: 'deadbeef', entries });
+  const mkCy = (kind) => cypressEntry(CY[kind]);
+  const decideCy = (kind, tally) => gate(bundleWith([mkCy(kind), auditTestParsedEntry(tally)])).decision;
+
+  // Cypress alone on the execution axis behaves exactly like Playwright
+  check('cypress PASSED + parsed proven-clean → ship', decideCy('passed', T.provenClean) === 'ship');
+  check('cypress WARNED(flaky) + parsed proven-clean → canary', decideCy('flaky', T.provenClean) === 'canary');
+  check('cypress FAILED + parsed proven-clean → hold', decideCy('failed', T.provenClean) === 'hold');
+  check('cypress PASSED + opaque audit → canary', gate(bundleWith([mkCy('passed'), auditTestEntry('# opaque')])).decision === 'canary');
+  check('cypress-only, no audit → canary (credibility floor still applies)', gate(bundleWith([mkCy('passed')])).decision === 'canary');
+
+  // Both frameworks present — worst-wins across execution suites (a green PW can't hide a red CY)
+  check('playwright PASSED + cypress FAILED → hold (worst-wins across suites)', gate(bundleWith([mkPw('PASSED'), mkCy('failed'), auditTestParsedEntry(T.provenClean)])).decision === 'hold');
+  check('playwright PASSED + cypress WARNED → canary', gate(bundleWith([mkPw('PASSED'), mkCy('flaky'), auditTestParsedEntry(T.provenClean)])).decision === 'canary');
+  check('playwright PASSED + cypress PASSED + parsed proven → ship (both suites green)', gate(bundleWith([mkPw('PASSED'), mkCy('passed'), auditTestParsedEntry(T.provenClean)])).decision === 'ship');
+  check('ship unreachable while ANY execution suite is not green', gate(bundleWith([mkPw('PASSED'), mkCy('failed'), auditTestParsedEntry(T.provenClean)])).decision !== 'ship');
+
+  // end-to-end from Cypress fixture files → bundle → gate → full-bundle validation
+  const cyPassed = JSON.parse(readFileSync(resolve(HERE, 'fixtures/cypress.passed.json'), 'utf8'));
+  const cyFlaky = JSON.parse(readFileSync(resolve(HERE, 'fixtures/cypress.flaky.json'), 'utf8'));
+  const cyFailed = JSON.parse(readFileSync(resolve(HERE, 'fixtures/cypress.failed.json'), 'utf8'));
+  check('fixture: cypress.passed.json → PASSED', deriveCypressResult(cyPassed) === 'PASSED');
+  check('fixture: cypress.flaky.json → WARNED (a real failed attempt, derived)', deriveCypressResult(cyFlaky) === 'WARNED' && countCypressFlaky(cyFlaky) === 1);
+  check('fixture: cypress.failed.json → FAILED', deriveCypressResult(cyFailed) === 'FAILED');
+  const cyShip = bundleWith([cypressEntry(cyPassed), auditTestParsedEntry(T.provenClean)]);
+  const gCyShip = gate(cyShip);
+  cyShip.entries.push(gCyShip.gateEntry);
+  check('fixture e2e: cypress PASSED + parsed proven-clean → ship', gCyShip.decision === 'ship');
+  check('fixture e2e: cypress ship bundle validates', validateBundle(cyShip).length === 0);
+  check('fixture e2e: cypress ship report names the suite', /cypress/i.test(renderReport(cyShip, gCyShip.gateEntry)));
 
   // emission robustness — a model produced it, so never trust it blind
   check('parseAuditEmission: rejects non-JSON', parseAuditEmission('not json {') === null);

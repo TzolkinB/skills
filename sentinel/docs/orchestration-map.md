@@ -186,7 +186,10 @@ So Witness plays two roles:
 - The **calibration loop** (log human overrides, track judge-agreement, revise) is the thing that
   earns Witness the right to own the verdict. It's the rigor no other QA-AI tool has. Without it,
   the 0–100 score is the false-precision the repo's own honesty rules exist to fight.
-- Witness currently **can't ingest Cypress at all** — Playwright JSON only.
+- Witness now ingests **both** Playwright (JSON report) and **Cypress** (Module API `CypressRunResult`)
+  on one worst-wins execution axis (ADR-0030) — Cypress's flaky signal is *derived* from per-test
+  `attempts[]` (it emits no flaky count), labelled `flakyDerived`. Unit/component ingest is still a later
+  increment.
 
 **Net:** Witness's defensible home in this repo is *the evidence-aggregation + gate substrate the
 orchestration map converges on*, backed by the calibration loop — **not** a standalone smarter-flake
