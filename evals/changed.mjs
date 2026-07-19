@@ -87,17 +87,17 @@ export function classifyChanges(files, skillsWithCase) {
   // Core = files whose change can shift EVAL OUTCOMES for every skill: the
   // runner and the graders. Not changed.mjs (it only selects which evals run)
   // and not lint.mjs (it changes lint output, which scoped lint already covers).
-  const CORE = /^sentinel\/evals\/run-eval\.mjs$|^sentinel\/evals\/lib\//;
+  const CORE = /^evals\/run-eval\.mjs$|^evals\/lib\//;
 
   for (const f of files) {
     let m;
-    if ((m = f.match(/^sentinel\/skills\/([^/]+)\/SKILL\.md$/))) {
+    if ((m = f.match(/^skills\/([^/]+)\/SKILL\.md$/))) {
       changedSkillMd.push(f);
       if (skillsWithCase.has(m[1])) affected.add(m[1]);
       else coverageGaps.add(m[1]);
-    } else if ((m = f.match(/^sentinel\/evals\/cases\/([^/]+)\.json$/))) {
+    } else if ((m = f.match(/^evals\/cases\/([^/]+)\.json$/))) {
       if (skillsWithCase.has(m[1])) affected.add(m[1]);
-    } else if ((m = f.match(/^sentinel\/evals\/samples\/([^/.]+)\./))) {
+    } else if ((m = f.match(/^evals\/samples\/([^/.]+)\./))) {
       // <skill>.<variant>.<pass|fail>.md — skip the samples/lint/ subtree.
       if (!f.startsWith('evals/samples/lint/') && skillsWithCase.has(m[1])) affected.add(m[1]);
     } else if (CORE.test(f)) {
