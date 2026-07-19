@@ -1,15 +1,17 @@
 {
-  "name": "skills",
-  "description": "A bundled marketplace of QA-focused Claude Code plugins by TzolkinB, starting with Sentinel.",
+  "name": "kimbell",
+  "description": "Kim Bell's QA-AI skills, as an installable Claude Code plugin",
   "owner": {
     "name": "TzolkinB",
     "url": "https://github.com/TzolkinB"
   },
   "plugins": [
     {
-      "name": "sentinel",
-      "source": "./sentinel",
-      "description": "QA-first testing skills for Claude Code. Verify behavior, not green lights."
+      "name": "kimbell-skills",
+      "source": "./",
+      "description": "QA-first testing skills for Claude Code. Verify behavior, not green lights.",
+      "category": "testing",
+      "keywords": ["testing", "qa", "sdet", "test-coverage", "code-review"]
     }
   ]
 }
