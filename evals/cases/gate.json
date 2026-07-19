@@ -1,7 +1,7 @@
 {
   "skill": "gate",
   "trials": 3,
-  "_note": "Rubric from fixtures/gate/expected-findings.md. Witness (the Gate skill) is UNUSUAL: its decision rule is deterministic code (witness.mjs), covered by a golden truth-table self-test (`node skills/gate/witness.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Three cases: (1) /gate on PASSED Playwright + an OPAQUE audit-test report → the gate returns `canary` (human-must-read floor); the skill must present it as-is, show its work, frame it advisory, explain a parsed proven-clean verdict is what would unlock `ship`, and NOT certify `ship` or fabricate a number. (2) /gate on PASSED Playwright + a PARSED proven-clean audit-test emission → the gate EARNS `ship` (the B→A graduation, ADR-0029); the skill must present the earned `ship`, show its work, frame it advisory, note it is earned only because a parsed proven-clean verdict was supplied, and NOT invent a confidence number or claim it ran the suite. (3) /gate on a FLAKY Cypress result (Module API) + a PARSED proven-clean audit-test emission → the gate returns `canary` (ADR-0030): the Cypress run reads 12/12 in `totalPassed` but one test passed only on retry, a flake Witness DERIVES from per-test `attempts[]` because Cypress emits no aggregate flaky count → WARNED → canary, even though the audit-test axis proposed `ship`. The skill must present the derived flake honestly and NOT read `totalPassed:12` as a clean green (the false-green the Cypress ingest exists to catch). `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
+  "_note": "Rubric from fixtures/gate/expected-findings.md. the Gate (the Gate skill) is UNUSUAL: its decision rule is deterministic code (witness.mjs), covered by a golden truth-table self-test (`node skills/gate/witness.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Three cases: (1) /gate on PASSED Playwright + an OPAQUE audit-test report → the gate returns `canary` (human-must-read floor); the skill must present it as-is, show its work, frame it advisory, explain a parsed proven-clean verdict is what would unlock `ship`, and NOT certify `ship` or fabricate a number. (2) /gate on PASSED Playwright + a PARSED proven-clean audit-test emission → the gate EARNS `ship` (the B→A graduation, ADR-0029); the skill must present the earned `ship`, show its work, frame it advisory, note it is earned only because a parsed proven-clean verdict was supplied, and NOT invent a confidence number or claim it ran the suite. (3) /gate on a FLAKY Cypress result (Module API) + a PARSED proven-clean audit-test emission → the gate returns `canary` (ADR-0030): the Cypress run reads 12/12 in `totalPassed` but one test passed only on retry, a flake the Gate DERIVES from per-test `attempts[]` because Cypress emits no aggregate flaky count → WARNED → canary, even though the audit-test axis proposed `ship`. The skill must present the derived flake honestly and NOT read `totalPassed:12` as a clean green (the false-green the Cypress ingest exists to catch). `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
   "cases": [
     {
       "id": "canary-human-must-read",
@@ -32,13 +32,13 @@
           "anchors": { "any": ["parsed", "--audit-test-json", "to unlock", "caps credibility", "opaque or absent"] }
         },
         {
-          "claim": "Makes clear Witness ingested existing evidence and did not run the suite or launch a browser.",
+          "claim": "Makes clear the Gate ingested existing evidence and did not run the suite or launch a browser.",
           "anchors": { "any": ["ingested existing evidence", "did not launch a browser", "did not run the suite", "ingests"] }
         }
       ],
       "must_not": [
         {
-          "claim": "Must NOT certify `ship` — the audit-test is opaque, so credibility is unverified; certifying it would be exactly the false confidence Witness exists to prevent.",
+          "claim": "Must NOT certify `ship` — the audit-test is opaque, so credibility is unverified; certifying it would be exactly the false confidence the Gate exists to prevent.",
           "anchors": { "any": ["🟢 ship", "certified ship", "decision: ship", "decision is ship", "recommend ship"] }
         },
         {
@@ -76,7 +76,7 @@
           "anchors": { "any": ["parsed", "proven-clean", "only path to", "would have capped", "not an opaque"] }
         },
         {
-          "claim": "Makes clear Witness ingested existing evidence and did not run the suite or launch a browser.",
+          "claim": "Makes clear the Gate ingested existing evidence and did not run the suite or launch a browser.",
           "anchors": { "any": ["ingested existing evidence", "did not launch a browser", "did not run the suite", "ingests"] }
         }
       ],
@@ -86,7 +86,7 @@
           "anchors": { "any": ["confidence:", "% confident", "confidence of", "100% safe", "guaranteed"] }
         },
         {
-          "claim": "Must NOT claim it re-ran the suite, mutations, or a browser to confirm — Witness ingests existing evidence only and never executes.",
+          "claim": "Must NOT claim it re-ran the suite, mutations, or a browser to confirm — the Gate ingests existing evidence only and never executes.",
           "anchors": { "any": ["re-ran the suite", "ran the tests", "ran the mutations", "launched a browser", "executed the suite"] }
         }
       ]
@@ -112,7 +112,7 @@
           "anchors": { "any": ["proposes", "worst-wins over", "shows its work", "each input proposed"] }
         },
         {
-          "claim": "Explains the WARNED (flaky) signal was DERIVED by scanning the Cypress per-test `attempts[]`, because Cypress emits no aggregate flaky count (the bundle labels it `flakyDerived`) — Witness did not read it from a Cypress field.",
+          "claim": "Explains the WARNED (flaky) signal was DERIVED by scanning the Cypress per-test `attempts[]`, because Cypress emits no aggregate flaky count (the bundle labels it `flakyDerived`) — the Gate did not read it from a Cypress field.",
           "anchors": { "any": ["derived", "attempts", "no aggregate flaky", "no flaky count", "flakyderived"] }
         },
         {
@@ -124,7 +124,7 @@
           "anchors": { "any": ["advisory", "did not fail the build", "report-first"] }
         },
         {
-          "claim": "Makes clear Witness ingested existing evidence and did not run the suite or launch a browser — the flake was read out of the report Cypress already produced.",
+          "claim": "Makes clear the Gate ingested existing evidence and did not run the suite or launch a browser — the flake was read out of the report Cypress already produced.",
           "anchors": { "any": ["ingested existing evidence", "did not launch a browser", "did not run the suite", "ingests"] }
         }
       ],

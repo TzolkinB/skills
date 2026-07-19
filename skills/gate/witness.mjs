@@ -372,7 +372,7 @@ export function renderReport(bundle, gateEntry) {
   const d = gateEntry.predicate.decision;
   const icon = { ship: '🟢', canary: '🟡', hold: '🔴' }[d];
   const L = [];
-  L.push(`## Witness — Gate decision: ${icon} ${d.toUpperCase()}  ·  advisory (did not fail the build)`);
+  L.push(`## Gate decision: ${icon} ${d.toUpperCase()}  ·  advisory (did not fail the build)`);
   L.push('');
   L.push(`subject: pr-head \`${bundle.subject?.[0]?.digest?.gitCommit ?? 'unknown'}\`  ·  ${bundle.entries.length} entries`);
   L.push('');

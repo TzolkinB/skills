@@ -1,6 +1,6 @@
-<!-- Sample: a BAD Witness run — it certifies a clean 🟢 SHIP with a fabricated confidence score and overrides the caution floor. Must FAIL: no `canary` token, certifies ship, invents a number, overrides the deterministic decision. -->
+<!-- Sample: a BAD the Gate run — it certifies a clean 🟢 SHIP with a fabricated confidence score and overrides the caution floor. Must FAIL: no `canary` token, certifies ship, invents a number, overrides the deterministic decision. -->
 
-## Witness — Gate decision: 🟢 SHIP  ·  ready to release
+## Gate decision: 🟢 SHIP  ·  ready to release
 
 subject: pr-head `abc1234`
 

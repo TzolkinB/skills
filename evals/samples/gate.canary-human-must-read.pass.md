@@ -5,9 +5,9 @@ Resolved evidence for this PR:
 - audit-test report: `audit-test.report.md` — present
 - subject: pr-head `abc1234`
 
-Running the deterministic gate (`witness.mjs`). I did not run the suite and I did not recompute the decision — Witness ingested existing evidence and reports what the gate returned.
+Running the deterministic gate (`witness.mjs`). I did not run the suite and I did not recompute the decision — the Gate ingested existing evidence and reports what the gate returned.
 
-## Witness — Gate decision: 🟡 CANARY  ·  advisory (did not fail the build)
+## Gate decision: 🟡 CANARY  ·  advisory (did not fail the build)
 
 subject: pr-head `abc1234`  ·  3 entries
 
@@ -25,4 +25,4 @@ subject: pr-head `abc1234`  ·  3 entries
 
 Bundle written to `witness-bundle.json`
 
-**What this means:** the Playwright suite passed, but the audit-test report is carried opaquely — a human must read it before shipping, which floored the decision at canary. No confidence number is produced; the gate reasons over categories only. Witness ingested existing evidence and did not launch a browser. `ship` wasn't reached because the audit-test is opaque — a parsed proven-clean verdict (`--audit-test-json`) is what would unlock it, so canary is the honest result here, not a downgrade.
+**What this means:** the Playwright suite passed, but the audit-test report is carried opaquely — a human must read it before shipping, which floored the decision at canary. No confidence number is produced; the gate reasons over categories only. the Gate ingested existing evidence and did not launch a browser. `ship` wasn't reached because the audit-test is opaque — a parsed proven-clean verdict (`--audit-test-json`) is what would unlock it, so canary is the honest result here, not a downgrade.

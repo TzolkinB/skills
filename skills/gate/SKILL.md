@@ -1,22 +1,22 @@
 ---
 name: gate
-description: "Witness — the Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread or unparsed; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, auditable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread or unparsed; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
 ---
 
 **Owns:** the release **Gate** — aggregating a PR's existing test Evidence into one bundle and emitting an
-advisory `ship`/`canary`/`hold` decision. Witness owns the ship verdict; `/sentinel`-the-orchestrator does not
+advisory `ship`/`canary`/`hold` decision. the Gate owns the ship verdict; `/sentinel`-the-orchestrator does not
 speak shippability ([#99](https://github.com/TzolkinB/skills/issues/99)).
-**Not this:** running a suite or a browser → out of scope, Witness **ingests existing evidence only**
+**Not this:** running a suite or a browser → out of scope, the Gate **ingests existing evidence only**
 ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)); proving a green test isn't
-hollow → `/audit-test` (Witness *consumes* its report); which specs a diff hits → `/e2e-impact`; diagnosing a
+hollow → `/audit-test` (the Gate *consumes* its report); which specs a diff hits → `/e2e-impact`; diagnosing a
 red spec → `/debug-test`.
 
-Witness reads what a PR already produced — an E2E result (a Playwright JSON report and/or a Cypress
+the Gate reads what a PR already produced — an E2E result (a Playwright JSON report and/or a Cypress
 `CypressRunResult`), and (if you ran it) an `audit-test` report — binds them into **one readable evidence
-bundle** (in-toto Statements over a single subject, the PR
+bundle** (in-toto-*shaped* Statements — the in-toto JSON layout, not signed attestations — over a single subject, the PR
 head commit), and derives one **categorical, advisory** release decision by taking the **most conservative**
 category any input proposes (worst-wins). The decision rule is **deterministic code** (`witness.mjs`), not a
 judgment call: the same bundle always yields the same decision, because a release gate must be reproducible.
@@ -41,14 +41,14 @@ worst-wins across them, so ship needs *every* suite green):
   ```
   **Why the Module API result and not `cypress run --reporter json`?** Only the Module API result preserves
   per-test `attempts[]` — the *only* place a **flaky** (failed-then-passed-on-retry) test is recorded, because
-  Cypress emits no aggregate `flaky` count. Witness derives the WARNED signal from those attempts; the plain
+  Cypress emits no aggregate `flaky` count. the Gate derives the WARNED signal from those attempts; the plain
   mocha `json` reporter has no attempts and would silently drop the flake (a false green). Verified against the
   Cypress Module API + test-retries docs (2026-07-17).
 
-If there is no E2E result at all, tell the user to run their suite first — Witness ingests a report, it does
+If there is no E2E result at all, tell the user to run their suite first — the Gate ingests a report, it does
 not run the suite. An **empty or zero-test report** (nothing executed to a pass/fail verdict — e.g. a suite
 that never ran, or a wrong `--playwright` path) is treated as **no execution evidence → `hold`**, never as a
-pass: a green-looking `{}` is exactly the false confidence Witness exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
+pass: a green-looking `{}` is exactly the false confidence the Gate exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
   - **Parsed emission** (`--audit-test-json`): a `witness-audit-test/v0` tally written by `/audit-test --emit-json=<path>`.
@@ -86,8 +86,8 @@ Tell the user where the bundle was written. Then interpret it honestly:
   proven-hollow `audit-test` finding is a `canary`, not a `hold` — the code may be fine; it's the *test*
   that needs fixing.)
 - **`canary`** — release cautiously with monitoring / a human gate. Read the rationale for *why* it floored:
-  - `human-must-read`: an **opaque** `audit-test` report is present — a human must read it (Witness carries it
-    but does not machine-read it). Re-gate with a **parsed** emission (`--audit-test-json`) to let Witness read it.
+  - `human-must-read`: an **opaque** `audit-test` report is present — a human must read it (the Gate carries it
+    but does not machine-read it). Re-gate with a **parsed** emission (`--audit-test-json`) to let the Gate read it.
   - `no-credibility-evidence`: no `audit-test` at all — run `/audit-test --changed --emit-json=<path>` and re-gate.
   - proven-hollow / likely-hollow / baseline-lock: `audit-test` found a real credibility defect — fix the flagged
     test(s) (`/audit-test` names them), then re-gate.
@@ -110,7 +110,7 @@ Present the script's report verbatim. A `canary` (opaque audit-test) and the ear
 proven-clean audit-test) look like:
 
 ```
-## Witness — Gate decision: 🟡 CANARY  ·  advisory (did not fail the build)
+## Gate decision: 🟡 CANARY  ·  advisory (did not fail the build)
 
 subject: pr-head `<sha>`  ·  3 entries
 
@@ -129,7 +129,7 @@ Bundle written to witness-bundle.json
 ```
 
 ```
-## Witness — Gate decision: 🟢 SHIP  ·  advisory (did not fail the build)
+## Gate decision: 🟢 SHIP  ·  advisory (did not fail the build)
 
 subject: pr-head `<sha>`  ·  3 entries
 
@@ -150,16 +150,16 @@ Bundle written to witness-bundle.json
 ## Notes
 
 - **Ingests, never executes** ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)).
-  Witness reads a Playwright report and a Markdown file — pure consumption. It never launches a browser or a
+  the Gate reads a Playwright report and a Markdown file — pure consumption. It never launches a browser or a
   suite. Snapshotting a *live* response is an execution-layer artifact, out of scope.
 - **Two E2E frameworks on one execution axis.** Playwright (JSON report) and Cypress (Module API
   `CypressRunResult`) both ingest to the same result → proposal mapping; the gate takes worst-wins across
   every suite present, so a green Playwright can't paper over a red Cypress. **The one asymmetry is honest,
-  not hidden:** Playwright reports `stats.flaky` directly; Cypress has no such count, so Witness *derives*
+  not hidden:** Playwright reports `stats.flaky` directly; Cypress has no such count, so the Gate *derives*
   the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
   labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
 - **`audit-test` rides in two grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
-  batch tally as `witness-audit-test/v0` structured data — the per-class **counts**, not prose. Witness derives
+  batch tally as `witness-audit-test/v0` structured data — the per-class **counts**, not prose. the Gate derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and
   the gate reads only the derived category, never the counts (honesty guard #1). *Opaque* (`--audit-test`): the
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
@@ -171,6 +171,6 @@ Bundle written to witness-bundle.json
 - **Advisory / report-first** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) —
   it recommends, it never blocks a merge in v0.
 - **Housing & extraction:** everything lives under this one directory with a `witness://` namespace, so
-  lifting Witness to a standalone plugin is a folder move ([#99](https://github.com/TzolkinB/skills/issues/99),
+  lifting the Gate to a standalone plugin is a folder move ([#99](https://github.com/TzolkinB/skills/issues/99),
   [#102](https://github.com/TzolkinB/skills/issues/102)).
 - `--explain` is not supported — procedural, not pedagogical.
