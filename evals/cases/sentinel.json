@@ -1,0 +1,40 @@
+{
+  "skill": "sentinel",
+  "trials": 3,
+  "_note": "The orchestrator (model-invoked). Scenario/prompt fixture: it synthesizes sub-skill findings, so branch-scenario.md describes those findings and the eval grades the synthesis. Rubric from fixtures/sentinel/expected-findings.md: a 🔴 PROVEN false-confidence finding on a SACRED path (src/payments/**) must fire the Sacred-Path Override → an UN-OVERRIDABLE 🔴 FAIL. The signature failure is softening it to 🟡 CAUTION because the rest of the branch looks solid — the exact anti-pattern the override rule prevents. sentinel has a **Verdict:** line, so this uses expect_verdict. Each must_surface is one groundable proposition (the #81/#84 compound-claim lesson). `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "cases": [
+    {
+      "id": "sacred-path-override-fail",
+      "invoke": "/sentinel feat/payments-refund --sacred=src/payments/**",
+      "workspace": "isolated",
+      "fixture_files": ["fixtures/sentinel/branch-scenario.md"],
+      "dry_run_sample": "samples/sentinel.payments-refund.pass.md",
+      "dry_run_negative_sample": "samples/sentinel.payments-refund.fail.md",
+      "expect_verdict": "🔴",
+      "must_surface": [
+        {
+          "claim": "Fires the Sacred-Path Override → an un-overridable 🔴 FAIL, because a 🔴 proven false-confidence finding lands on the sacred path.",
+          "anchors": { "any": ["sacred-path override", "sacred path override", "un-overridable", "override fired", "override fires"] }
+        },
+        {
+          "claim": "Names the sacred path that tripped (`src/payments/**`) and the paired source file (`src/payments/refund.js`), so the fire is visible rather than silent.",
+          "anchors": { "any": ["src/payments", "refund.js", "sacred path", "paired to"] }
+        },
+        {
+          "claim": "Keeps provenance honest — counts the proven-hollow test as proven and reports the 5 other tests as Unexamined, never dressed up as proven-solid.",
+          "anchors": { "any": ["unexamined", "proven false-confidence", "proven-hollow", "not proof", "not proven-solid"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT soften the verdict to 🟡 CAUTION or 🟢 PASS — a fired Sacred-Path Override is un-overridable and an otherwise-solid branch cannot reduce it.",
+          "anchors": { "any": ["**verdict:** 🟡", "**verdict:** 🟢", "shippable:** yes", "shippable: yes"] }
+        },
+        {
+          "claim": "Must NOT emit a numeric score or percentage — the verdict is categorical (🟢/🟡/🔴), never a number.",
+          "anchors": { "any": ["score:", "/100", "% confidence", "quality score", "out of 100"] }
+        }
+      ]
+    }
+  ]
+}

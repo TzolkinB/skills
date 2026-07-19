@@ -1,59 +1,345 @@
-# skills
+# Sentinel
 
-A bundled Claude Code plugin marketplace by [TzolkinB](https://github.com/TzolkinB).
+**QA-first testing skills for Claude Code.** Verify behavior, not green lights.
 
-One repo, one marketplace manifest, one or more installable plugins. Add the
-marketplace once, then install any plugin from it by name. Everything here is
-QA-focused: tools that verify behavior instead of trusting a green checkmark.
+> **Reviewing this, or new here?** Start with the flagship — **[`/audit-test`](./docs/audit-test.md)** — the one skill that runs a real mutation to *show* whether a passing test would catch the single most-likely break to the code it covers: execution-grounded evidence, not reasoning. See [`REVIEWERS.md`](./REVIEWERS.md) for a 10-minute try-it path.
 
-## Plugins
+## What Is Sentinel?
 
-### [sentinel](./sentinel/) — QA-first testing skills
+Sentinel is a judgement layer for your tests. It exists for one problem: AI writes tests that make assertions pass without proving anything — tests that stay green even when you break the very behavior they claim to guard. A suite like that isn't protection; it's false confidence, and false confidence is worse than no tests at all.
 
-Verify behavior, not green lights. Sentinel is a **judgement layer, not a test
-runner** — a dozen composable skills that reason about whether your tests actually
-protect you, rather than producing tests or coverage themselves. Where execution
-is needed it composes with the tools that already do it (coverage
-instrumentation, Playwright, mutation testing) instead of reimplementing them.
+Built by a QA professional who got tired of:
+- AI tests that pass but don't catch real bugs
+- Massive code review backlogs with no time to verify quality
+- Bloated file structures with no clear testing strategy
+- Job descriptions requiring "AI proficiency" but not thinking about quality
 
-The skills span the testing loop — planning what to test, reviewing coverage and
-testability, auditing whether passing tests actually protect anything, pruning
-test debt, modeling production risk, and diagnosing failures. `/sentinel` is the
-orchestrator that composes the QA skills over your branch into a single
-🟢 / 🟡 / 🔴 read to act on — a judgment, not a release gate.
+## What You Get
 
-Full skill list, dependencies, and a privacy breakdown of what each skill reads
-and runs: see [`sentinel/README.md`](./sentinel/README.md).
+Thirteen QA-focused skills — twelve you run standalone, plus the `/sentinel` orchestrator that composes the shippability ones into a single verdict (with `/ask-sentinel` as the front-door router — fourteen skill directories in all). **Find your situation in the "When to use it" column**, then open the skill's **doc page** (what it does, when to use / when not, a worked example against the fixtures, anti-patterns) or its agent-facing **`SKILL.md`** (the instructions Claude runs). Four (`/e2e-impact`, `/audit-orchestrator`, `/contract-guard`, and Witness/`gate`) are agent-instructions-only for now — doc pages pending:
 
-## Install
+| Skill | When to use it | Docs | Agent instructions |
+|-------|----------------|------|--------------------|
+| `/test-plan` | Before you write code or tests — define what to test and at which layer (`unit`/`component`/`integration`/`e2e`) | [docs](./docs/test-plan.md) | [SKILL.md](./skills/test-plan/SKILL.md) |
+| `/qa-review` | During code review — catch untestable code before it ships | [docs](./docs/qa-review.md) | [SKILL.md](./skills/qa-review/SKILL.md) |
+| `/coverage-review` | After AI writes tests — find the missing cases and loose assertions | [docs](./docs/coverage-review.md) | [SKILL.md](./skills/coverage-review/SKILL.md) |
+| `/audit-test` | A test passes but you don't trust it — prove it would fail if the code broke | [docs](./docs/audit-test.md) | [SKILL.md](./skills/audit-test/SKILL.md) |
+| `/prune-tests` | The suite feels slow or noisy — cut tests that cost more than they protect | [docs](./docs/prune-tests.md) | [SKILL.md](./skills/prune-tests/SKILL.md) |
+| `/threat-model` | Before shipping something risky — what breaks in production, and would you notice | [docs](./docs/threat-model.md) | [SKILL.md](./skills/threat-model/SKILL.md) |
+| `/debug-test` | A Playwright test is failing — auto-diagnose and route the fix | [docs](./docs/debug-test.md) | [SKILL.md](./skills/debug-test/SKILL.md) |
+| `/bug-report` | Something broke — structure it into a clean handoff for the team | [docs](./docs/bug-report.md) | [SKILL.md](./skills/bug-report/SKILL.md) |
+| `/e2e-impact` | Before running E2E — map a diff to the Playwright/Cypress specs it plausibly hits | — | [SKILL.md](./skills/e2e-impact/SKILL.md) |
+| `/audit-orchestrator` | A suspicious passing test — route it to the tool that can actually prove it (Tautest/StrykerJS or `/audit-test`) | — | [SKILL.md](./skills/audit-orchestrator/SKILL.md) |
+| `/contract-guard` | A frontend suite reddens on backend drift — check the consumer's expectations against the provider's published OpenAPI | — | [SKILL.md](./skills/contract-guard/SKILL.md) |
+| `/sentinel` | Before you merge — one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate) | [docs](./docs/sentinel.md) | [SKILL.md](./skills/sentinel/SKILL.md) |
+| `/gate` (Witness) | At the end of a PR — bind your existing Playwright/Cypress results + an `audit-test` verdict into one advisory ship/canary/hold release gate | — | [SKILL.md](./skills/gate/SKILL.md) |
+| `/ask-sentinel` (router) | Not sure which to reach for — describe the situation, get routed | [docs](./docs/ask-sentinel.md) | [SKILL.md](./skills/ask-sentinel/SKILL.md) |
 
-Add this marketplace, then install the plugin you want:
+### `/test-plan`
+Generates a real test plan from a feature description:
+- Acceptance criteria
+- Happy path + edge cases
+- Error paths and preconditions
+- Recommended layer per case (`unit` / `component` / `integration` / `e2e`)
+
+Written to find bugs, not to make a green light.
+
+### `/coverage-review`
+Reads your test file and code. Flags:
+- What SHOULD be tested but isn't
+- Loose or missing assertions
+- Untested error paths
+- Boundary conditions you forgot
+
+The opposite of "make it pass."
+
+### `/audit-test` — the sharpest skill, and the one to look at first
+Interrogates a *passing* test: would it actually fail if the code it covers broke?
+- Proposes the single most-likely-breaking change, runs that targeted mutation, and checks whether the test stays green — an **execution-grounded counterexample, not reasoning** (one mutation, not a suite-wide score). Labels findings **Proven** vs **Likely**, never an invented score.
+- **Honest in both directions** — the part nothing else does on app-driven tests:
+  - won't fake a 🔴 on a stale/served app where the mutation never reaches the running code *(reachability guard, [ADR-0016](./docs/adr/0016-audit-test-reachability-guard.md))*
+  - flags a 🟢 that looks **pinned to a regression** — the trap a self-healer leaves when it "fixes" a red test by editing the expected value — and raises it for you to confirm *(baseline-lock: a heuristic suspicion raised for human review, not yet a proven catch — [ADR-0017](./docs/adr/0017-audit-test-baseline-lock-suspected.md))*
+- Runs on **dev-served Playwright/Cypress**, not just unit tests — the credibility gap first-party test agents (which optimize toward green) structurally leave open.
+
+Distinct from `coverage-review` (finds *missing* coverage) — this hunts tests that exist but protect nothing.
+
+### `/prune-tests`
+Looks across the whole suite for tests that cost more than they protect:
+- Low-value / redundant tests that duplicate confidence something else already provides
+- Over-mocked tests that verify fakes instead of behavior
+- Out-of-sync (stale) tests whose name or intent no longer matches what they assert
+
+Proposes before it deletes; `--apply` edits or removes flagged tests and reruns the affected ones to confirm. The subtractive counterpart to `coverage-review`.
+
+### `/bug-report`
+Converts a messy failure into a structured bug report:
+- Steps to reproduce
+- Expected vs actual
+- Severity, environment, affected scope
+- Ready to paste into Jira/Linear/GitHub Issues
+
+### `/qa-review`
+Code review from a QA angle:
+- Is this even testable?
+- Hard-coded dependencies?
+- Non-deterministic behavior (Date.now, Math.random)?
+- Will tests be flaky?
+
+Orthogonal to "is the code clean?"
+
+### `/threat-model`
+Independent of testability or coverage — asks what actually breaks in production if this is wrong:
+- What does this change touch (data, external systems, downstream dependents)?
+- Failure mode, blast radius, detectability, reversibility
+- Ranked by impact weighted by how long a failure would go unnoticed — not by how likely you think it is (a silent failure outranks a loud one)
+
+Doesn't run anything, doesn't prescribe a rollback plan it can't verify — flags reversibility as an open question, not an answer. Deliberately separate from `qa-review`; call it whenever you want the "what could go wrong" view without waiting on a full testability pass.
+
+### `/debug-test`
+Automatically diagnose a failing Playwright test — no describing required:
+- Reads the test file and runs it directly
+- Applies fast QA heuristics (setup, assertion, code logic)
+- Routes to the Playwright healer for locator/timing failures
+- Escalates to a full diagnostic loop for logic failures
+
+Scoped to Playwright. For non-Playwright failures, invoke diagnosing-bugs directly.
+
+> **Requires external tools** — Playwright, and Matt Pocock's `diagnosing-bugs` skill for logic-bug diagnosis. See [Dependencies](#dependencies) below.
+
+### `/e2e-impact`
+Maps a working/PR diff to the E2E specs it plausibly hits — because E2E specs drive the app over a browser, they don't import the source they exercise, so the module graph misses them:
+- Traces test-side imports, routes visited, and selectors / test-ids / text driven — each impacted spec with a confidence
+- Anything it can't trace lands in an explicit **run-all / unmapped** bucket, never silently dropped
+
+Selection, not execution. The source→spec map it emits is the same artifact `/debug-test --drift` reads inverted.
+
+### `/audit-orchestrator`
+The Audit-stage router — detects a suspicious *passing* test's stack and hands it to the tool that can actually prove it:
+- Unit JS/TS → **Tautest** (PR diff-mutation) / **StrykerJS** (full campaign) where they fit — orchestrate the best free tools, don't reimplement them
+- App-driven Playwright/Cypress → `/audit-test`, because source-mutating tools hit a reachability wall they can't cross
+
+Every recommendation carries a provenance label; it emits a verdict, never a gate.
+
+### `/contract-guard`
+The consumer-side contract check for the *stranded* frontend team Pact can't serve (Pact needs the provider to run verification; when the backend org won't, the consumer gets no coverage). Tiered, cheapest-first:
+- Detect existing response validation → drift is self-revealing, recommend nothing
+- Untyped frontend → recommend/scaffold client-side response-schema validation (the lighter play)
+- Empty-diff drift → differ the shape the frontend expects against the provider's published **OpenAPI/Swagger**, carrying the deliberate-vs-accidental oracle
+
+Surfaces the mismatch for human disposition — never green-locks the consumer to an unconfirmed change.
+
+### `/sentinel`
+The orchestrator — the only skill that does no original analysis of its own. It composes the shippability skills (`/test-plan`, `/coverage-review`, `/qa-review`, and `/debug-test` on any failing tests) across your branch and reduces their output to one decision:
+- Test plan coverage
+- Layer distribution snapshot (`unit/component/integration/e2e`)
+- Assertion quality audit
+- Testability issues
+- Risk summary
+- Verdict: 🟢 PASS / 🟡 CAUTION / 🔴 FAIL
+
+`/threat-model` and `/bug-report` are deliberately *not* in the `/sentinel` chain — they answer questions (what breaks in production; how to hand off) that are orthogonal to shippability. `/sentinel` is a layer above the atomic skills, not a peer of them.
+
+### `/ask-sentinel` (router)
+Not one of the thirteen — the front door. Describe your situation (*"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"*) and it points you at the one skill that answers your question and shows where it sits in the flow. It routes; it never analyzes, runs, or emits a verdict, and it never joins the `/sentinel` chain. Run `/ask-sentinel` with no argument for the full map.
+
+## Dependencies
+
+Most Sentinel skills are self-contained — they statically read your code and tests and need nothing beyond Claude Code. Two reach for external tools: **`/debug-test` requires them to run at all**, and **`/audit-orchestrator` optionally routes to them** (falling back to a self-contained skill when they're absent). Install these before you rely on them.
+
+| Needed by | Tool | Install | If missing |
+|-----------|------|---------|------------|
+| `/debug-test` (all of it) | **Playwright** | already in your project (`npx playwright test`) | Skill can't run — it is Playwright-scoped |
+| `/debug-test` auto-heal (locator/timing failures) | **Playwright agents** | `npx playwright init-agents` (once per repo) | Falls through to `diagnosing-bugs` instead of self-healing |
+| `/debug-test` logic diagnosis | **Matt Pocock's `diagnosing-bugs` skill** | `npx skills@latest add mattpocock/skills` | Deep bug diagnosis has no terminal route — `/debug-test` stalls after triage |
+| `/audit-orchestrator` unit-test route | **Tautest** (PR diff-mutation) / **StrykerJS** (full campaign) | per each tool's own Vitest/Jest setup | No hard dependency — routes the audit to `/audit-test` instead |
+
+`diagnosing-bugs` is the load-bearing one: when Playwright agents aren't set up, locator failures also route to it, so `/debug-test` leans on it for anything past a clean auto-heal. Installing Matt Pocock's skills alongside Sentinel is recommended — the two are designed to compose: **build with Matt's skills, verify with Sentinel.**
+
+Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/e2e-impact`, `/contract-guard`, `/sentinel`) needs only Claude Code — `/contract-guard` optionally reads a published OpenAPI spec from a URL you supply, but requires no install. `/audit-orchestrator` runs on Claude Code alone too; it only *recommends* the external mutation tools above where they fit.
+
+## Privacy — what each skill reads, runs, and routes externally
+
+Sentinel adds no network calls of its own — no skill sends your code to a third-party service or hits a network API on your behalf. It runs *inside* Claude Code, so your code is processed by Anthropic's API exactly as in any Claude Code session (that transport is the platform, not a Sentinel call); the only Anthropic call in this repo is maintainer tooling — the eval harness ([`evals/lib/judge-llm.mjs`](./evals/lib/judge-llm.mjs)), not a skill you run. The table below spells out exactly what each skill touches so you can run it on private code with confidence.
+
+| Skill | Reads | Runs (executes) | Routes externally |
+|-------|-------|-----------------|-------------------|
+| `/test-plan` | A feature description you provide | Nothing | Nothing |
+| `/coverage-review` | Your test file + code file | Nothing | Nothing |
+| `/audit-test` | The passing test + the code it covers | A single targeted mutation + one test run, on a clean git tree (always revertible) | Nothing |
+| `/prune-tests` | The test suite | Read-only by default; `--apply` edits/removes flagged tests and reruns the affected ones locally | Nothing |
+| `/qa-review` | The code under review | Nothing | Nothing |
+| `/threat-model` | The change / diff | Nothing | Nothing |
+| `/bug-report` | A failure description you provide | Nothing | Nothing |
+| `/e2e-impact` | The diff + your E2E specs and source | `git` locally (read-only) to resolve the diff | Nothing |
+| `/audit-orchestrator` | The test under audit + your test configs | Detection locally (Glob/Read/`git`); hands off to `/audit-test` or points you at Tautest/StrykerJS | **Yes** — routes to `/audit-test` or the external mutation tools, all run locally in your session (see [Dependencies](#dependencies)) |
+| `/contract-guard` | The consumer code + the published contract (a local file, or a URL you point it at) | Reads the spec — a local file, or a read-only `GET` on the URL you supply | Routes to `/bug-report` locally; the only network touch is fetching the published-spec URL you provide — your code is never sent out |
+| `/debug-test` | The failing Playwright test + code | Runs the Playwright test locally | **Yes** — routes to the Playwright healer agent and to Matt Pocock's `diagnosing-bugs` skill (both run locally in your session; see [Dependencies](#dependencies)) |
+| `/sentinel` | Files in the change | Composes the skills above; runs only what they run | Only whatever `/debug-test` routes to, and only when a failing test is present |
+| `/gate` (Witness) | A Playwright/Cypress result file + (optional) an `audit-test` emission/report you pass in | `witness.mjs` locally (Node) + `git rev-parse HEAD` for the subject | Nothing |
+
+`/debug-test` and `/audit-orchestrator` are the skills that hand work to external tooling; `/contract-guard` may fetch a published OpenAPI spec from a URL you supply, but never sends your code anywhere. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay surgical and gated on a clean git tree.
+
+## Installation
+
+Add the marketplace, then install Sentinel by name:
 
 ```
 /plugin marketplace add TzolkinB/skills
-/plugin install sentinel@skills
+/plugin install kimbell-skills@kimbell
 ```
 
-To try it from a local checkout instead:
+To install from a local checkout instead:
 
 ```
 /plugin marketplace add ./
-/plugin install sentinel@skills
+/plugin install kimbell-skills@kimbell
 ```
 
-## Repo layout
+Then in any Claude Code session:
 
 ```
-.
-├── .claude-plugin/marketplace.json   # marketplace manifest (lists the plugins)
-├── sentinel/                         # the Sentinel plugin
-│   ├── .claude-plugin/plugin.json
-│   ├── skills/                       # the skills (see sentinel/README.md)
-│   ├── docs/adr/                     # architecture decision records
-│   └── README.md                     # Sentinel's full overview
-└── README.md                         # you are here
+/test-plan "booking room app"
+/coverage-review app.test.js app.js
+/audit-test app.test.js app.js
+/prune-tests
+/bug-report "date filter doesn't work"
+/qa-review BookingService.js
+/debug-test tests/my.spec.ts
+/sentinel
 ```
 
-## License
+## Philosophy
 
-[MIT](./LICENSE)
+Testing isn't about green lights. It's about confidence. A test suite that passes but doesn't catch real bugs is worse than no tests—it gives you false confidence while your code rots.
+
+Sentinel is built on three premises:
+
+1. **Tests verify behavior.** An assertion should say "if this fails, something is genuinely broken," not "I made the test pass."
+
+2. **Quality is testable.** Code that's hard to test is a signal it has hidden dependencies, non-deterministic behavior, or brittle assumptions. Fix the code, not the test.
+
+3. **Pragmatism over perfection.** You don't need 100% coverage or zero technical debt. You need to ship fast and be able to verify it works. Sentinel helps you do that.
+
+For the reasoning behind specific design choices — why many small skills instead of one, why a 3-state verdict, what the tradeoffs are — see [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
+## New to testing? Start here
+
+Every skill except `/debug-test` supports a `--explain` flag (`/debug-test` is procedural, not pedagogical). Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
+
+Unfamiliar terms in any report (boundary condition, flaky test, loose assertion, etc.) are defined in [`GLOSSARY.md`](./GLOSSARY.md).
+
+If you're a QA professional reviewing this and want to give feedback, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the specific questions worth asking.
+
+## Existing Project Bootstrap (One-Time)
+
+Use this when adding Sentinel to a repo that already has tests.
+
+1. Pick critical-path tests first (auth, payments/PII, state transitions, core journey flows).
+2. Use `/test-plan` for upcoming work and ensure every case gets a layer recommendation (`unit`/`component`/`integration`/`e2e`).
+3. Classify a small set of existing high-value tests to create an initial layer baseline.
+4. Record an initial distribution (for example: `3 unit / 5 component / 7 integration / 4 e2e`).
+5. Keep only thin critical-path browser journeys in `e2e`; if a case still passes with a browser replaced by API/client calls, move it toward `integration`.
+6. From that point forward, treat the `/sentinel` report layer distribution as your per-PR drift signal.
+
+Bootstrap is intentionally lightweight. You do not need to classify the entire legacy suite on day one.
+
+## Roadmap
+
+Not built yet, but planned as this gets used for real:
+- [ ] Starter templates for common frameworks (Jest, pytest, Playwright)
+- [ ] Progressive guide: unit → integration → E2E testing
+- [ ] Decision tree: "which test type for this scenario?"
+- [ ] Real test-runner integration (read actual coverage output, not just static analysis — see ARCHITECTURE.md tradeoffs)
+
+## Examples
+
+### Example 1: New Feature
+
+```
+# You're building a booking system. First:
+/test-plan "Users can book a room from 9am-5pm, no overlaps allowed"
+
+# This gives you: happy path, edge cases (midnight boundary, double-booking), error paths,
+# and recommended test layers per case
+# You and Claude use this plan to write both code and tests
+
+# Later, when tests are done:
+/coverage-review booking.test.js booking.ts
+/sentinel booking-feature-branch
+```
+
+### Example 2: AI Code Review
+
+```
+# AI just wrote 500 lines of test code. Before merging:
+/coverage-review UserService.test.js UserService.ts
+
+# Red flags:
+# - Tests pass but don't assert structure
+# - Database error path not tested
+# - Date boundary not covered
+
+# You tell Claude: "Fix these gaps"
+# Run /sentinel again when it's done
+```
+
+### Example 3: Production Bug
+
+```
+# Production: "Date filter broke"
+/bug-report "Date filter on /books page broken, returns empty results, browser console shows dateRange.start is undefined"
+
+# Output: structured bug report with severity, steps to repro, scope
+
+# Now debug:
+/debug-test "date filter test"
+# ← reads the test file, runs it, identifies root cause automatically
+```
+
+### Example 4: Before / After
+
+**Before:**
+- Claude generates code + tests (tests all pass, but don't verify anything)
+- You review manually, frustrated, can't keep up
+- Something breaks in production
+
+**After:**
+- Claude generates code + tests
+- You run `/sentinel` before merging
+- It flags: "tests pass but don't verify booking collisions"
+- You tell Claude: "fix this gap"
+- `/sentinel` again — all good, ship it
+
+## Contributing
+
+This is a personal framework. If you find it useful, fork it. If you have ideas:
+
+1. Try the skills on your own code
+2. See what works and what doesn't
+3. Document what you learned
+4. Build on it
+
+Testing is collaborative. There's no "one right way"—just ways that work for your team.
+
+## FAQ
+
+**Q: Will this replace my QA team?**
+A: No. Sentinel helps you think like a QA professional and catch obvious gaps. A real QA team catches things AI never will.
+
+**Q: Can I use this if I don't write tests?**
+A: Yes, but the value is lower. Sentinel is most useful when you're actively writing/reviewing tests.
+
+**Q: What if I don't use Claude Code?**
+A: These are just frameworks and checklists. Adapt them to your workflow.
+
+**Q: How do I "ship" the report from `/sentinel`?**
+A: That's up to you. Copy it into your pull request, post it to Slack, use it in code review. It's a tool for thinking, not a gate.
+
+## Support
+
+This is a personal project, built and maintained by one QA engineer. If something doesn't work, or a skill's judgment seems off, please file an issue — real usage against real code is exactly what sharpens these skills.
+
+---
+
+**Made by Kim, a QA professional learning AI.**
+AI can write the tests. Knowing whether they have value is still the job — that's what Sentinel is for.

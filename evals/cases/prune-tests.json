@@ -1,0 +1,39 @@
+{
+  "skill": "prune-tests",
+  "trials": 3,
+  "_note": "Prose-only, token-less — the subtractive economy pass. Rubric from fixtures/prune-tests/expected-findings.md against cart.spec.js: a redundant pair (same behavior contract, same example), one over-mock of an internal collaborator, one stale test (name/comment claim a $X.XX string, assertion checks typeof number), and one genuine keeper (empty-cart boundary). prune-tests PROPOSES a categorized plan (merge/rewrite/rename/keep) and deletes nothing. The hollow sample is the under-reach failure — 'suite is lean, keep all' — which misses the real debt. `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "cases": [
+    {
+      "id": "cart-debt-plan",
+      "invoke": "/prune-tests fixtures/prune-tests/cart.spec.js",
+      "workspace": "isolated",
+      "fixture_files": ["fixtures/prune-tests/cart.spec.js"],
+      "dry_run_sample": "samples/prune-tests.cart.pass.md",
+      "dry_run_negative_sample": "samples/prune-tests.cart.fail.md",
+      "must_surface": [
+        {
+          "claim": "Proposes consolidating the redundant pair `adds two items` + `sums item prices` — identical behavior contract tested through the same example (same expected-use scenario class) → merge.",
+          "anchors": { "any": ["adds two items", "sums item prices", "redundant", "merge", "identical behavior", "duplicate"] }
+        },
+        {
+          "claim": "Flags the over-mocking in `applies tax` — it mocks the internal `tax` collaborator and only asserts `tax.rate()` was called, so it verifies the mock rather than the `withTax` math → rewrite with a real collaborator.",
+          "anchors": { "any": ["applies tax", "over-mock", "mocks the internal", "verifies the mock", "tax.rate", "real collaborator"] }
+        },
+        {
+          "claim": "Flags `returns cents as a formatted string` as out-of-sync / stale — the name and Given/When/Then comment claim a `\"$X.XX\"` string contract, but the assertion only checks `typeof === 'number'`; name/intent no longer match the behavior → rename/rewrite.",
+          "anchors": { "any": ["returns cents", "formatted string", "stale", "out-of-sync", "out of sync", "typeof", "rename"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT claim any test is proven false-confidence — that requires a mutation and is `/audit-test`'s job; a suspected false-confidence test is deferred, not judged here (expected-findings boundary).",
+          "anchors": { "any": ["false confidence", "false-confidence", "proven", "mutation", "pseudo-tested", "never verifies its code"] }
+        },
+        {
+          "claim": "Must NOT propose NEW tests for missing paths — adding coverage is `/coverage-review`'s additive job, not this subtractive one.",
+          "anchors": { "any": ["new test", "add a test", "missing path", "untested path", "add coverage", "add tests for"] }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "skill": "e2e-impact",
+  "trials": 3,
+  "_note": "Rubric from fixtures/e2e-impact/expected-findings.md (Case P — Playwright, epic-stack). Repo = the warm epic-stack sibling (~/projects/epic-stack, NOT vendored — per expected-findings). Simulated change: app/routes/users/index.tsx (the users search route). The impacted spec tests/e2e/search.test.ts never calls goto — it reaches the users route by interaction and asserts page.waitForURL('/users?search=…') (search.test.ts:23) and getByText('Epic Notes Users') (search.test.ts:11), both rendered by the changed file → 🟢 High on two converging signals. The crux heuristic: the route signal must read URL waits/assertions, not just goto/visit, or a module-graph/goto-only pass silently drops the change. `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the epic-stack sibling with app/routes/users/index.tsx edited in the working tree; offline --self-test grades the samples only.",
+  "cases": [
+    {
+      "id": "users-route-waitforurl",
+      "invoke": "/e2e-impact",
+      "workspace": "isolated",
+      "fixture_files": [
+        "~/projects/epic-stack/app/routes/users/index.tsx",
+        "~/projects/epic-stack/tests/e2e/search.test.ts"
+      ],
+      "dry_run_sample": "samples/e2e-impact.users-route.pass.md",
+      "dry_run_negative_sample": "samples/e2e-impact.users-route.fail.md",
+      "expect_tokens": ["search.test.ts"],
+      "must_surface": [
+        {
+          "claim": "Identifies `tests/e2e/search.test.ts` as impacted at 🟢 High confidence because two signals converge on the changed `app/routes/users/index.tsx` — the route it reaches and the `getByText('Epic Notes Users')` text it asserts, both rendered by that file.",
+          "anchors": { "any": ["search.test.ts", "two signals", "epic notes users", "🟢 high", "high confidence"] }
+        },
+        {
+          "claim": "Traces the route signal via a URL wait/assertion, not just goto/visit: the spec reaches the users route by interaction and asserts `page.waitForURL('/users?search=…')` — it never calls goto — so a goto/visit-only grep would miss it.",
+          "anchors": { "any": ["waitforurl", "url assertion", "url wait", "by interaction", "never calling goto", "goto/visit-only", "reaches the route by", "reaches the users route by"] }
+        },
+        {
+          "claim": "Emits the source→spec relevance map (the artifact `/debug-test --drift` reads inverted), mapping the changed route file to `search.test.ts`.",
+          "anchors": { "any": ["source→spec", "source->spec", "relevance map", "read inverted", "for /debug-test --drift"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT run, execute, or diagnose a spec — e2e-impact only selects the set; running/diagnosing is `/debug-test`.",
+          "anchors": { "any": ["ran the spec", "executed the spec", "npx playwright test", "re-ran", "running the suite", "i ran the", "diagnos"] }
+        },
+        {
+          "claim": "Must NOT declare the traceable change unimpacted or silently drop it — anything not traced to a spec goes in the explicit run-all / unmapped bucket, never dropped (the module-graph blind spot this skill exists to fix).",
+          "anchors": { "any": ["no specs impacted", "no e2e specs", "not impacted", "no impacted", "nothing to select", "nothing to run"] }
+        }
+      ]
+    }
+  ]
+}

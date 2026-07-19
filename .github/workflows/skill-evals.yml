@@ -18,8 +18,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'sentinel/skills/**'
-      - 'sentinel/evals/**'
+      - 'skills/**'
+      - 'evals/**'
 
 concurrency:
   group: skill-evals-${{ github.ref }}
@@ -44,8 +44,8 @@ jobs:
       - name: Harness self-tests (gating)
         run: |
           set -euo pipefail
-          node sentinel/evals/lint.mjs --self-test
-          node sentinel/evals/changed.mjs --self-test
+          node evals/lint.mjs --self-test
+          node evals/changed.mjs --self-test
 
       # Witness (the Gate skill) ships a DETERMINISTIC decision function, unlike the
       # prose skills — so it earns a golden truth-table test, not just an LLM-judged
@@ -53,10 +53,10 @@ jobs:
       # table, or a numeric field leaks into the gate predicate (honesty guard #3),
       # the build fails. Deterministic, offline, zero-dep — no judgment involved.
       - name: Witness gate golden self-test (gating)
-        run: node sentinel/skills/gate/witness.mjs --self-test
+        run: node skills/gate/witness.mjs --self-test
 
       # Gate: run only the affected skills' self-tests + scoped lint, write the
       # job summary, then fail the check if any self-test stopped discriminating
       # or lint errored. Trust established via per-case LLM-judge meta-evals.
       - name: Changed-skill evals (gating)
-        run: node sentinel/evals/changed.mjs --base=${{ github.event.pull_request.base.sha }} --gate
+        run: node evals/changed.mjs --base=${{ github.event.pull_request.base.sha }} --gate
