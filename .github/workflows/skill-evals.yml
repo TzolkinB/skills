@@ -47,13 +47,13 @@ jobs:
           node evals/lint.mjs --self-test
           node evals/changed.mjs --self-test
 
-      # Witness (the Gate skill) ships a DETERMINISTIC decision function, unlike the
+      # The Gate skill ships a DETERMINISTIC decision function, unlike the
       # prose skills — so it earns a golden truth-table test, not just an LLM-judged
       # eval. This gates: if the worst-wins gate stops matching contract-v0's truth
       # table, or a numeric field leaks into the gate predicate (honesty guard #3),
       # the build fails. Deterministic, offline, zero-dep — no judgment involved.
-      - name: Witness gate golden self-test (gating)
-        run: node skills/gate/witness.mjs --self-test
+      - name: Gate golden self-test (gating)
+        run: node skills/gate/gate.mjs --self-test
 
       # Gate: run only the affected skills' self-tests + scoped lint, write the
       # job summary, then fail the check if any self-test stopped discriminating

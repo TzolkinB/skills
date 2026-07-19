@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://witness.local/schema/evidence-bundle/v0.1",
-  "title": "Gate evidence bundle (v0.1)",
-  "description": "One readable JSON document binding per-stage in-toto Statement entries to a single digest-addressed subject (the PR head commit). Contract v0.1 — v0 (LOCKED — resolution of TzolkinB/skills#102) plus ONE additive change: an `EMPTY` execution result for a zero-test / unrun report (TzolkinB/skills#111), so a green-looking empty report is treated as no-evidence and can never propose ship. Backward-compatible (no v0 bundle used EMPTY); the schemaVersion increment is the honest signal the enum widened. Rationale: ADR-0031. Execution evidence = Playwright JSON and/or a Cypress Module API result (added additively per contract Q1: `stage` is a free string, so a new framework needs no schema change or version bump); no numeric confidence. audit-test rides either OPAQUE (Markdown inline, caps at canary) or PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+proven unlocks ship). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
+  "$id": "https://gate.local/schema/evidence-bundle/v0.2",
+  "title": "Gate evidence bundle (v0.2)",
+  "description": "One readable JSON document binding per-stage in-toto-shaped Statement entries to a single digest-addressed subject (the PR head commit). Contract v0.2 — v0 (LOCKED — resolution of TzolkinB/skills#102) plus an additive `EMPTY` execution result (TzolkinB/skills#111, v0.1, ADR-0031) plus the internal witness:// -> gate:// identifier rename (TzolkinB/skills#113, v0.2, ADR-0033) — a rename only, no data-model change. Backward-compatible with v0.1 in shape (only identifiers moved); the schemaVersion increment is the honest signal the identifiers changed, so an old producer emitting the old const is correctly rejected rather than silently accepted. Execution evidence = Playwright JSON and/or a Cypress Module API result (added additively per contract Q1: `stage` is a free string, so a new framework needs no schema change or version bump); no numeric confidence. audit-test rides either OPAQUE (Markdown inline, caps at canary) or PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+proven unlocks ship). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
   "type": "object",
   "required": ["schemaVersion", "subject", "producedOn", "entries"],
   "properties": {
-    "schemaVersion": { "const": "witness-evidence-bundle/v0.1" },
+    "schemaVersion": { "const": "gate-evidence-bundle/v0.2" },
     "subject": {
       "description": "One shared subject at the bundle top level (contract Q4). Per-entry subject is reserved for future cross-run aggregation.",
       "type": "array",
@@ -34,7 +34,7 @@
       "type": "object",
       "required": ["id"],
       "properties": {
-        "id": { "type": "string", "pattern": "^witness://" },
+        "id": { "type": "string", "pattern": "^gate://" },
         "invocationId": { "type": "string" },
         "startedOn": { "type": "string" },
         "finishedOn": { "type": "string" }
@@ -46,7 +46,7 @@
       "required": ["_type", "predicateType", "predicate"],
       "properties": {
         "_type": { "const": "https://in-toto.io/Statement/v1" },
-        "predicateType": { "type": "string", "pattern": "^https://witness\\." },
+        "predicateType": { "type": "string", "pattern": "^https://gate\\." },
         "subject": { "type": "array" },
         "predicate": {
           "oneOf": [

@@ -18,7 +18,7 @@ the Gate reads what a PR already produced — an E2E result (a Playwright JSON r
 `CypressRunResult`), and (if you ran it) an `audit-test` report — binds them into **one readable evidence
 bundle** (in-toto-*shaped* Statements — the in-toto JSON layout, not signed attestations — over a single subject, the PR
 head commit), and derives one **categorical, advisory** release decision by taking the **most conservative**
-category any input proposes (worst-wins). The decision rule is **deterministic code** (`witness.mjs`), not a
+category any input proposes (worst-wins). The decision rule is **deterministic code** (`gate.mjs`), not a
 judgment call: the same bundle always yields the same decision, because a release gate must be reproducible.
 
 ## Steps
@@ -51,7 +51,7 @@ that never ran, or a wrong `--playwright` path) is treated as **no execution evi
 pass: a green-looking `{}` is exactly the false confidence the Gate exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
-  - **Parsed emission** (`--audit-test-json`): a `witness-audit-test/v0` tally written by `/audit-test --emit-json=<path>`.
+  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.1` tally written by `/audit-test --emit-json=<path>`.
     This is the **graduated** input — a *parsed* proven-clean verdict is the only thing that can lift the ceiling to `ship`.
   - **Opaque report** (`--audit-test`): a Markdown report from a prior `/audit-test` run. Carried verbatim but not
     machine-read → caps the decision at `canary` (`human-must-read`).
@@ -66,14 +66,14 @@ pass: a green-looking `{}` is exactly the false confidence the Gate exists to re
 Run the bundled script from **this skill's base directory** (shown to you when the skill was invoked):
 
 ```
-node "<skill base dir>/witness.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
+node "<skill base dir>/gate.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
      [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
-     --commit=<sha> --out=witness-bundle.json
+     --commit=<sha> --out=gate-bundle.json
 ```
 (Pass `--playwright`, `--cypress`, or both — at least one is required.)
 
-The script ([`witness.mjs`](./witness.mjs)) ingests, assembles the bundle, runs the worst-wins gate, appends a
-`witness.local/gate/v0` entry, validates against the honesty guard
+The script ([`gate.mjs`](./gate.mjs)) ingests, assembles the bundle, runs the worst-wins gate, appends a
+`gate.local/gate/v0` entry, validates against the honesty guard
 ([`schema/evidence-bundle.v0.schema.json`](./schema/evidence-bundle.v0.schema.json)), and prints the report.
 **Do not recompute or override the decision** — it is the script's deterministic output.
 
@@ -125,7 +125,7 @@ subject: pr-head `<sha>`  ·  3 entries
 
 > `ship` needs a *parsed* proven-clean `audit-test` verdict to unlock … Advisory / report-first.
 
-Bundle written to witness-bundle.json
+Bundle written to gate-bundle.json
 ```
 
 ```
@@ -144,7 +144,7 @@ subject: pr-head `<sha>`  ·  3 entries
 
 > `ship` earned: playwright passed and `audit-test` found no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health). Advisory / report-first.
 
-Bundle written to witness-bundle.json
+Bundle written to gate-bundle.json
 ```
 
 ## Notes
@@ -159,7 +159,7 @@ Bundle written to witness-bundle.json
   the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
   labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
 - **`audit-test` rides in two grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
-  batch tally as `witness-audit-test/v0` structured data — the per-class **counts**, not prose. the Gate derives
+  batch tally as `gate-audit-test/v0.1` structured data — the per-class **counts**, not prose. the Gate derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and
   the gate reads only the derived category, never the counts (honesty guard #1). *Opaque* (`--audit-test`): the
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
@@ -170,7 +170,7 @@ Bundle written to witness-bundle.json
   bump, which is the signal a real calibration loop has landed.
 - **Advisory / report-first** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) —
   it recommends, it never blocks a merge in v0.
-- **Housing & extraction:** everything lives under this one directory with a `witness://` namespace, so
+- **Housing & extraction:** everything lives under this one directory with a `gate://` namespace, so
   lifting the Gate to a standalone plugin is a folder move ([#99](https://github.com/TzolkinB/skills/issues/99),
   [#102](https://github.com/TzolkinB/skills/issues/102)).
 - `--explain` is not supported — procedural, not pedagogical.

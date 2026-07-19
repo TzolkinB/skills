@@ -165,6 +165,15 @@ release heading.
   **warm-dev-server / HMR** caveat (an unconfirmed-live survival is 🟡, not 🔴) instead of leaving it only in
   `reachability-check`; and the README `audit-test` pitch states the **`@cypress/grep`** single-test-isolation
   requirement instead of burying it in `run-one-test`. Docs only.
+- **Internal `witness://` identifiers renamed to `gate://`** ([ADR-0033](docs/adr/0033-witness-internal-identifier-rename.md),
+  completes #113). The prose/brand rename ([#122](https://github.com/TzolkinB/skills/pull/122)) deliberately
+  left the plumbing alone; this finishes it: `witness.mjs` → `gate.mjs`; the `witness://` producer namespace
+  and `witness.local` predicate domain → `gate://` / `gate.local`; the two schema constants bump —
+  `witness-evidence-bundle/v0.1` → **`gate-evidence-bundle/v0.2`**, `witness-audit-test/v0` →
+  **`gate-audit-test/v0.1`** — a rename only, no data-model change, MINOR per the same honesty-guard-#3
+  reasoning as ADR-0031 (v1.0 stays reserved for calibration). Default output filename
+  `witness-bundle.json` → `gate-bundle.json`. Verified: gate self-test 81/81, `lint`/`changed` self-tests,
+  all touched JSON valid, eval samples resynced.
 
 ### Fixed
 
