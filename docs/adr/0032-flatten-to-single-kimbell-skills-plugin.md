@@ -23,11 +23,11 @@ Two naming problems had also accumulated:
 
 - **Keep the nested marketplace (ADR-0006 as-is).** Rejected — one plugin never justified the marketplace nesting or the extra path level, and it diverged from the ecosystem norm.
 - **Keep "Witness", add a not-affiliated caveat (the #113 "keep + caveat" branch).** Rejected in favor of rename — a caveat leaves the search-collision and the "named after the in-toto tool" read intact; renaming removes both.
-- **Rename the internal identifiers too, now.** Deferred — `witness.mjs`, the `witness://` namespace, and the `witness-evidence-bundle` / `witness-audit-test` schema ids are plumbing behind the honesty-guarded self-test and the v0.1 contract ([ADR-0031](0031-witness-evidence-bundle-v0.1-empty-result.md)); renaming them is a contract-touching change better done deliberately, not in the brand pass. They stay for now.
+- **Rename the internal identifiers too, now.** Deferred at the time — `witness.mjs`, the `witness://` namespace, and the `witness-evidence-bundle` / `witness-audit-test` schema ids are plumbing behind the honesty-guarded self-test and the v0.1 contract ([ADR-0031](0031-witness-evidence-bundle-v0.1-empty-result.md)); renaming them is a contract-touching change better done deliberately, not in the brand pass. **Done in [ADR-0033](0033-witness-internal-identifier-rename.md).**
 
 ## Consequences
 
 - **Breaking for the old install path** — `sentinel@skills` no longer resolves; use `kimbell-skills@kimbell`. Acceptable pre-launch (no released consumers).
 - **All in-tree path references rewritten** (`sentinel/skills` → `skills`, CI trigger/run paths, the one `evals` `../../.github` depth ref); `changed.mjs`'s path regexes updated. Verified: gate self-test 81/81, `changed.mjs` + `lint` self-tests, all JSON valid, README links resolve.
-- **Residual brand cleanup remains** (deliberate, tracked): ~35 docs still reference "Sentinel" (mostly the legit `/sentinel` skill, the "Sentinel-map" orchestration artifact, and historical ADR content), and the internal `witness://` namespace / schema ids are unchanged. A full contextual de-brand + an internal-identifier rename are follow-ups.
+- **Residual brand cleanup remains** (deliberate, tracked): ~35 docs still reference "Sentinel" (mostly the legit `/sentinel` skill, the "Sentinel-map" orchestration artifact, and historical ADR content). The internal `witness://` namespace / schema ids were renamed in [ADR-0033](0033-witness-internal-identifier-rename.md); a full contextual "Sentinel" de-brand remains a follow-up.
 - **ADR-0006 is superseded**, not deleted — its reasoning stays as the record of why the marketplace shape existed.

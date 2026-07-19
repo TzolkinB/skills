@@ -85,11 +85,11 @@ For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code co
 
 Single-test mode always shows its verdict, including 🟢. **Batch mode** reports a provenance tally instead — Unexamined tests are never folded into the proven-solid greens; see [reference/batch-mode.md](reference/batch-mode.md) for its format ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
 
-## Structured emission (`--emit-json=<path>`) — for Gate / the Gate
+## Structured emission (`--emit-json=<path>`) — for the Gate skill
 
 When `--emit-json=<path>` is present in $ARGUMENTS, **also** write the run's provenance tally as a small
-`witness-audit-test/v0` JSON file at that path — *in addition to* the human report, which is unchanged. This is
-the **parsed** credibility input the Gate skill (`/gate`, Gate) ingests: a *parsed* proven-clean verdict is
+`gate-audit-test/v0.1` JSON file at that path — *in addition to* the human report, which is unchanged. This is
+the **parsed** credibility input the Gate skill (`/gate`) ingests: a *parsed* proven-clean verdict is
 the only thing that lets Gate lift a release decision to `ship` (the B→A graduation,
 [ADR-0029](../../docs/adr/0029-witness-parsed-audit-test-graduation.md)). Emit **only the counts** — never a
 prose scrape and never a confidence number; Gate derives the category itself
@@ -97,7 +97,7 @@ prose scrape and never a confidence number; Gate derives the category itself
 
 ```json
 {
-  "schema": "witness-audit-test/v0",
+  "schema": "gate-audit-test/v0.1",
   "producer": "audit-test",
   "scope": "--changed",
   "audited": 47,

@@ -7,7 +7,7 @@
 // bundle (in-toto Statements over one subject — the PR head commit), and derives a
 // categorical, advisory release decision — `ship | canary | hold` — by worst-wins
 // (ordinal min under hold < canary < ship).
-// It appends its reasoning back into the bundle as a `witness.local/gate/v0` entry
+// It appends its reasoning back into the bundle as a `gate.local/gate/v0` entry
 // that shows its work, carries NO number anywhere, and NEVER fails the build
 // (advisory / report-first).
 //
@@ -22,10 +22,10 @@
 // #103; parsed audit-test = #49 (ADR-0029). Zero external deps by design.
 //
 // Usage:
-//   node witness.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
+//   node gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
 //                    [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
 //                    [--commit=<sha>] [--out=<bundle.json>]   # ≥1 execution report; both allowed
-//   node witness.mjs --self-test        # golden truth-table gate (deterministic)
+//   node gate.mjs --self-test        # golden truth-table gate (deterministic)
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, isAbsolute } from 'node:path';
@@ -33,11 +33,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-// ---- constants (witness:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'witness-evidence-bundle/v0.1'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` execution result (#111, ADR-0031)
+// ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.2'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033)
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
-const EVIDENCE_PREDICATE = 'https://witness.local/evidence/qa-stage/v0';
-const GATE_PREDICATE = 'https://witness.local/gate/v0';
+const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
+const GATE_PREDICATE = 'https://gate.local/gate/v0';
 const RANK = { hold: 0, canary: 1, ship: 2 }; // worst-wins ordinal: hold < canary < ship
 // E2E frameworks that produce execution evidence on the same axis (result → proposal).
 // Both feed the gate identically; worst-wins across all present (a green Playwright can't
@@ -64,7 +64,7 @@ export function playwrightEntry(report, { uri = 'test-results/results.json' } = 
     .map((n) => ({ name: n, value: Number(stats[n]) }));
   return statement(EVIDENCE_PREDICATE, {
     stage: 'playwright',
-    producer: { id: 'witness://playwright@1.x', startedOn: stats.startTime },
+    producer: { id: 'gate://playwright@1.x', startedOn: stats.startTime },
     verdict: { result: deriveResult(stats), metrics }, // raw counts only; NO confidence (Q6)
     byproducts: [{ name: 'playwright-json', uri, mediaType: 'application/json' }],
     annotations: {},
@@ -121,7 +121,7 @@ export function cypressEntry(result, { uri = 'cypress-results.json' } = {}) {
   metrics.push({ name: 'flakyDerived', value: countCypressFlaky(result) });
   return statement(EVIDENCE_PREDICATE, {
     stage: 'cypress',
-    producer: { id: 'witness://cypress@1.x', startedOn: result.startedTestsAt },
+    producer: { id: 'gate://cypress@1.x', startedOn: result.startedTestsAt },
     verdict: { result: deriveCypressResult(result), metrics },
     byproducts: [{ name: 'cypress-json', uri, mediaType: 'application/json' }],
     annotations: {},
@@ -133,7 +133,7 @@ export function cypressEntry(result, { uri = 'cypress-results.json' } = {}) {
 export function auditTestEntry(markdown) {
   return statement(EVIDENCE_PREDICATE, {
     stage: 'audit-test',
-    producer: { id: 'witness://audit-test@0.x' },
+    producer: { id: 'gate://audit-test@0.x' },
     verdict: {}, // opaque: no result/label/metrics parsed from prose (contract Q7)
     byproducts: [{ name: 'audit-test-report', mediaType: 'text/markdown', text: markdown }],
     annotations: {},
@@ -150,7 +150,7 @@ export function auditTestEntry(markdown) {
 // the label HERE (not trusting a skill-supplied label) is what makes the theater
 // guard structural: a run that deep-audited nothing derives `unexamined` → the gate
 // floors it at canary, so a parsed-but-vacuous audit still cannot reach `ship`.
-const AUDIT_EMISSION_SCHEMA = 'witness-audit-test/v0'; // exact match — the published schema pins `schema` to this const
+const AUDIT_EMISSION_SCHEMA = 'gate-audit-test/v0.1'; // exact match — the published schema pins `schema` to this const
 const AUDIT_COUNTS = ['audited', 'deepAudited', 'provenSolid', 'provenHollow', 'likelyHollow', 'baselineLock', 'unexamined'];
 
 // Any proven-hollow test is a proven credibility FAILURE; a likely-hollow or a
@@ -182,8 +182,8 @@ export function parseAuditEmission(raw) {
     return null;
   }
   if (!obj || typeof obj !== 'object') return null;
-  // Exact schema version, not a prefix (#111): `startsWith('witness-audit-test/')` let a bogus
-  // `witness-audit-test/v999` through; the published schema pins `schema` to a const.
+  // Exact schema version, not a prefix (#111): `startsWith('gate-audit-test/')` let a bogus
+  // `gate-audit-test/v999` through; the published schema pins `schema` to a const.
   if (obj.schema !== AUDIT_EMISSION_SCHEMA) return null;
   const tally = {};
   for (const k of AUDIT_COUNTS) {
@@ -207,7 +207,7 @@ export function auditTestParsedEntry(tally, { markdown } = {}) {
   const byproducts = markdown ? [{ name: 'audit-test-report', mediaType: 'text/markdown', text: markdown }] : [];
   return statement(EVIDENCE_PREDICATE, {
     stage: 'audit-test',
-    producer: { id: 'witness://audit-test@0.x' },
+    producer: { id: 'gate://audit-test@0.x' },
     verdict: { result: deriveAuditResult(tally), label: deriveAuditLabel(tally), metrics },
     byproducts,
     annotations: {},
@@ -319,7 +319,7 @@ export function gate(bundle) {
 
   const gateEntry = statement(GATE_PREDICATE, {
     stage: 'gate',
-    producer: { id: 'witness://gate@0.x' },
+    producer: { id: 'gate://gate@0.x' },
     decision,
     inputs, // shows its work — the worst-wins arithmetic is reconstructable from the bundle
     rationale,
@@ -421,9 +421,9 @@ function main(argv) {
 
   const hasExec = opts.playwright || opts.cypress;
   if (flags.has('--help') || !hasExec) {
-    console.log('usage: witness.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>)  # ≥1 required, both allowed');
+    console.log('usage: gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>)  # ≥1 required, both allowed');
     console.log('                   [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
-    console.log('       witness.mjs --self-test');
+    console.log('       gate.mjs --self-test');
     process.exit(hasExec ? 0 : 2);
   }
 
@@ -445,7 +445,7 @@ function main(argv) {
   const md = opts['audit-test'] ? readFileSync(abs(opts['audit-test']), 'utf8') : undefined;
   const tally = opts['audit-test-json'] ? parseAuditEmission(readFileSync(abs(opts['audit-test-json']), 'utf8')) : null;
   if (opts['audit-test-json'] && !tally)
-    console.error(`⚠ --audit-test-json is not a valid witness-audit-test emission — ignoring it (falling back to ${md ? 'the opaque report' : 'no credibility evidence'}).`);
+    console.error(`⚠ --audit-test-json is not a valid gate-audit-test emission — ignoring it (falling back to ${md ? 'the opaque report' : 'no credibility evidence'}).`);
   if (tally) entries.push(auditTestParsedEntry(tally, { markdown: md }));
   else if (md) entries.push(auditTestEntry(md));
 
@@ -459,7 +459,7 @@ function main(argv) {
     process.exit(1); // a malformed bundle is a real defect, not an advisory decision
   }
 
-  const out = opts.out ?? 'witness-bundle.json';
+  const out = opts.out ?? 'gate-bundle.json';
   writeFileSync(abs(out), JSON.stringify(bundle, null, 2) + '\n');
   console.log(renderReport(bundle, gateEntry));
   console.log(`\nBundle written to ${out}`);
@@ -614,13 +614,13 @@ function runSelfTest() {
   // emission robustness — a model produced it, so never trust it blind
   check('parseAuditEmission: rejects non-JSON', parseAuditEmission('not json {') === null);
   check('parseAuditEmission: rejects missing/foreign schema', parseAuditEmission(JSON.stringify({ provenSolid: 1 })) === null);
-  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', provenSolid: -1 })) === null);
-  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', provenSolid: 1.5 })) === null);
-  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', ...T.provenClean })) !== null);
+  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', provenSolid: -1 })) === null);
+  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', provenSolid: 1.5 })) === null);
+  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', ...T.provenClean })) !== null);
   // #111 — exact schema version (not a prefix) + cross-field consistency
-  check('parseAuditEmission: rejects a bogus version (v999 — exact match, not prefix)', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v999', ...T.provenClean })) === null);
-  check('parseAuditEmission: rejects impossible provenSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', audited: 0, deepAudited: 0, provenSolid: 1, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
-  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'witness-audit-test/v0', audited: 12, deepAudited: 4, provenSolid: 4, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects a bogus version (v999 — exact match, not prefix)', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v999', ...T.provenClean })) === null);
+  check('parseAuditEmission: rejects impossible provenSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', audited: 0, deepAudited: 0, provenSolid: 1, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', audited: 12, deepAudited: 4, provenSolid: 4, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
 
   // honesty guard #3 — clean validates; a smuggled number is rejected. Holds for the
   // PARSED path too: the audit label/result are string categories, so the raw counts
@@ -662,7 +662,7 @@ function runSelfTest() {
   check('ship report carries no manufactured number', !/\bconfidence\b\s*[:=]\s*\d/i.test(shipReport));
 
   const passed = R.every((r) => r.ok);
-  console.log('witness.mjs gate self-test:');
+  console.log('gate.mjs self-test:');
   for (const r of R) console.log(`  ${r.ok ? '✓' : '✗'} ${r.name}`);
   console.log(passed ? '→ OK (gate is deterministic + honest)\n' : '→ BROKEN\n');
   return passed;
