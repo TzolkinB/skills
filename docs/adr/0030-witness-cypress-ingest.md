@@ -1,4 +1,4 @@
-# Witness ingests Cypress — a second E2E framework on the execution axis, flake derived from attempts
+# Gate ingests Cypress — a second E2E framework on the execution axis, flake derived from attempts
 
 **Status: Accepted (2026-07-18).** Continues epic [#49](https://github.com/TzolkinB/skills/issues/49) on top of
 the parsed-audit-test graduation ([ADR-0029](0029-witness-parsed-audit-test-graduation.md), PR #107), which
@@ -15,7 +15,7 @@ own skills already target (`audit-test`, `e2e-impact`, `debug-test` all speak Pl
 it produces the same *kind* of evidence — pass/fail/flaky execution results over a real app.
 
 The one non-obvious problem is **flake representation**, and it drove the whole design. Playwright's JSON
-reporter emits `stats.flaky` directly — a retry-then-pass count Witness reads verbatim (`deriveResult`). Cypress
+reporter emits `stats.flaky` directly — a retry-then-pass count Gate reads verbatim (`deriveResult`). Cypress
 has **no aggregate flaky count anywhere in its machine-readable output.** Verified against primary sources
 (Cypress Module API + test-retries docs, docs.cypress.io, 2026-07-17): a flaky test — one that failed an
 attempt then passed on retry — lands in `totalPassed`, and the earlier failure survives *only* in that test's
@@ -86,8 +86,8 @@ version are unchanged. The version-bump signal stays reserved for `confidence`/c
 
 ## Consequences
 
-- **Witness ingests both core E2E frameworks.** The "Playwright JSON only" caveat is retired from the SKILL,
-  schema description, and (map PR) the Witness section. The gate self-test grows Cypress rows: derivation truth
+- **Gate ingests both core E2E frameworks.** The "Playwright JSON only" caveat is retired from the SKILL,
+  schema description, and (map PR) the Gate section. The gate self-test grows Cypress rows: derivation truth
   table, the attempts-based flake derivation (incl. the ended-failed-is-not-flake guard), Cypress-only
   ship/canary/hold, and both-frameworks worst-wins (green PW + red CY → hold). CI gates on it
   (`witness.mjs --self-test`, 70 checks).

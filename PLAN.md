@@ -42,10 +42,10 @@ Touch points: `skills/audit-test/SKILL.md`, `skills/sentinel/SKILL.md`, `skills/
 Touch points: the three skill files plus `/sentinel`'s orchestration section; fixtures for the
 de-duplicated reporting.
 
-## Phase 3 — Witness seam (execution gate) · future
+## Phase 3 — Gate seam (execution gate) · future
 
 - **WS4.** The hard "no PASS without Proven evidence on changed paths" gate lives in the evidence
-  pipeline (Witness), consuming Sentinel's labeled output. **The PASS bar is set empirically here**,
+  pipeline (Gate), consuming Sentinel's labeled output. **The PASS bar is set empirically here**,
   after a prototype measures mutation cost per changed test — deferred deliberately rather than
   guessed. Sacred/high-risk-only vs all-changed-paths is the open question this phase answers.
 
@@ -54,4 +54,4 @@ de-duplicated reporting.
 Bank the cheap credibility wins (Phase 0), then get the decisions reviewed (this branch) before any
 skill logic changes. Phase 1 is the honesty core and is almost entirely prose — it moves the trust
 needle most for the least risk. Phase 2 is a mechanical de-duplication once Phase 1 fixes what each
-skill *reports*. Phase 3 is a separate product (Witness) and waits on real measurement.
+skill *reports*. Phase 3 is a separate product (Gate) and waits on real measurement.

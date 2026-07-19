@@ -13,4 +13,4 @@
 
 🟡 Inconclusive — the harness is serving a stale build, so a mutation can't be proven caught right now; re-run dev-served for a 🔴/🟢. (audit-test's reachability guard: an honest 🟡, never a false 🔴.)
 
-**Not a gate.** A routed credibility read, not a ship verdict — the ship call is `/sentinel` → Witness.
+**Not a gate.** A routed credibility read, not a ship verdict — the ship call is `/sentinel` → Gate.

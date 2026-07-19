@@ -2,11 +2,11 @@
 
 **TL;DR** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
 what it's genuinely good at: risk planning, static test review, traceability, scaffolding, and a
-governance gate with a compliance audit trail. Reach for Sentinel/Witness for what TEA's own docs show
+governance gate with a compliance audit trail. Reach for Sentinel/Gate for what TEA's own docs show
 it **cannot** do — **prove a passing test isn't hollow** (`audit-test`, by mutation; a shipping skill
 today). The second gap — aggregating that proof plus live execution into a **risk-weighted, calibrated**
-release confidence that **learns from your gate overrides** — is where Witness is *headed*, but read it as
-a **design, not a live feature**: Witness ships today as a categorical advisory ship/canary/hold gate, and
+release confidence that **learns from your gate overrides** — is where Gate is *headed*, but read it as
+a **design, not a live feature**: Gate ships today as a categorical advisory ship/canary/hold gate, and
 the calibrated/learning layer is parked until there's a labelled history to calibrate against (see the
 load-bearing caveat below). TEA plans and governs; it doesn't prove. Those gaps slot *into* TEA's gate
 rather than replacing it.
@@ -54,7 +54,7 @@ mutation proof is a capability TEA's docs simply don't contain.
 > **How to check:** search TEA's workflow docs for mutation / "would this test fail" / kill-score.
 > `test-review` scores *test quality* statically; nothing runs a mutation. (Verified 2026-07-17.)
 
-### 2. A risk-weighted, calibrated release confidence that learns from overrides — Witness
+### 2. A risk-weighted, calibrated release confidence that learns from overrides — Gate
 
 TEA's `trace` gate is **categorical** — PASS / CONCERNS / FAIL / WAIVED. Its P0–P3 risk tiers inform
 planning, but the ranking never becomes a *weight* on the final gate, the gate algorithm isn't
@@ -63,17 +63,17 @@ governance artifact, but it does not track whether that override was later vindi
 its own agreement with human calls, and doesn't learn. Nothing in TEA improves from the last hundred
 gate decisions.
 
-Witness is designed to be that missing layer: aggregate execution + credibility evidence into a
+Gate is designed to be that missing layer: aggregate execution + credibility evidence into a
 **numeric, risk-weighted** release confidence, and **calibrate** it against your gate overrides over
-time. TEA governs each release in isolation; Witness is meant to be the memory across releases.
+time. TEA governs each release in isolation; Gate is meant to be the memory across releases.
 
 > **Honest caveat, load-bearing:** the *audit-test* half of this pitch is credible **today** — it's a
-> shipping skill you can run on your own tests in ten minutes. The *Witness* half is a **design, not a
+> shipping skill you can run on your own tests in ten minutes. The *Gate* half is a **design, not a
 > proven capability.** The calibrated number is only as good as the calibration loop, and that loop
 > has not yet been shown to work on a real corpus (it needs a labeled flake/verdict history first).
-> **Do not read "calibrated release confidence" as a live feature.** Witness ships today as an
+> **Do not read "calibrated release confidence" as a live feature.** Gate ships today as an
 > advisory evidence-bundle → ship/canary/hold gate; the calibration that would earn it the verdict is
-> parked until there's data to calibrate against. This note over-claims nothing on the Witness side —
+> parked until there's data to calibrate against. This note over-claims nothing on the Gate side —
 > and if the reviewer pitch ever does, that's a bug in the pitch.
 
 ## Where the overlap is real (so you don't over-trust this note)
@@ -95,21 +95,21 @@ The two gaps are **additive to TEA, not a replacement for it.** "Integration" he
 it and pass evidence between the tools (the repo's *orchestrate-not-absorb* thesis), not to absorb its
 workflows. Two concrete seams, both feeding TEA's gate rather than competing with it:
 
-- **Risk-weighting seam (TEA → Witness).** TEA emits P0–P3 tiers; Witness could use them as the
+- **Risk-weighting seam (TEA → Gate).** TEA emits P0–P3 tiers; Gate could use them as the
   *weight* on aggregated, credibility-adjusted execution evidence — a P0 requirement whose tests
   `audit-test` flags as hollow contributes ~0 confidence, not a false pass. (Design sketch; see #96.)
-- **Calibration feed (TEA → Witness).** TEA's **WAIVED** decisions are already an audit-trailed
-  human-override record (evidence → decision → reason) — exactly the labeled data Witness's calibration
-  loop needs. TEA is stateless; Witness becomes the memory, fed by TEA's own audit trail.
+- **Calibration feed (TEA → Gate).** TEA's **WAIVED** decisions are already an audit-trailed
+  human-override record (evidence → decision → reason) — exactly the labeled data Gate's calibration
+  loop needs. TEA is stateless; Gate becomes the memory, fed by TEA's own audit trail.
 
-Net: **TEA plans and governs; Sentinel proves; Witness (eventually) weighs and remembers.** You can
+Net: **TEA plans and governs; Sentinel proves; Gate (eventually) weighs and remembers.** You can
 run TEA for its governance gate and slot `audit-test` in as the mutation proof its `test-review`
 structurally lacks — today, without adopting anything else.
 
 ## Caveats worth stating plainly
 
-- **The Witness half is a design, not proven** — restated because it's the easiest thing to over-sell.
-  Credible today: `audit-test`'s mutation proof. Not yet proven: Witness's calibrated number.
+- **The Gate half is a design, not proven** — restated because it's the easiest thing to over-sell.
+  Credible today: `audit-test`'s mutation proof. Not yet proven: Gate's calibrated number.
 - **Integration = orchestration, not code.** TEA is an agent persona, not an API; route to it, pass
   evidence, don't absorb.
 - **Licensing.** TEA is indicated free; confirm its license still permits treating it as an integrable

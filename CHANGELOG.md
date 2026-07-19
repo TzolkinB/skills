@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the Sentinel plugin are documented in this file.
+All notable changes to the kimbell-skills plugin are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -19,14 +19,14 @@ release heading.
 
 ### Added
 
-- **Witness ingests Cypress** — a second E2E framework on the execution axis
+- **Gate ingests Cypress** — a second E2E framework on the execution axis
   ([ADR-0030](docs/adr/0030-witness-cypress-ingest.md), epic #49). `witness.mjs` gains a `--cypress` input
   that reads the **Cypress Module API result** (`CypressRunResult`, what `cypress.run()` resolves to) and maps
   it to the same `PASSED/WARNED/FAILED → ship-baseline/canary/hold` scale as Playwright. The gate generalises
   from a Playwright-only branch to an **execution axis** (`{playwright, cypress}`) taken **worst-wins across
   every suite present** — so `ship` now requires *every* E2E suite green (a green Playwright can't paper over a
   red Cypress). **Honest asymmetry, documented not hidden:** Playwright emits `stats.flaky`; Cypress emits no
-  flaky count, so Witness **derives** the WARNED signal by scanning per-test `attempts[]` for a
+  flaky count, so Gate **derives** the WARNED signal by scanning per-test `attempts[]` for a
   failed-then-passed retry (the pattern Cypress's own docs show) and labels the metric `flakyDerived`. The
   SKILL documents the tiny `cypress.run()` wrapper that produces the result file and **why** it's required over
   `cypress run --reporter json` (the mocha reporter has no `attempts`, so it would silently drop the flake).
@@ -47,13 +47,13 @@ release heading.
   gate), keeping the Cypress reporting path trust-gated like the Playwright cases.
 
 - **Positioning note: "Why not *just* TEA?"** ([`docs/comparisons/tea.md`](docs/comparisons/tea.md),
-  issue #96 Part B). Reviewer-facing / README-adjacent writeup answering why Sentinel/Witness earns its
+  issue #96 Part B). Reviewer-facing / README-adjacent writeup answering why Sentinel/Gate earns its
   keep alongside [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) (the
   free BMAD Test Architect method, which overlaps most map stages). Held to the repo's evidence bar —
   every "TEA can't" is a *verified absence* (TEA docs, 2026-07-17): leads with the two uncontested gaps
-  (**mutation proof** via `audit-test`, **calibrated risk-weighted confidence** via Witness), concedes
+  (**mutation proof** via `audit-test`, **calibrated risk-weighted confidence** via Gate), concedes
   the soft overlaps (`coverage-review`, static quality vs `test-review`/Exspec), and carries the
-  load-bearing caveat that the Witness half is **design-not-proven**. First of the `comparisons/` notes.
+  load-bearing caveat that the Gate half is **design-not-proven**. First of the `comparisons/` notes.
 
 - **`contract-guard`** skill (consumer-side contract check, issue #48 / spec #71): gives the *stranded*
   enterprise frontend team the coverage Pact structurally can't (Pact needs provider participation). Tiered,
@@ -95,7 +95,7 @@ release heading.
   verified but stays a **hazard-caveat lead, not advice** — it auto-generates tests looping to 100% line coverage
   (manufactured confidence, the exact slop `coverage-review`/`audit-test` counter). Updates the orchestration-map
   Evidence Ledger + the `ask-sentinel` wider-map table; corrects the map's earlier (wrong) claim that Exspec/coverage-guard
-  had no owning source. TEA↔Sentinel/Witness integration seams captured in #96.
+  had no owning source. TEA↔Sentinel/Gate integration seams captured in #96.
 - **`ask-sentinel` gains a sequence mode** ([ADR-0027](docs/adr/0027-ask-sentinel-orchestrated-sequence-mode.md),
   issue #47 capstone slice): the whole-map router now has a second reading. A *single question* still returns **one**
   best tool (à la carte, ADR-0025); a *lifecycle / workflow ask* — "walk me through QA before I merge", "the full path
@@ -135,7 +135,7 @@ release heading.
   harness (e.g. Cypress `cypress/included`, or a built/CI server) or a dev-server restart — before
   trusting a *survival* as 🔴, closing a false-🔴 (and flaky-🟡) window where an HMR edit hadn't
   propagated to every assertion in a run. A `sleep`/settle doesn't fix it. (issue #54)
-- **Witness `ship` now states its examined-vs-unexamined scope** (#112). The ship rationale, the report note,
+- **Gate `ship` now states its examined-vs-unexamined scope** (#112). The ship rationale, the report note,
   and the `gate` SKILL bullet spell out how much of the suite `audit-test` actually mutation-audited (e.g.
   "no hollow tests among the deep-audited subset — 4 of 12 mutation-audited; 8 unexamined — not evidence of
   health"), so `ship` no longer implies the *whole* suite was proven. Counts ride in prose only — honesty-guard
@@ -155,7 +155,7 @@ release heading.
   machine**" → "adds no network calls of its own" — Sentinel runs *inside* Claude Code, so your code reaches
   Anthropic's API like any session (the README privacy note now says so, and names the eval harness as the
   one maintainer-tooling Anthropic call).
-- **Witness `gate` listed in the README; skill counts reconciled** (#116). The release-gate skill now
+- **Gate `gate` listed in the README; skill counts reconciled** (#116). The release-gate skill now
   appears in both the README skill table and the **privacy table** — that table asserts completeness, so
   an unlisted executing skill was a real gap. Count reconciled to **fourteen skill directories** (thirteen
   skills + the `/ask-sentinel` router) across the README and `evals/README` (was 12 / 13 / 14). Docs only.
@@ -168,7 +168,7 @@ release heading.
 
 ### Fixed
 
-- **Witness no longer launders non-evidence into a green `ship`** (#111, from the pre-launch critique
+- **Gate no longer launders non-evidence into a green `ship`** (#111, from the pre-launch critique
   `references/critique-synthesis.md`). Two disclosed exploits closed: (1) an **empty / zero-test / unrun
   execution report** (`{}`, a wrong `--playwright` path, a suite that never ran) used to derive `PASSED` and
   propose `ship-baseline`; it now derives the new **`EMPTY`** result → `hold`. (2) `parseAuditEmission` accepted

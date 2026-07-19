@@ -1,4 +1,4 @@
-# Reviewing Sentinel? Start here.
+# Reviewing these QA skills? Start here.
 
 Thanks for taking a look. This is an early, honest ask: I want to know whether the flagship skill
 earns its keep on *your* real tests — and whether anything reads as over-claiming.

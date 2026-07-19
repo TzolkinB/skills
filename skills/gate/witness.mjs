@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Witness — the deterministic core of the Gate skill (Sentinel stage 7).
+// Gate — the deterministic core of the Gate skill (Sentinel stage 7).
 //
 // Ingests the evidence a PR already produced (E2E execution evidence — a Playwright
 // JSON report and/or a Cypress Module API result — plus an audit-test verdict, either a
@@ -143,7 +143,7 @@ export function auditTestEntry(markdown) {
 // ---- ingest: audit-test (PARSED — the B→A graduation, TzolkinB/skills#49) -----
 //
 // `/audit-test --emit-json` writes its batch provenance tally as structured data
-// (the per-class COUNTS — the model's judgment crystallised into numbers). Witness
+// (the per-class COUNTS — the model's judgment crystallised into numbers). Gate
 // ingests those counts and DERIVES the category (result + label) mechanically —
 // exactly as `deriveResult` restates Playwright's `stats`. The gate downstream
 // reads only the derived CATEGORY, never these counts (honesty guard #1). Deriving

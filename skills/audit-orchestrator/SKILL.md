@@ -34,7 +34,7 @@ Pick **one** primary tool and state the reason and its provenance:
 ### 3. Invoke or point, then emit the verdict
 - **audit-test routes** → invoke `/audit-test` (via the `Skill` tool) on the target and carry its verdict through. audit-test owns the mutation, the reachability/baseline-lock guards, and the Safety rule; this skill does not re-implement them.
 - **Tautest / StrykerJS routes** → **orchestrate, don't absorb**: print the exact command and a one-line setup note; these are external, source-mutating CLIs the map points *at*, not into. Then recommend `/audit-test` on any survivor for a concrete fix.
-- Always label the routing claim's provenance and keep audit-test's `🔴 / 🟡 / 🟢 / ⚠️` verdict semantics intact. **Never** collapse them into a PASS/FAIL — that's the gate, and the gate is not this skill's (it's `/sentinel` → Witness).
+- Always label the routing claim's provenance and keep audit-test's `🔴 / 🟡 / 🟢 / ⚠️` verdict semantics intact. **Never** collapse them into a PASS/FAIL — that's the gate, and the gate is not this skill's (it's `/sentinel` → Gate).
 
 ## Output Format
 
@@ -59,5 +59,5 @@ Then: `/audit-test [survivor]` for a fix on anything that survives.
 
 - **Orchestrate, don't absorb.** For Tautest/StrykerJS this skill *points* (they own source-mutation on Vitest/Jest); for the app-driven wall it routes to `/audit-test`, the gap-filler. It never reimplements a mutation engine — the moat is the *routing + the E2E gap-fill*, not another runner.
 - **Provenance discipline** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)): a routing recommendation is advice only at **Likely**+, a claim of superiority only at **Proven**. The reachability wall (source-mutating tools can't reach app-driven code) is **Proven**; `audit-test` proving a dev-served target is **Proven on Playwright**, **Likely on Cypress**. Don't upgrade a label past its evidence.
-- **À la carte and orchestrated both.** Stands alone on one suspect test; it is also stage 3 of the orchestration map, whose credibility evidence flows toward the gate (Witness) — this skill emits evidence, never the ship verdict.
+- **À la carte and orchestrated both.** Stands alone on one suspect test; it is also stage 3 of the orchestration map, whose credibility evidence flows toward the gate (Gate) — this skill emits evidence, never the ship verdict.
 - `--explain` is not supported — procedural, not pedagogical.

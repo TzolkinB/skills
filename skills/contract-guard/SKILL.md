@@ -64,7 +64,7 @@ Present the verdict, the field-level diff, and **both** dispositions (accept-and
 ## Notes
 
 - **Tiered by evidence, not by default.** EXPERIMENT-0018 (n=2 apps, blinded, injected drift) found the differ's value **conditional** — redundant where the frontend already validates responses, load-bearing only for the untyped + empty-diff segment. The tiers *are* that finding; **no large-N / rate claim** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
-- **Static-judgment only** ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)). Reads source, in-code schemas, and the **published** contract (file or URL). Snapshotting a **live** response is an execution-layer artifact (Witness), out of scope — and a snapshot carries no deliberate-vs-accidental signal anyway; the published spec does.
+- **Static-judgment only** ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)). Reads source, in-code schemas, and the **published** contract (file or URL). Snapshotting a **live** response is an execution-layer artifact (Gate), out of scope — and a snapshot carries no deliberate-vs-accidental signal anyway; the published spec does.
 - **Composes, doesn't duplicate.** `/debug-test --drift` keeps its lightweight *inline* contract check for the schema-at-hand case and **recommends** `contract-guard` for the harder job (locate/parse the published spec, derive the expected shape, resolve the operation). Classifier stays in drift-mode; the contract comparison lives here.
 - **REST + OpenAPI/Swagger in v0.** GraphQL and other contract formats are a later increment — stated as a gap, not faked.
 - `--explain` is not supported — procedural, not pedagogical.

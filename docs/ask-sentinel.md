@@ -4,7 +4,7 @@
 
 ## What it does
 
-A dozen Sentinel skills is more than anyone wants to memorize. `ask-sentinel` is the front door: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"* — and it names the one skill that answers your question, says why, and shows where that step sits in the wider QA flow.
+A dozen QA skills is more than anyone wants to memorize. `ask-sentinel` is the front door: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"about to merge"* — and it names the one skill that answers your question, says why, and shows where that step sits in the wider QA flow.
 
 It **routes; it doesn't analyze** — it never reads your code, runs a test, or emits a verdict; it hands you the skill that does. It is *not* one of them and never joins the `/sentinel` chain — it's the map, not a stop on the route. The one rule it exists to teach: [`sentinel`](./sentinel.md) is the orchestrator, not a peer; the other atomic skills each answer exactly one question.
 

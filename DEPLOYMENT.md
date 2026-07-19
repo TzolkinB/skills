@@ -1,4 +1,4 @@
-# Sentinel Deployment Guide
+# kimbell-skills — Deployment Guide
 
 Step-by-step guide for getting Sentinel from your local machine to a shareable GitHub plugin.
 

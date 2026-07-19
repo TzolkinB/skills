@@ -1,6 +1,6 @@
-# Witness ships as a deterministic, advisory Gate skill (stage 7) — MVP1
+# Gate ships as a deterministic, advisory Gate skill (stage 7) — MVP1
 
-**Status: Accepted (2026-07-17).** Implements the first honest Witness vertical specced by
+**Status: Accepted (2026-07-17).** Implements the first honest Gate vertical specced by
 [#105](https://github.com/TzolkinB/skills/issues/105), which assembled the four load-bearing decisions locked
 on wayfinder map [#98](https://github.com/TzolkinB/skills/issues/98): architecture
 ([#99](https://github.com/TzolkinB/skills/issues/99)), ingestible evidence
@@ -13,11 +13,11 @@ on top of those locked assets, and formalises the build, because the four asset 
 
 ## Context
 
-Witness is the **Gate stage** (stage 7) of the Sentinel orchestration map: ingest every earlier stage's
+Gate is the **Gate stage** (stage 7) of the Sentinel orchestration map: ingest every earlier stage's
 output → one Evidence bundle → a release verdict. The map deliberately sliced a *first honest vertical* —
 Playwright-JSON ingest + an opaque `audit-test` attachment → a categorical **ship / canary / hold** gate —
 with the numeric release-confidence score and the calibration loop **deferred**. The load-bearing hazard the
-map named: Witness without trustworthy stages 3–5 is *theater*; a bundle that merely reprints a green
+map named: Gate without trustworthy stages 3–5 is *theater*; a bundle that merely reprints a green
 Playwright exit code adds nothing and actively launders false confidence.
 
 Two things the locked assets **implied but never stated**, both left to `/to-spec`:
@@ -36,11 +36,11 @@ worst-wins decision rule, and the honesty-guard validation live in a zero-depend
 user-invoked leaf ([ADR-0020](0020-suite-trigger-model-leaves-user-invoked.md)) that *orchestrates* by running
 the script and presenting its output — it never recomputes or overrides the decision. A gate that sometimes
 says `ship` and sometimes `canary` for the same evidence would be worse than useless; determinism is the
-point. This keeps Witness inside the static-judgment moat ([ADR-0010](0010-execution-out-temporal-deferred-behind-a-seam.md)):
+point. This keeps Gate inside the static-judgment moat ([ADR-0010](0010-execution-out-temporal-deferred-behind-a-seam.md)):
 it **ingests** an existing Playwright report and a Markdown file — pure consumption — and never runs a suite
 or a browser.
 
-**2. The output surface is a terminal report + a bundle file.** Witness prints the decision and rationale to
+**2. The output surface is a terminal report + a bundle file.** Gate prints the decision and rationale to
 the terminal (like every Sentinel skill) and writes the evidence bundle to a file. PR-comment / check-run
 posting and any build-blocking are deferred to a future `--live` escalation
 ([ADR-0026](0026-live-evals-opt-in-pr-and-scheduled-drift.md)), consistent with the advisory / report-first
@@ -75,7 +75,7 @@ is a folder move ([#99](https://github.com/TzolkinB/skills/issues/99)).
 
 ## Consequences
 
-- **A new user-invoked Gate skill** at `skills/gate/`, branded Witness. It owns the ship verdict;
+- **A new user-invoked Gate skill** at `skills/gate/`, branded Gate. It owns the ship verdict;
   `/sentinel`-the-orchestrator stops speaking shippability ([#99](https://github.com/TzolkinB/skills/issues/99)
   verdict-ownership corollary).
 - **Determinism earns a golden test, not just an eval.** Unlike the prose skills, the gate has a
@@ -87,6 +87,6 @@ is a folder move ([#99](https://github.com/TzolkinB/skills/issues/99)).
 - **Honest limits carried, not hidden** ([ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md)):
   Playwright-only ingest, `audit-test` opaque, `ship` unreachable, no `confidence`, advisory-not-blocking — all
   stated in the skill's own output.
-- **Growth path stays legible.** A *parsed* `audit-test` verdict (the B→A graduation — the next Witness effort)
+- **Growth path stays legible.** A *parsed* `audit-test` verdict (the B→A graduation — the next Gate effort)
   is precisely what unlocks a reachable `ship`; a real calibration loop is what unlocks `confidence` and a
   schema-version bump. Neither is built here.

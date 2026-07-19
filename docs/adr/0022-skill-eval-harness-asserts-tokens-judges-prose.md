@@ -97,7 +97,7 @@ The harness's grading stance — the load-bearing decision:
 - **The router eval (Tier 1b) is the acceptance substrate for [#47](../../../README.md).** Proving a
   13-way router routes correctly is exactly a should-route/should-not-route case set — the one place
   the talk's trigger machinery is on-target.
-- **Feeds Witness (#49) later.** A calibration loop is an eval loop; the harness's per-case reliability
+- **Feeds Gate (#49) later.** A calibration loop is an eval loop; the harness's per-case reliability
   numbers are an input the Gate-stage plugin can calibrate against.
 - **Reversible and cheap by construction.** Tier 0 is pure text (free, every commit); Tier 1 is gated
   to the changed skill × a few trials, not all thirteen × six on every PR; Tier 2 is untouched. If the

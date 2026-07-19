@@ -11,4 +11,4 @@ would very likely still pass this test.
 **Provenance:** likely (reasoned statically; no mutation run in this pass).
 **Suggested assertion:** `expect(total).toHaveText('$42.00')` against the seeded cart.
 
-_This report is carried opaquely by Witness — it is not machine-parsed in v0. A human must read it._
+_This report is carried opaquely by Gate — it is not machine-parsed in v0. A human must read it._

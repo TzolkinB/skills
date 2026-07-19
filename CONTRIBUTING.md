@@ -1,6 +1,6 @@
 # Contributing / Getting Feedback
 
-Sentinel is a personal framework first, but it's more useful — and more credible — with real input from people who do QA professionally.
+This is a personal framework first, but it's more useful — and more credible — with real input from people who do QA professionally.
 
 ## If you're a seasoned QA professional reviewing this
 

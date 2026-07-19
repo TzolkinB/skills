@@ -1,24 +1,24 @@
-# Witness ingests a parsed audit-test verdict — the B→A graduation that unlocks `ship`
+# Gate ingests a parsed audit-test verdict — the B→A graduation that unlocks `ship`
 
 **Status: Accepted (2026-07-18).** Continues epic [#49](https://github.com/TzolkinB/skills/issues/49) directly
 on top of the MVP1 Gate skill ([ADR-0028](0028-witness-gate-skill-mvp1.md), PR #106). Wayfinder map
 [#98](https://github.com/TzolkinB/skills/issues/98) named this increment explicitly out of its own scope and
-endorsed it as "the next Witness effort" — the one thing that lifts the gate's ceiling off `canary`.
+endorsed it as "the next Gate effort" — the one thing that lifts the gate's ceiling off `canary`.
 
 ## Context
 
 MVP1 shipped with `ship` **reserved but unreachable**: the credibility axis floors at `canary` whether the
 `audit-test` report is present-but-opaque (`human-must-read`) or absent (`no-credibility-evidence`), so a bare
 green Playwright run can never launder into `ship`. That is the correct *theater guard* — but it also means
-running `/audit-test` well earns you nothing toward a release verdict, because Witness cannot machine-read a
+running `/audit-test` well earns you nothing toward a release verdict, because Gate cannot machine-read a
 prose Markdown report.
 
 The map's locked decisions already pointed at the fix. The evidence-bundle contract
 ([#102](https://github.com/TzolkinB/skills/issues/102)) reserved `verdict.label ∈ {proven, likely, unexamined}`
 (the in-toto Test-Result ternary from the prior-art survey, [#101](https://github.com/TzolkinB/skills/issues/101))
 and left `ship` in the `decision` enum. ADR-0002 pre-assigned *building* a structured emission mode for
-`audit-test`'s labels to "the pipeline" (= Witness). So the graduation is: give `audit-test` a machine-readable
-emission, teach Witness to ingest it as a **parsed** verdict, and define the gate rule that lets an
+`audit-test`'s labels to "the pipeline" (= Gate). So the graduation is: give `audit-test` a machine-readable
+emission, teach Gate to ingest it as a **parsed** verdict, and define the gate rule that lets an
 execution-proven-clean credibility verdict propose `ship`.
 
 ## Decision
@@ -30,7 +30,7 @@ The counts are the model's per-test judgment (which test is hollow) crystallised
 **no new judgment**. Contract: `skills/gate/schema/audit-test-emission.v0.schema.json`. No `confidence`
 field — its arrival remains the signal calibration has landed.
 
-**2. Witness derives the category; the gate reads only the category.** The ingest layer
+**2. Gate derives the category; the gate reads only the category.** The ingest layer
 (`auditTestParsedEntry`) reads the counts and **derives** `verdict.result` and `verdict.label` mechanically —
 exactly as `deriveResult` restates Playwright's `stats`:
 
@@ -57,11 +57,11 @@ and degrade to the opaque report (or absent) — never a silent upgrade or a cra
 
 ## Considered options
 
-- **Witness scrapes the `audit-test` Markdown itself.** Rejected — it would make the deterministic gate depend
+- **Gate scrapes the `audit-test` Markdown itself.** Rejected — it would make the deterministic gate depend
   on prose parsing and duplicate the judgment the audit skill already made. The skill that *has* the judgment
-  emits structured data; Witness reads data, never prose.
-- **`audit-test` emits a rolled-up `result`/`label` and Witness trusts it.** Rejected — it moves the theater
-  guard from structure to promise. Witness derives the category from raw counts so `deepAudited=0 → unexamined`
+  emits structured data; Gate reads data, never prose.
+- **`audit-test` emits a rolled-up `result`/`label` and Gate trusts it.** Rejected — it moves the theater
+  guard from structure to promise. Gate derives the category from raw counts so `deepAudited=0 → unexamined`
   is enforced at the gate, not assumed of the producer.
 - **Proven-hollow → `hold`.** Rejected (Kim's call) — a proven lie in the suite is serious, but the code under
   it may be fine; elevating it to `hold` would block shippable releases on a *test* defect and blur `hold`'s
@@ -76,7 +76,7 @@ and degrade to the opaque report (or absent) — never a silent upgrade or a cra
   the theater guard (examined-nothing → canary) and proven-hollow → canary. CI gates on it
   (`witness.mjs --self-test`, `skill-evals.yml`).
 - **A new producer→consumer seam** between two skills, pinned by a schema. `audit-test` stays the judgment
-  tool; Witness stays the deterministic aggregator. Both remain user-invoked leaves.
+  tool; Gate stays the deterministic aggregator. Both remain user-invoked leaves.
 - **The growth path narrows to calibration.** With parsed `audit-test` done, the remaining reserved ceilings are
   `confidence`/the calibration loop ([#96](https://github.com/TzolkinB/skills/issues/96), PARKED) and non-Sentinel
   inputs — the triggers for plugin independence ([#99](https://github.com/TzolkinB/skills/issues/99)). Cypress

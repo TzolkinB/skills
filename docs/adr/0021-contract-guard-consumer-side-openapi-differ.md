@@ -113,7 +113,7 @@ seam, no duplicated logic.
   case more cheaply. A tiered order avoids selling ceremony where the code already self-reveals drift.
 - **A blind response-snapshot as the oracle.** Rejected — snapshotting *live* responses is an
   execution-layer artifact ([ADR-0010](0010-execution-out-temporal-deferred-behind-a-seam.md)), belongs
-  to Witness, and a snapshot carries no deliberate-vs-accidental signal. The **published** contract is
+  to Gate, and a snapshot carries no deliberate-vs-accidental signal. The **published** contract is
   readable across the org boundary *and* encodes provider intent, which the snapshot cannot.
 - **Auto-generate/apply the client-side validation, or auto-update the stale test.** Rejected — Sentinel
   is judgment, not remediation ([ADR-0002](0002-sentinel-is-judgment-not-release-evidence.md)); it
@@ -133,7 +133,7 @@ seam, no duplicated logic.
   concrete skill; the two compose without duplicated logic (classifier vs. contract comparison).
 - **Static-judgment moat preserved** ([ADR-0010](0010-execution-out-temporal-deferred-behind-a-seam.md)):
   reading a published contract (file or URL) is consumption; snapshotting live responses stays out of
-  scope with the execution layer / Witness.
+  scope with the execution layer / Gate.
 - **Green-lock defense extended outward** ([ADR-0017](0017-audit-test-baseline-lock-suspected.md) stops
   green-locking to a *local* regression; this supplies the oracle that stops green-locking to an
   *external, unconfirmed* one). The published-spec check is the hinge between legitimate maintenance and a

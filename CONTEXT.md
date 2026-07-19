@@ -1,4 +1,4 @@
-# Sentinel
+# kimbell-skills
 
 QA-first Claude Code skills that audit whether AI-generated code and tests actually verify
 behavior — not whether the suite is merely green. Aimed first at developers *without* a QA

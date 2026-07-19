@@ -11,7 +11,7 @@ lock was moved, and why this bump is not the one [ADR-0030 §4](0030-witness-cyp
 
 The #111 fix closes a real false-green hole: `deriveResult({})` returned `PASSED`, so an empty / zero-test /
 unrun execution report (a `{}` file, a wrong `--playwright` path, a suite that never ran) proposed
-`ship-baseline` — the exact manufactured confidence Witness exists to refuse. The fix introduces a fourth
+`ship-baseline` — the exact manufactured confidence Gate exists to refuse. The fix introduces a fourth
 execution result, **`EMPTY`** (0 tests executed to a verdict), which the gate maps to `hold`.
 
 `EMPTY` is a **new value in the `verdict.result` enum** — and the same enum is repeated in the gate entry's

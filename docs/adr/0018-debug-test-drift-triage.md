@@ -144,7 +144,7 @@ consumer to an *unconfirmed* change.
   on an already-red test only.
 - **Build a full consumer-side contract framework into `debug-test`.** Rejected *here*, but not
   rejected outright — it is an execution-layer artifact, so by ADR-0010 it belongs to the execution
-  layer / Witness and is *reached across a seam*, exactly like the Playwright healer. **It warrants its
+  layer / Gate and is *reached across a seam*, exactly like the Playwright healer. **It warrants its
   own ADR**, because the frontend/backend insight elevates it from "don't build, Pact owns prevention"
   to a genuine white space: Pact needs provider participation, so it structurally does **not** serve the
   stranded enterprise frontend team. The likely shape is **not** a blind response-snapshot but a

@@ -34,7 +34,7 @@
           "anchors": { "any": ["npx stryker", "npx tautest", "run stryker", "run tautest", "routed to:** strykerjs", "routed to strykerjs", "route to stryker"] }
         },
         {
-          "claim": "Must NOT emit a PASS/FAIL ship gate — it routes and carries a credibility read; the ship verdict is `/sentinel` → Witness.",
+          "claim": "Must NOT emit a PASS/FAIL ship gate — it routes and carries a credibility read; the ship verdict is `/sentinel` → Gate.",
           "anchors": { "any": ["✅ pass", "❌ fail", "safe to ship", "safe to merge", "verdict: pass", "verdict: fail"] }
         }
       ]

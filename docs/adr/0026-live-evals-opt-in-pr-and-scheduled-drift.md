@@ -80,6 +80,6 @@ Cross-cutting:
 - **Introduces the first money-spending CI path.** A secret + a billing decision become prerequisites —
   gated behind opt-in / schedule so a contributor never triggers spend by accident.
 - **Reliability numbers become the input to the eventual gating decision** (label-then-gate) and feed
-  Witness ([#49](../../../README.md)) calibration — a calibration loop is an eval loop.
+  Gate ([#49](../../../README.md)) calibration — a calibration loop is an eval loop.
 - **Reversible and additive.** Deleting the two workflows removes all of it; the deterministic offline
   gate stands alone, exactly as today. This ADR adds no dependency to the existing Tier 0/1 path.
