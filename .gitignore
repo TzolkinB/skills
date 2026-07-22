@@ -2,5 +2,12 @@
 node_modules/
 *.log
 TODO.local.md
-references/
+references/*
+# Exception: the four "locked" contract assets ADR-0028/0029 cite as authority
+# (issue #117) — everything else in references/ (market research, critiques,
+# competitive research) stays private.
+!references/witness-evidence-bundle-contract-v0.md
+!references/witness-evidence-bundle-prior-art.md
+!references/witness-gate-function-spec-v0.md
+!references/witness-ingestible-evidence-audit.md
 .claude/
