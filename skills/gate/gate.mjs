@@ -12,7 +12,7 @@
 // (advisory / report-first).
 //
 // `ship` is reachable ONLY when Playwright PASSED and a PARSED audit-test verdict is
-// execution-proven clean (`PASSED`+`proven`) — the B→A graduation (TzolkinB/skills#49).
+// execution-confirmed clean (`PASSED`+`confirmed`) — the B→A graduation (TzolkinB/skills#49).
 // An opaque or absent audit-test still caps credibility at `canary`, and a parsed run
 // that examined nothing derives `unexamined` → also canary (theater guard).
 //
@@ -34,7 +34,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.2'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033)
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.3'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034)
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
@@ -150,23 +150,23 @@ export function auditTestEntry(markdown) {
 // the label HERE (not trusting a skill-supplied label) is what makes the theater
 // guard structural: a run that deep-audited nothing derives `unexamined` → the gate
 // floors it at canary, so a parsed-but-vacuous audit still cannot reach `ship`.
-const AUDIT_EMISSION_SCHEMA = 'gate-audit-test/v0.1'; // exact match — the published schema pins `schema` to this const
-const AUDIT_COUNTS = ['audited', 'deepAudited', 'provenSolid', 'provenHollow', 'likelyHollow', 'baselineLock', 'unexamined'];
+const AUDIT_EMISSION_SCHEMA = 'gate-audit-test/v0.2'; // exact match — the published schema pins `schema` to this const
+const AUDIT_COUNTS = ['audited', 'deepAudited', 'confirmedSolid', 'confirmedHollow', 'likelyHollow', 'baselineLock', 'unexamined'];
 
-// Any proven-hollow test is a proven credibility FAILURE; a likely-hollow or a
+// Any confirmed-hollow test is a confirmed credibility FAILURE; a likely-hollow or a
 // baseline-lock is a WARNING (short of proof / a caution); otherwise PASSED.
 export function deriveAuditResult(t = {}) {
-  if (Number(t.provenHollow ?? 0) > 0) return 'FAILED';
+  if (Number(t.confirmedHollow ?? 0) > 0) return 'FAILED';
   if (Number(t.likelyHollow ?? 0) > 0 || Number(t.baselineLock ?? 0) > 0) return 'WARNED';
   return 'PASSED';
 }
 
-// Proof-grade of the roll-up: `proven` if any deep audit was EXECUTION-proven (a
+// Proof-grade of the roll-up: `confirmed` if any deep audit was EXECUTION-confirmed (a
 // killed or a hollow mutation), `likely` if deep audits ran but only by reasoning
-// (env not runnable), `unexamined` if nothing left triage. Only `PASSED`+`proven`
+// (env not runnable), `unexamined` if nothing left triage. Only `PASSED`+`confirmed`
 // unlocks `ship` — so an audit that examined nothing is never ship-eligible.
 export function deriveAuditLabel(t = {}) {
-  if (Number(t.provenSolid ?? 0) > 0 || Number(t.provenHollow ?? 0) > 0) return 'proven';
+  if (Number(t.confirmedSolid ?? 0) > 0 || Number(t.confirmedHollow ?? 0) > 0) return 'confirmed';
   if (Number(t.deepAudited ?? 0) > 0) return 'likely';
   return 'unexamined';
 }
@@ -192,11 +192,11 @@ export function parseAuditEmission(raw) {
     tally[k] = v;
   }
   // Cross-field consistency (#111): reject an arithmetically impossible tally rather than silently
-  // deriving `proven` from it. A model produced these counts, so `{provenSolid:1, deepAudited:0}`
+  // deriving `confirmed` from it. A model produced these counts, so `{confirmedSolid:1, deepAudited:0}`
   // must not slip through. These are the counts' own definitions, not a trust/authenticity check:
   //   • every triaged test is either deep-audited or not →  audited === deepAudited + unexamined
   //   • each outcome class is a subset of the deep audits →  Σ(outcomes) ≤ deepAudited
-  const outcomes = tally.provenSolid + tally.provenHollow + tally.likelyHollow + tally.baselineLock;
+  const outcomes = tally.confirmedSolid + tally.confirmedHollow + tally.likelyHollow + tally.baselineLock;
   if (tally.deepAudited + tally.unexamined !== tally.audited) return null;
   if (outcomes > tally.deepAudited) return null;
   return tally;
@@ -276,20 +276,20 @@ export function gate(bundle) {
   }
 
   // Credibility axis. A PARSED audit-test verdict (result+label, both categories the
-  // ingest derived) can propose `ship` — but ONLY when it is execution-proven clean
-  // (`PASSED`+`proven`); anything less proposes `canary`. An OPAQUE or ABSENT audit
+  // ingest derived) can propose `ship` — but ONLY when it is execution-confirmed clean
+  // (`PASSED`+`confirmed`); anything less proposes `canary`. An OPAQUE or ABSENT audit
   // both floor at `canary`, so there is no "run less, grade better" incentive and a
   // bare green Playwright run can never launder into `ship` (theater guard).
   const auditResult = audit?.predicate?.verdict?.result;
   if (audit && auditResult) {
     const label = audit.predicate.verdict.label;
-    const proposed = auditResult === 'PASSED' && label === 'proven' ? 'ship' : 'canary';
+    const proposed = auditResult === 'PASSED' && label === 'confirmed' ? 'ship' : 'canary';
     inputs.push({ stage: 'audit-test', result: auditResult, label, proposed });
     rationale.push(
       proposed === 'ship'
-        ? `audit-test PASSED + proven → ship-eligible — no hollow tests among ${auditScope(audit)}`
+        ? `audit-test PASSED + confirmed → ship-eligible — no hollow tests among ${auditScope(audit)}`
         : auditResult === 'FAILED'
-          ? 'audit-test FAILED (proven false-confidence) → canary (a hollow test — fix it; not a red build)'
+          ? 'audit-test FAILED (confirmed false-confidence) → canary (a hollow test — fix it; not a red build)'
           : auditResult === 'WARNED'
             ? 'audit-test WARNED (likely-hollow / baseline-lock) → canary (credibility concern — a human must confirm)'
             : label === 'unexamined'
@@ -393,7 +393,7 @@ export function renderReport(bundle, gateEntry) {
   L.push('### Rationale');
   for (const r of gateEntry.predicate.rationale) L.push(`- ${r}`);
   L.push('');
-  // `ship` is reachable now (the B→A graduation), but only via a parsed proven-clean
+  // `ship` is reachable now (the B→A graduation), but only via a parsed confirmed-clean
   // audit-test. An opaque/absent audit-test still caps credibility at `canary`.
   const audit = gateEntry.predicate.inputs.find((i) => i.stage === 'audit-test');
   const auditOpaqueOrAbsent = audit && !('label' in audit);
@@ -403,7 +403,7 @@ export function renderReport(bundle, gateEntry) {
     const auditEv = bundle.entries.find((e) => e.predicate?.stage === 'audit-test');
     L.push(`> \`ship\` earned: ${suites} passed and \`audit-test\` found no hollow tests among ${auditScope(auditEv)}.`);
   } else if (auditOpaqueOrAbsent) {
-    L.push('> `ship` needs a *parsed* proven-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
+    L.push('> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
   L.push('> Advisory / report-first: a recommendation, not a build failure (blocking is a future opt-in, ADR-0026).');
   return L.join('\n');
@@ -512,49 +512,49 @@ function runSelfTest() {
 
   // ---- PARSED audit-test (the B→A graduation) — derivation is a mechanical restatement
   const T = {
-    provenClean:     { audited: 12, deepAudited: 4, provenSolid: 4, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
-    provenHollow:    { audited: 12, deepAudited: 4, provenSolid: 3, provenHollow: 1, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
-    likely:          { audited: 12, deepAudited: 2, provenSolid: 1, provenHollow: 0, likelyHollow: 1, baselineLock: 0, unexamined: 10 },
-    baselineLock:    { audited: 12, deepAudited: 2, provenSolid: 1, provenHollow: 0, likelyHollow: 0, baselineLock: 1, unexamined: 10 },
-    examinedNothing: { audited: 12, deepAudited: 0, provenSolid: 0, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 12 },
-    inconclusive:    { audited: 0, deepAudited: 0, provenSolid: 0, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 },
+    confirmedClean:  { audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
+    confirmedHollow: { audited: 12, deepAudited: 4, confirmedSolid: 3, confirmedHollow: 1, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
+    likely:          { audited: 12, deepAudited: 2, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 1, baselineLock: 0, unexamined: 10 },
+    baselineLock:    { audited: 12, deepAudited: 2, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 1, unexamined: 10 },
+    examinedNothing: { audited: 12, deepAudited: 0, confirmedSolid: 0, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 12 },
+    inconclusive:    { audited: 0, deepAudited: 0, confirmedSolid: 0, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 },
   };
-  check('deriveAuditResult: provenHollow>0 → FAILED', deriveAuditResult(T.provenHollow) === 'FAILED');
+  check('deriveAuditResult: confirmedHollow>0 → FAILED', deriveAuditResult(T.confirmedHollow) === 'FAILED');
   check('deriveAuditResult: likelyHollow>0 → WARNED', deriveAuditResult(T.likely) === 'WARNED');
   check('deriveAuditResult: baselineLock>0 → WARNED', deriveAuditResult(T.baselineLock) === 'WARNED');
-  check('deriveAuditResult: clean → PASSED', deriveAuditResult(T.provenClean) === 'PASSED');
-  check('deriveAuditLabel: proven-solid → proven', deriveAuditLabel(T.provenClean) === 'proven');
-  check('deriveAuditLabel: proven-hollow is still execution-proven', deriveAuditLabel(T.provenHollow) === 'proven');
+  check('deriveAuditResult: clean → PASSED', deriveAuditResult(T.confirmedClean) === 'PASSED');
+  check('deriveAuditLabel: confirmed-solid → confirmed', deriveAuditLabel(T.confirmedClean) === 'confirmed');
+  check('deriveAuditLabel: confirmed-hollow is still execution-confirmed', deriveAuditLabel(T.confirmedHollow) === 'confirmed');
   check('deriveAuditLabel: examined nothing → unexamined', deriveAuditLabel(T.examinedNothing) === 'unexamined');
 
   const decideP = (pw, tally) =>
     gate(assembleBundle({ commit: 'deadbeef', entries: [...(pw ? [mkPw(pw)] : []), auditTestParsedEntry(tally)] })).decision;
 
-  check('PASSED + parsed proven-clean → ship (THE UNLOCK)', decideP('PASSED', T.provenClean) === 'ship');
-  check('WARNED + parsed proven-clean → canary (worst-wins)', decideP('WARNED', T.provenClean) === 'canary');
-  check('FAILED + parsed proven-clean → hold (worst-wins)', decideP('FAILED', T.provenClean) === 'hold');
-  check('PASSED + parsed proven-HOLLOW → canary (fix the test, not a red build)', decideP('PASSED', T.provenHollow) === 'canary');
+  check('PASSED + parsed confirmed-clean → ship (THE UNLOCK)', decideP('PASSED', T.confirmedClean) === 'ship');
+  check('WARNED + parsed confirmed-clean → canary (worst-wins)', decideP('WARNED', T.confirmedClean) === 'canary');
+  check('FAILED + parsed confirmed-clean → hold (worst-wins)', decideP('FAILED', T.confirmedClean) === 'hold');
+  check('PASSED + parsed confirmed-HOLLOW → canary (fix the test, not a red build)', decideP('PASSED', T.confirmedHollow) === 'canary');
   check('PASSED + parsed WARNED(likely) → canary', decideP('PASSED', T.likely) === 'canary');
   check('PASSED + parsed WARNED(baseline-lock) → canary', decideP('PASSED', T.baselineLock) === 'canary');
   check('PASSED + parsed examined-nothing → canary (THEATER GUARD)', decideP('PASSED', T.examinedNothing) === 'canary');
   check('PASSED + parsed inconclusive → canary', decideP('PASSED', T.inconclusive) === 'canary');
 
-  // ship-reachability invariant — ship IFF playwright PASSED AND parsed PASSED+proven
+  // ship-reachability invariant — ship IFF playwright PASSED AND parsed PASSED+confirmed
   const shipElsewhere = [
-    decideP('WARNED', T.provenClean), decideP('FAILED', T.provenClean),
-    decideP('PASSED', T.provenHollow), decideP('PASSED', T.likely), decideP('PASSED', T.baselineLock),
+    decideP('WARNED', T.confirmedClean), decideP('FAILED', T.confirmedClean),
+    decideP('PASSED', T.confirmedHollow), decideP('PASSED', T.likely), decideP('PASSED', T.baselineLock),
     decideP('PASSED', T.examinedNothing), decideP('PASSED', T.inconclusive),
     decide('PASSED', true), decide('PASSED', false), // opaque + absent never ship
   ];
-  check('ship reachable ONLY via playwright PASSED + parsed proven-clean', decideP('PASSED', T.provenClean) === 'ship' && !shipElsewhere.includes('ship'));
+  check('ship reachable ONLY via playwright PASSED + parsed confirmed-clean', decideP('PASSED', T.confirmedClean) === 'ship' && !shipElsewhere.includes('ship'));
 
   // #111 — empty/impossible evidence can never ship (the two disclosed exploits, defeated)
   const emptyPw = playwrightEntry({}); // `{}` → EMPTY
   check('empty Playwright report alone → hold (not a pass)', gate(assembleBundle({ commit: 'x', entries: [emptyPw] })).decision === 'hold');
-  check('exploit: empty {} Playwright + parsed proven-clean → hold (empty exec dominates, never ship)',
-    gate(assembleBundle({ commit: 'x', entries: [emptyPw, auditTestParsedEntry(T.provenClean)] })).decision === 'hold');
-  check('exploit: impossible {provenSolid:1,deepAudited:0} emission is rejected (never derives proven)',
-    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 0, deepAudited: 0, provenSolid: 1, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('exploit: empty {} Playwright + parsed confirmed-clean → hold (empty exec dominates, never ship)',
+    gate(assembleBundle({ commit: 'x', entries: [emptyPw, auditTestParsedEntry(T.confirmedClean)] })).decision === 'hold');
+  check('exploit: impossible {confirmedSolid:1,deepAudited:0} emission is rejected (never derives confirmed)',
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
 
   // ---- Cypress ingest — same execution axis as Playwright, but flake is DERIVED --------
   const CY = {
@@ -585,17 +585,17 @@ function runSelfTest() {
   const decideCy = (kind, tally) => gate(bundleWith([mkCy(kind), auditTestParsedEntry(tally)])).decision;
 
   // Cypress alone on the execution axis behaves exactly like Playwright
-  check('cypress PASSED + parsed proven-clean → ship', decideCy('passed', T.provenClean) === 'ship');
-  check('cypress WARNED(flaky) + parsed proven-clean → canary', decideCy('flaky', T.provenClean) === 'canary');
-  check('cypress FAILED + parsed proven-clean → hold', decideCy('failed', T.provenClean) === 'hold');
+  check('cypress PASSED + parsed confirmed-clean → ship', decideCy('passed', T.confirmedClean) === 'ship');
+  check('cypress WARNED(flaky) + parsed confirmed-clean → canary', decideCy('flaky', T.confirmedClean) === 'canary');
+  check('cypress FAILED + parsed confirmed-clean → hold', decideCy('failed', T.confirmedClean) === 'hold');
   check('cypress PASSED + opaque audit → canary', gate(bundleWith([mkCy('passed'), auditTestEntry('# opaque')])).decision === 'canary');
   check('cypress-only, no audit → canary (credibility floor still applies)', gate(bundleWith([mkCy('passed')])).decision === 'canary');
 
   // Both frameworks present — worst-wins across execution suites (a green PW can't hide a red CY)
-  check('playwright PASSED + cypress FAILED → hold (worst-wins across suites)', gate(bundleWith([mkPw('PASSED'), mkCy('failed'), auditTestParsedEntry(T.provenClean)])).decision === 'hold');
-  check('playwright PASSED + cypress WARNED → canary', gate(bundleWith([mkPw('PASSED'), mkCy('flaky'), auditTestParsedEntry(T.provenClean)])).decision === 'canary');
-  check('playwright PASSED + cypress PASSED + parsed proven → ship (both suites green)', gate(bundleWith([mkPw('PASSED'), mkCy('passed'), auditTestParsedEntry(T.provenClean)])).decision === 'ship');
-  check('ship unreachable while ANY execution suite is not green', gate(bundleWith([mkPw('PASSED'), mkCy('failed'), auditTestParsedEntry(T.provenClean)])).decision !== 'ship');
+  check('playwright PASSED + cypress FAILED → hold (worst-wins across suites)', gate(bundleWith([mkPw('PASSED'), mkCy('failed'), auditTestParsedEntry(T.confirmedClean)])).decision === 'hold');
+  check('playwright PASSED + cypress WARNED → canary', gate(bundleWith([mkPw('PASSED'), mkCy('flaky'), auditTestParsedEntry(T.confirmedClean)])).decision === 'canary');
+  check('playwright PASSED + cypress PASSED + parsed confirmed → ship (both suites green)', gate(bundleWith([mkPw('PASSED'), mkCy('passed'), auditTestParsedEntry(T.confirmedClean)])).decision === 'ship');
+  check('ship unreachable while ANY execution suite is not green', gate(bundleWith([mkPw('PASSED'), mkCy('failed'), auditTestParsedEntry(T.confirmedClean)])).decision !== 'ship');
 
   // end-to-end from Cypress fixture files → bundle → gate → full-bundle validation
   const cyPassed = JSON.parse(readFileSync(resolve(HERE, 'fixtures/cypress.passed.json'), 'utf8'));
@@ -604,23 +604,23 @@ function runSelfTest() {
   check('fixture: cypress.passed.json → PASSED', deriveCypressResult(cyPassed) === 'PASSED');
   check('fixture: cypress.flaky.json → WARNED (a real failed attempt, derived)', deriveCypressResult(cyFlaky) === 'WARNED' && countCypressFlaky(cyFlaky) === 1);
   check('fixture: cypress.failed.json → FAILED', deriveCypressResult(cyFailed) === 'FAILED');
-  const cyShip = bundleWith([cypressEntry(cyPassed), auditTestParsedEntry(T.provenClean)]);
+  const cyShip = bundleWith([cypressEntry(cyPassed), auditTestParsedEntry(T.confirmedClean)]);
   const gCyShip = gate(cyShip);
   cyShip.entries.push(gCyShip.gateEntry);
-  check('fixture e2e: cypress PASSED + parsed proven-clean → ship', gCyShip.decision === 'ship');
+  check('fixture e2e: cypress PASSED + parsed confirmed-clean → ship', gCyShip.decision === 'ship');
   check('fixture e2e: cypress ship bundle validates', validateBundle(cyShip).length === 0);
   check('fixture e2e: cypress ship report names the suite', /cypress/i.test(renderReport(cyShip, gCyShip.gateEntry)));
 
   // emission robustness — a model produced it, so never trust it blind
   check('parseAuditEmission: rejects non-JSON', parseAuditEmission('not json {') === null);
-  check('parseAuditEmission: rejects missing/foreign schema', parseAuditEmission(JSON.stringify({ provenSolid: 1 })) === null);
-  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', provenSolid: -1 })) === null);
-  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', provenSolid: 1.5 })) === null);
-  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', ...T.provenClean })) !== null);
+  check('parseAuditEmission: rejects missing/foreign schema', parseAuditEmission(JSON.stringify({ confirmedSolid: 1 })) === null);
+  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', confirmedSolid: -1 })) === null);
+  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', confirmedSolid: 1.5 })) === null);
+  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', ...T.confirmedClean })) !== null);
   // #111 — exact schema version (not a prefix) + cross-field consistency
-  check('parseAuditEmission: rejects a bogus version (v999 — exact match, not prefix)', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v999', ...T.provenClean })) === null);
-  check('parseAuditEmission: rejects impossible provenSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', audited: 0, deepAudited: 0, provenSolid: 1, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
-  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.1', audited: 12, deepAudited: 4, provenSolid: 4, provenHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects a bogus version (v999 — exact match, not prefix)', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v999', ...T.confirmedClean })) === null);
+  check('parseAuditEmission: rejects impossible confirmedSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
 
   // honesty guard #3 — clean validates; a smuggled number is rejected. Holds for the
   // PARSED path too: the audit label/result are string categories, so the raw counts
@@ -631,7 +631,7 @@ function runSelfTest() {
   dirty.predicate.confidence = 0.85; // smuggle a number
   check('numeric field in gate predicate is rejected', validateGateEntry(dirty).length > 0);
   check('gate entry shows its work (every input has `proposed`)', clean.predicate.inputs.every((i) => 'proposed' in i));
-  const parsedGate = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.provenClean)] })).gateEntry;
+  const parsedGate = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] })).gateEntry;
   check('parsed-path gate entry carries no number (counts stayed in the evidence entry)', validateGateEntry(parsedGate).length === 0);
 
   // end-to-end from fixture files → bundle → gate → full-bundle validation
@@ -647,14 +647,14 @@ function runSelfTest() {
   check('report states it is advisory', /advisory/i.test(report));
   check('report carries no manufactured number', !/\bconfidence\b\s*[:=]\s*\d/i.test(report));
 
-  // end-to-end SHIP path from fixture files — PASSED Playwright + parsed proven-clean audit-test
+  // end-to-end SHIP path from fixture files — PASSED Playwright + parsed confirmed-clean audit-test
   const passedRep = JSON.parse(readFileSync(resolve(HERE, 'fixtures/playwright.passed.json'), 'utf8'));
-  const provenTally = parseAuditEmission(readFileSync(resolve(HERE, 'fixtures/audit-test.proven.json'), 'utf8'));
-  check('fixture: audit-test.proven.json is a valid emission', provenTally !== null);
-  const shipB = assembleBundle({ commit: 'fixture', entries: [playwrightEntry(passedRep), auditTestParsedEntry(provenTally)] });
+  const confirmedTally = parseAuditEmission(readFileSync(resolve(HERE, 'fixtures/audit-test.confirmed.json'), 'utf8'));
+  check('fixture: audit-test.confirmed.json is a valid emission', confirmedTally !== null);
+  const shipB = assembleBundle({ commit: 'fixture', entries: [playwrightEntry(passedRep), auditTestParsedEntry(confirmedTally)] });
   const gShip = gate(shipB);
   shipB.entries.push(gShip.gateEntry);
-  check('fixture e2e: PASSED + parsed proven-clean → ship', gShip.decision === 'ship');
+  check('fixture e2e: PASSED + parsed confirmed-clean → ship', gShip.decision === 'ship');
   check('fixture e2e: ship bundle validates', validateBundle(shipB).length === 0);
   const shipReport = renderReport(shipB, gShip.gateEntry);
   check('ship report says ship earned', /`ship` earned/i.test(shipReport));

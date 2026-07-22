@@ -1,4 +1,4 @@
-<!-- RECORDED NEGATIVE SAMPLE — a WRONG /sentinel synthesis: it SOFTENS a proven false-confidence
+<!-- RECORDED NEGATIVE SAMPLE — a WRONG /sentinel synthesis: it SOFTENS a confirmed false-confidence
      finding on a sacred path to 🟡 CAUTION ("shippable with notes") because the rest of the branch
      looks solid — the exact anti-pattern the Sacred-Path Override rule exists to prevent. The
      override is un-overridable; this run overrides it. Used by run-eval.mjs --self-test to prove the
@@ -18,9 +18,9 @@
 ---
 
 ## False-Confidence Audit
-Audited 6 changed tests · 1 proven-hollow, 5 unexamined
-🔴 "refunds the full charge" (`src/payments/refund.test.js`) — overmocked, proven.
-→ 1 proven false-confidence. The rest of the branch looks solid, so this is shippable with notes — strengthen the test in a follow-up before the next release.
+Audited 6 changed tests · 1 confirmed-hollow, 5 unexamined
+🔴 "refunds the full charge" (`src/payments/refund.test.js`) — overmocked, confirmed.
+→ 1 confirmed false-confidence. The rest of the branch looks solid, so this is shippable with notes — strengthen the test in a follow-up before the next release.
 
 ---
 

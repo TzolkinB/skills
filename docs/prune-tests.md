@@ -39,7 +39,7 @@ Fixture: [`fixtures/prune-tests/`](../fixtures/prune-tests/) ([expected findings
 - **Rename/rewrite (high)** — `returns cents as a formatted string`: the name and Given/When/Then comment claim a `"$X.XX"` string contract, but the assertion checks `typeof === 'number'`. The name is now a lie.
 - **Keep** — `empty cart totals zero`: a real boundary condition and unique signal.
 
-What the run does *not* do: it won't claim any test is proven false-confidence (that needs a mutation — hand off to [`audit-test`](./audit-test.md)) and it won't propose new tests for missing paths.
+What the run does *not* do: it won't claim any test is confirmed false-confidence (that needs a mutation — hand off to [`audit-test`](./audit-test.md)) and it won't propose new tests for missing paths.
 
 ## Where it fits
 

@@ -10,7 +10,7 @@ Sentinel is the **orchestrator**: it runs no original analysis of its own — it
 ## Steps
 
 1. Parse the branch/path from $ARGUMENTS. Also parse:
-   - `--sacred=<glob>` (repeatable, or comma-separated) — the **sacred paths** for this run: code/test paths critical enough that a *proven* false-confidence there is un-overridable. If absent, no path is sacred and the verdict stays a pure gradient (see Sacred-Path FAIL Override).
+   - `--sacred=<glob>` (repeatable, or comma-separated) — the **sacred paths** for this run: code/test paths critical enough that a *confirmed* false-confidence there is un-overridable. If absent, no path is sacred and the verdict stays a pure gradient (see Sacred-Path FAIL Override).
    - `--explain` — walkthrough mode.
 2. Find all test files and code files in the change
 3. If `--explain` is present in $ARGUMENTS, pass it through to every sub-skill call below, and append your own "Why This Matters" section at the end (see Explain Mode).
@@ -19,13 +19,13 @@ Sentinel is the **orchestrator**: it runs no original analysis of its own — it
    - Run `/coverage-review` (test vs code)
    - Run `/qa-review` (testability issues)
    - Run `/debug-test` on any failing tests found in the change
-5. **Run `/audit-test --changed`** in batch mode over the branch's changed test files (pass `--explain` through if set). Collect its flagged findings — each carries a verdict (🔴 proven / 🟡 likely) and the **file path** it lives in. This is the False-Confidence Audit; it answers "do the *passing* tests in this change actually guard anything?", which none of the other four skills ask.
+5. **Run `/audit-test --changed`** in batch mode over the branch's changed test files (pass `--explain` through if set). Collect its flagged findings — each carries a verdict (🔴 confirmed / 🟡 likely) and the **file path** it lives in. This is the False-Confidence Audit; it answers "do the *passing* tests in this change actually guard anything?", which none of the other four skills ask.
 6. Aggregate layer recommendations from the `/test-plan` output and compute a one-line layer distribution summary (`unit/component/integration/e2e`)
 7. **Map audit-test findings and coverage-review boundary gaps to sacred paths.** A finding is *sacred* if **either** the test file **or** the code it exercises — its paired source file from step 4 — matches any `--sacred` glob. This matters because an `/audit-test` finding is reported against the *test* file, while a `--sacred` glob is usually written against *source* (e.g. `src/booking/**`); mapping through the test↔code pairing means designating the source path is enough to make a hollow test of it sacred, without the user having to also glob the test directory. **Name the paired source file on each finding** so a reader can see why a `--sacred` glob did or did not trip — a no-fire must be visibly a no-match, never a silent swallow ([ADR-0014](../../docs/adr/0014-sacred-path-integrity-discovery-fails-loud.md)). Determine whether the Sacred-Path FAIL Override fires (see below).
 8. Synthesize findings into a **verdict**:
-   - 🟢 **PASS**: no major coverage gaps, no testability blockers, no false-confidence findings — **and the False-Confidence Audit actually ran** (not INCONCLUSIVE). PASS is a statement of *static judgment*, never a claim the tests were proven; it carries a mandatory provenance line (see Output Format) and never dresses Unexamined tests up as proven-solid.
+   - 🟢 **PASS**: no major coverage gaps, no testability blockers, no false-confidence findings — **and the False-Confidence Audit actually ran** (not INCONCLUSIVE). PASS is a statement of *static judgment*, never a claim the tests were confirmed; it carries a mandatory provenance line (see Output Format) and never dresses Unexamined tests up as confirmed-solid.
    - 🟡 **CAUTION**: Minor gaps, loose assertions, or an isolated 🟡 likely-false-confidence finding — shippable with notes
-   - 🔴 **FAIL**: Major untested paths, brittleness risks, assertions that make no sense, **enough proven false-confidence to sink the change** (see How audit-test findings shift the verdict — a lone non-sacred proven finding is CAUTION, not FAIL), or a fired Sacred-Path Override
+   - 🔴 **FAIL**: Major untested paths, brittleness risks, assertions that make no sense, **enough confirmed false-confidence to sink the change** (see How audit-test findings shift the verdict — a lone non-sacred confirmed finding is CAUTION, not FAIL), or a fired Sacred-Path Override
    - The False-Confidence Audit shifts the verdict categorically (see How audit-test findings shift the verdict). A fired Sacred-Path Override is an **un-overridable FAIL** — it cannot be softened to CAUTION regardless of how solid the rest of the branch looks.
 9. Output a **Sentinel Report** with risk summary
 
@@ -33,25 +33,25 @@ Sentinel is the **orchestrator**: it runs no original analysis of its own — it
 
 The False-Confidence Audit is not just an extra section — it moves the verdict, categorically (Sentinel never emits a numeric score; see [ADR-0002](../../docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)). Map count-and-severity onto the gradient:
 
-- **No false-confidence findings** → the audit doesn't hold the verdict back; PASS stays reachable on the other signals — **but only if the audit ran.** If it returned **INCONCLUSIVE** (no recognized test files, per [ADR-0014](../../docs/adr/0014-sacred-path-integrity-discovery-fails-loud.md)), the flagship check contributed nothing: report INCONCLUSIVE and drop to CAUTION at best — never a clean PASS. A tally that is mostly **Unexamined** is reported as "shippable on static judgment, N tests unexamined," never as proven-solid ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
-- **One or more 🔴 proven false-confidence (non-sacred)** → **cannot be PASS.** A single proven-hollow test is CAUTION at best; several of them, or one on an important-but-not-sacred path, is a FAIL. Proven means a mutation actually ran and the test stayed green — treat it as hard evidence, not a hunch.
-- **🟡 likely false-confidence only** → informs the report and can pull PASS down to CAUTION, but reasoning-only never *forces* a FAIL by itself. This mirrors audit-test's own proven-vs-likely discipline: don't dress up reasoning as proof.
-- **Any 🔴 proven false-confidence on a sacred path** → the Sacred-Path Override fires (below). Un-overridable FAIL.
+- **No false-confidence findings** → the audit doesn't hold the verdict back; PASS stays reachable on the other signals — **but only if the audit ran.** If it returned **INCONCLUSIVE** (no recognized test files, per [ADR-0014](../../docs/adr/0014-sacred-path-integrity-discovery-fails-loud.md)), the flagship check contributed nothing: report INCONCLUSIVE and drop to CAUTION at best — never a clean PASS. A tally that is mostly **Unexamined** is reported as "shippable on static judgment, N tests unexamined," never as confirmed-solid ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
+- **One or more 🔴 confirmed false-confidence (non-sacred)** → **cannot be PASS.** A single confirmed-hollow test is CAUTION at best; several of them, or one on an important-but-not-sacred path, is a FAIL. Confirmed means a mutation actually ran and the test stayed green — treat it as hard evidence, not a hunch.
+- **🟡 likely false-confidence only** → informs the report and can pull PASS down to CAUTION, but reasoning-only never *forces* a FAIL by itself. This mirrors audit-test's own confirmed-vs-likely discipline: don't dress up reasoning as proof.
+- **Any 🔴 confirmed false-confidence on a sacred path** → the Sacred-Path Override fires (below). Un-overridable FAIL.
 
 "Proportional" here is categorical, not arithmetic: more and higher-severity findings push further toward FAIL, but there is no percentage.
 
 ## Sacred-Path FAIL Override
 
-CAUTION is the right default for most gaps — it keeps Sentinel a QA conversation, not a CI gate ([why a 3-state verdict](../../ARCHITECTURE.md)). But on the paths that actually matter, "shippable with notes" is the wrong answer to *proven-hollow protection*. So Sentinel borrows J-Rig-style binary rigor for sacred paths only ([ADR-0007](../../docs/adr/0007-sentinel-sacred-path-fail-override.md)):
+CAUTION is the right default for most gaps — it keeps Sentinel a QA conversation, not a CI gate ([why a 3-state verdict](../../ARCHITECTURE.md)). But on the paths that actually matter, "shippable with notes" is the wrong answer to *confirmed-hollow protection*. So Sentinel borrows J-Rig-style binary rigor for sacred paths only ([ADR-0007](../../docs/adr/0007-sentinel-sacred-path-fail-override.md)):
 
 **The override fires when — on a sacred path (matched via the test↔code mapping in step 7) — either:**
-- `/audit-test` returns a **🔴 proven false-confidence** finding (a test that guards the sacred behavior guards nothing, proven by mutation), **or**
+- `/audit-test` returns a **🔴 confirmed false-confidence** finding (a test that guards the sacred behavior guards nothing, confirmed by mutation), **or**
 - `/coverage-review` finds an **unhandled boundary condition** in the sacred logic.
 
 **When it fires, the verdict is an un-overridable 🔴 FAIL.** It cannot be reduced to CAUTION by an otherwise-solid branch, and the report must name which sacred path tripped it and why. Everything *not* on a sacred path keeps the normal gradient — CAUTION is still available for non-sacred minor gaps.
 
 Guardrails that keep this honest:
-- **Proven only.** A 🟡 *likely* false-confidence never fires the override — reasoning alone isn't enough to burn a hard FAIL. If the code couldn't be run, say so and leave the verdict on the gradient.
+- **Confirmed only.** A 🟡 *likely* false-confidence never fires the override — reasoning alone isn't enough to burn a hard FAIL. If the code couldn't be run, say so and leave the verdict on the gradient.
 - **The user designates sacred paths**, per run, via `--sacred`. Sentinel never guesses what's critical. No `--sacred`, no override — and that's a valid way to run.
 
 ## Output Format
@@ -61,7 +61,7 @@ Guardrails that keep this honest:
 
 ## Overview
 **Verdict:** 🟡 CAUTION  
-**Provenance:** static judgment — 0 proven-solid · 1 proven-hollow · 1 likely-hollow · 4 unexamined (audit ran; not INCONCLUSIVE)  
+**Provenance:** static judgment — 0 confirmed-solid · 1 confirmed-hollow · 1 likely-hollow · 4 unexamined (audit ran; not INCONCLUSIVE)  
 **Risk Level:** Medium  
 **Shippable:** Yes, with notes  
 **Sacred paths:** `src/payments/**` (1 designated) — none tripped (the flagged tests cover booking, not payments)
@@ -89,10 +89,10 @@ Layers: 2 unit / 3 component / 4 integration / 1 e2e
 ---
 
 ## False-Confidence Audit
-Audited 6 changed tests · deep-audited 2 (0 🟢 proven-solid · 1 🔴 proven-hollow · 1 🟡 likely-hollow) · 4 unexamined
-🔴 "rejects overlapping bookings" (BookingService.test.js) — overmocked, proven (removed the overlap guard → test stayed green) — paired to `src/booking/BookingService.js`
+Audited 6 changed tests · deep-audited 2 (0 🟢 confirmed-solid · 1 🔴 confirmed-hollow · 1 🟡 likely-hollow) · 4 unexamined
+🔴 "rejects overlapping bookings" (BookingService.test.js) — overmocked, confirmed (removed the overlap guard → test stayed green) — paired to `src/booking/BookingService.js`
 🟡 "sends confirmation email" (BookingService.test.js) — likely incidental (env not runnable, reasoned only) — paired to `src/booking/BookingService.js`
-→ 1 proven false-confidence, none on a sacred path — holds the verdict at CAUTION (proven-hollow ⇒ not PASS). The 4 unexamined tests are triaged-clean only, not proof. The flagged test pairs to `src/booking/`, which no `--sacred` glob matched, so no override fired; had `src/booking/**` been sacred, this proven finding would force an un-overridable FAIL.
+→ 1 confirmed false-confidence, none on a sacred path — holds the verdict at CAUTION (confirmed-hollow ⇒ not PASS). The 4 unexamined tests are triaged-clean only, not proof. The flagged test pairs to `src/booking/`, which no `--sacred` glob matched, so no override fired; had `src/booking/**` been sacred, this confirmed finding would force an un-overridable FAIL.
 
 ---
 
@@ -116,7 +116,7 @@ _Provenance: reused from `/coverage-review`'s static read — not a separate ana
 | Category | Count | Severity |
 |----------|-------|----------|
 | Untested paths | 2 | HIGH |
-| Proven false-confidence | 1 | HIGH |
+| Confirmed false-confidence | 1 | HIGH |
 | Likely false-confidence | 1 | MEDIUM |
 | Testability issues | 2 | MEDIUM |
 | Loose assertions | 1 | MEDIUM |
@@ -125,7 +125,7 @@ _Provenance: reused from `/coverage-review`'s static read — not a separate ana
 ---
 
 ## Recommendations
-1. **BEFORE SHIPPING:** Strengthen "rejects overlapping bookings" — assert the 2nd booking is rejected with 409, not that save() ran (proven false-confidence)
+1. **BEFORE SHIPPING:** Strengthen "rejects overlapping bookings" — assert the 2nd booking is rejected with 409, not that save() ran (confirmed false-confidence)
 2. **BEFORE SHIPPING:** Mock the API URL (testability)
 3. **BEFORE SHIPPING:** Add test for database write failure
 4. **FOLLOW-UP:** Refactor Date.now() to injectable clock

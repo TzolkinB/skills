@@ -42,16 +42,16 @@ A structured list of what could go wrong with a change and its consequences — 
 A failure that produces no error, no crash, no alert — just wrong behavior nobody notices until something downstream breaks or a user complains. Generally worse than a loud failure (a crash), because loud failures get fixed fast; silent ones can run in production for a long time.
 
 ### False-Confidence Test
-A passing test that wouldn't fail even if the code it covers broke — so it looks like protection but guards nothing. The umbrella term for what `audit-test` hunts. Proven false-confidence means a mutation was actually applied and the test stayed green; likely means it was only reasoned about.
+A passing test that wouldn't fail even if the code it covers broke — so it looks like protection but guards nothing. The umbrella term for what `audit-test` hunts. Confirmed false-confidence means a mutation was actually applied and the test stayed green; likely means it was only reasoned about.
 
-### Provenance (Proven / Likely / Unexamined)
-How a verdict input is *known*, carried on every finding so a reader can tell evidence from guesswork. **Proven**: a mutation was run and its effect observed. **Likely**: reasoned about statically, because the code could not be run. **Unexamined**: read and triaged but never advanced past the funnel — no mutation ran and no static judgment was committed, so nothing vouches for it. The distinction that matters most is *Likely-good vs Unexamined*: an Unexamined test is not evidence of health and is never folded into a "holds up" count.
+### Provenance (Confirmed / Likely / Unexamined)
+How a verdict input is *known*, carried on every finding so a reader can tell evidence from guesswork. **Confirmed**: a mutation was run and its effect observed. **Likely**: reasoned about statically, because the code could not be run. **Unexamined**: read and triaged but never advanced past the funnel — no mutation ran and no static judgment was committed, so nothing vouches for it. The distinction that matters most is *Likely-good vs Unexamined*: an Unexamined test is not evidence of health and is never folded into a "holds up" count.
 
 ### Overmocking
 Replacing so many real collaborators with fakes that the test only verifies the fakes, not the code. Classic tell: the test asserts a method *was called* (`expect(save).toHaveBeenCalled()`) instead of asserting the real outcome happened (the record is actually rejected/saved). Break the real logic and the test still passes, because it never touched it.
 
 ### Pseudo-Tested
-Code that has a test naming it, but the code can be changed arbitrarily — even deleted — without the test failing. The execution-proven, worst case of false confidence: the "test" is decoration.
+Code that has a test naming it, but the code can be changed arbitrarily — even deleted — without the test failing. The execution-confirmed, worst case of false confidence: the "test" is decoration.
 
 ### Implementation-Coupled Test
 A test that asserts *how* the code works (internal call sequence, private data shape) rather than *what* it guarantees. It breaks on harmless refactors (false alarm) yet can pass while the real guarantee is broken (false confidence) — the worst of both.
@@ -75,4 +75,4 @@ An exhaustive mutation-testing run: a tool automatically inserts many small bugs
 The headline number a mutation campaign produces: the percentage of inserted mutants the test suite killed. It is a codebase-wide *evidence* artifact (the stronger cousin of line coverage — see Coverage — line vs behavioral), not a per-test judgment. `audit-test` produces no score by design — it answers "would *this one test* fail if its code broke, and what should it assert?", which is judgment about a specific test, not a suite-wide grade. A high mutation score still says nothing about *which* surviving mutant matters or how to fix the test that let it live; that translation is the judgment layer a score can't give.
 
 ### Sacred Path
-A code or test path you designate — per run, via `/sentinel --sacred=<glob>` — as critical enough that "shippable with notes" is the wrong answer to proven-hollow protection. On a sacred path, Sentinel drops its usual gradient and applies binary rigor: a **proven** false-confidence test (from `audit-test`) or an unhandled boundary (from `coverage-review`) forces an un-overridable FAIL, no matter how solid the rest of the branch is. Everything off the sacred paths keeps the normal PASS/CAUTION/FAIL gradient. Sacred paths are opt-in — Sentinel never guesses what's critical — and the override fires on *proven* evidence only, never on a reasoned-only (🟡 likely) finding.
+A code or test path you designate — per run, via `/sentinel --sacred=<glob>` — as critical enough that "shippable with notes" is the wrong answer to confirmed-hollow protection. On a sacred path, Sentinel drops its usual gradient and applies binary rigor: a **confirmed** false-confidence test (from `audit-test`) or an unhandled boundary (from `coverage-review`) forces an un-overridable FAIL, no matter how solid the rest of the branch is. Everything off the sacred paths keeps the normal PASS/CAUTION/FAIL gradient. Sacred paths are opt-in — Sentinel never guesses what's critical — and the override fires on *confirmed* evidence only, never on a reasoned-only (🟡 likely) finding.

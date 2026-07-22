@@ -26,8 +26,8 @@
       ],
       "must_not": [
         {
-          "claim": "Must NOT claim any test is proven false-confidence — that requires a mutation and is `/audit-test`'s job; a suspected false-confidence test is deferred, not judged here (expected-findings boundary).",
-          "anchors": { "any": ["false confidence", "false-confidence", "proven", "mutation", "pseudo-tested", "never verifies its code"] }
+          "claim": "Must NOT claim any test is confirmed false-confidence — that requires a mutation and is `/audit-test`'s job; a suspected false-confidence test is deferred, not judged here (expected-findings boundary).",
+          "anchors": { "any": ["false confidence", "false-confidence", "confirmed", "mutation", "pseudo-tested", "never verifies its code"] }
         },
         {
           "claim": "Must NOT propose NEW tests for missing paths — adding coverage is `/coverage-review`'s additive job, not this subtractive one.",

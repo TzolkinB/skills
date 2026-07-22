@@ -20,9 +20,9 @@ subject: pr-head `abc1234`  ·  3 entries
 - audit-test present but opaque → floor at canary (human must read the report)
 - worst-wins over {ship, canary} → canary
 
-> `ship` needs a *parsed* proven-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.
+> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.
 > Advisory / report-first: a recommendation, not a build failure.
 
 Bundle written to `gate-bundle.json`
 
-**What this means:** the Playwright suite passed, but the audit-test report is carried opaquely — a human must read it before shipping, which floored the decision at canary. No confidence number is produced; the gate reasons over categories only. the Gate ingested existing evidence and did not launch a browser. `ship` wasn't reached because the audit-test is opaque — a parsed proven-clean verdict (`--audit-test-json`) is what would unlock it, so canary is the honest result here, not a downgrade.
+**What this means:** the Playwright suite passed, but the audit-test report is carried opaquely — a human must read it before shipping, which floored the decision at canary. No confidence number is produced; the gate reasons over categories only. the Gate ingested existing evidence and did not launch a browser. `ship` wasn't reached because the audit-test is opaque — a parsed confirmed-clean verdict (`--audit-test-json`) is what would unlock it, so canary is the honest result here, not a downgrade.

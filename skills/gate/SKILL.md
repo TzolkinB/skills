@@ -16,8 +16,8 @@ red spec → `/debug-test`.
 
 the Gate reads what a PR already produced — an E2E result (a Playwright JSON report and/or a Cypress
 `CypressRunResult`), and (if you ran it) an `audit-test` report — binds them into **one readable evidence
-bundle** (in-toto-*shaped* Statements — the in-toto JSON layout, not signed attestations — over a single subject, the PR
-head commit), and derives one **categorical, advisory** release decision by taking the **most conservative**
+bundle** (one structured JSON record per stage, sharing the PR head commit as subject — not a signed
+attestation), and derives one **categorical, advisory** release decision by taking the **most conservative**
 category any input proposes (worst-wins). The decision rule is **deterministic code** (`gate.mjs`), not a
 judgment call: the same bundle always yields the same decision, because a release gate must be reproducible.
 
@@ -51,8 +51,8 @@ that never ran, or a wrong `--playwright` path) is treated as **no execution evi
 pass: a green-looking `{}` is exactly the false confidence the Gate exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
-  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.1` tally written by `/audit-test --emit-json=<path>`.
-    This is the **graduated** input — a *parsed* proven-clean verdict is the only thing that can lift the ceiling to `ship`.
+  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.2` tally written by `/audit-test --emit-json=<path>`.
+    This is the **graduated** input — a *parsed* confirmed-clean verdict is the only thing that can lift the ceiling to `ship`.
   - **Opaque report** (`--audit-test`): a Markdown report from a prior `/audit-test` run. Carried verbatim but not
     machine-read → caps the decision at `canary` (`human-must-read`).
   - **Neither**: fine — *absence* also floors at `canary` (`no-credibility-evidence`), so a bare green Playwright run
@@ -83,18 +83,18 @@ Tell the user where the bundle was written. Then interpret it honestly:
 
 - **`hold`** — an E2E failure (Playwright or Cypress), an **empty/zero-test report**, or no execution
   evidence at all dominates. Route the red to `/debug-test`; the gate is not the place to fix it. (A
-  proven-hollow `audit-test` finding is a `canary`, not a `hold` — the code may be fine; it's the *test*
+  confirmed-hollow `audit-test` finding is a `canary`, not a `hold` — the code may be fine; it's the *test*
   that needs fixing.)
 - **`canary`** — release cautiously with monitoring / a human gate. Read the rationale for *why* it floored:
   - `human-must-read`: an **opaque** `audit-test` report is present — a human must read it (the Gate carries it
     but does not machine-read it). Re-gate with a **parsed** emission (`--audit-test-json`) to let the Gate read it.
   - `no-credibility-evidence`: no `audit-test` at all — run `/audit-test --changed --emit-json=<path>` and re-gate.
-  - proven-hollow / likely-hollow / baseline-lock: `audit-test` found a real credibility defect — fix the flagged
+  - confirmed-hollow / likely-hollow / baseline-lock: `audit-test` found a real credibility defect — fix the flagged
     test(s) (`/audit-test` names them), then re-gate.
   - examined-nothing / reasoning-only: the audit ran but proved nothing (deep-audited 0, or the env wasn't
-    runnable) — nothing was execution-verified, so credibility is unproven.
+    runnable) — nothing was execution-verified, so credibility is unconfirmed.
 - **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green **and** a *parsed*
-  `audit-test` verdict is `PASSED` + `proven`: the deep audits ran, killed their mutations, and found no
+  `audit-test` verdict is `PASSED` + `confirmed`: the deep audits ran, killed their mutations, and found no
   hollow tests **among the deep-audited subset** (the tests triage flagged as worth mutating). This proves
   that subset, not the whole suite — `unexamined` tests are *not* evidence of health, and the report states
   the examined/unexamined split so the scope is never oversold. This is the one path to `ship`, and it is
@@ -107,7 +107,7 @@ The decision is **advisory** — it never fails the build (blocking is a future 
 ## Output Format
 
 Present the script's report verbatim. A `canary` (opaque audit-test) and the earned `ship` (parsed
-proven-clean audit-test) look like:
+confirmed-clean audit-test) look like:
 
 ```
 ## Gate decision: 🟡 CANARY  ·  advisory (did not fail the build)
@@ -123,7 +123,7 @@ subject: pr-head `<sha>`  ·  3 entries
 - audit-test present but opaque → floor at canary (human must read the report)
 - worst-wins over {ship, canary} → canary
 
-> `ship` needs a *parsed* proven-clean `audit-test` verdict to unlock … Advisory / report-first.
+> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock … Advisory / report-first.
 
 Bundle written to gate-bundle.json
 ```
@@ -135,11 +135,11 @@ subject: pr-head `<sha>`  ·  3 entries
 
 ### Inputs — worst-wins (each input proposed a category)
 - `playwright` — result=PASSED → proposes **ship**
-- `audit-test` — PASSED · proven → proposes **ship**
+- `audit-test` — PASSED · confirmed → proposes **ship**
 
 ### Rationale
 - playwright PASSED → ship-baseline
-- audit-test PASSED + proven → ship-eligible — no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health)
+- audit-test PASSED + confirmed → ship-eligible — no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health)
 - worst-wins over {ship} → ship
 
 > `ship` earned: playwright passed and `audit-test` found no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health). Advisory / report-first.
@@ -159,11 +159,11 @@ Bundle written to gate-bundle.json
   the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
   labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
 - **`audit-test` rides in two grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
-  batch tally as `gate-audit-test/v0.1` structured data — the per-class **counts**, not prose. the Gate derives
+  batch tally as `gate-audit-test/v0.2` structured data — the per-class **counts**, not prose. the Gate derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and
   the gate reads only the derived category, never the counts (honesty guard #1). *Opaque* (`--audit-test`): the
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
-  is structural**: only a parsed `PASSED`+`proven` verdict reaches `ship`; an opaque, absent, or examined-nothing
+  is structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; an opaque, absent, or examined-nothing
   audit all cap at `canary`, so there is no "run less, grade better" incentive.
 - **No manufactured number.** There is no `confidence`/score anywhere; the gate reasons over categories, not
   magnitudes. The schema forbids a numeric field in the gate entry — re-adding one requires a schema-version

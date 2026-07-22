@@ -5,7 +5,7 @@ executed-evidence verdict, but execution is an optional sub-step gated behind st
 PASS is mostly static reasoning wearing an execution badge.**
 
 The response is split by design. The *honesty* half lands in Sentinel now — label what is actually
-known, stop letting Unexamined masquerade as Proven, and never let a check that didn't run count as
+known, stop letting Unexamined masquerade as Confirmed, and never let a check that didn't run count as
 health. The *hard execution gate* half becomes the separate evidence pipeline's reason to exist
 ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)). This keeps Sentinel's
 static-judgment identity ([ADR-0010](docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md))
@@ -22,7 +22,7 @@ Invented `Lines Tested: 84%` made categorical; colliding ADRs renumbered (0011, 
 
 Highest trust-per-effort; no new execution.
 
-- **WS1 — Evidence provenance (ADR-0013).** Add the **Unexamined** label alongside Proven/Likely.
+- **WS1 — Evidence provenance (ADR-0013).** Add the **Unexamined** label alongside Confirmed/Likely.
   `audit-test` stops counting Unexamined tests as green; 🟢 relabeled "killed the proposed mutation";
   `/sentinel` PASS carries a mandatory provenance line and never asserts execution. Test Plan
   Coverage marked *Likely — model-generated criteria*; stale `lcov` marked *possibly stale*.
@@ -44,7 +44,7 @@ de-duplicated reporting.
 
 ## Phase 3 — Gate seam (execution gate) · future
 
-- **WS4.** The hard "no PASS without Proven evidence on changed paths" gate lives in the evidence
+- **WS4.** The hard "no PASS without Confirmed evidence on changed paths" gate lives in the evidence
   pipeline (Gate), consuming Sentinel's labeled output. **The PASS bar is set empirically here**,
   after a prototype measures mutation cost per changed test — deferred deliberately rather than
   guessed. Sacred/high-risk-only vs all-changed-paths is the open question this phase answers.

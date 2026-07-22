@@ -3,7 +3,7 @@
 Run: `/audit-test fixtures/audit-test/booking.spec.js fixtures/audit-test/booking.js`
 
 ## Verdict the skill should reach
-🔴 **Proven false-confidence** (if it can run the mutation) — or 🟡 **Likely** if no runnable
+🔴 **Confirmed false-confidence** (if it can run the mutation) — or 🟡 **Likely** if no runnable
 env is available and it reasons only.
 
 ## How it fails (taxonomy)

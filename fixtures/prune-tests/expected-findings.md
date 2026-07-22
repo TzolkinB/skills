@@ -23,7 +23,7 @@ run should produce roughly:
 - **`empty cart totals zero`** — a real boundary condition; unique signal. `keep`.
 
 ## Boundary notes (what the skill should NOT do)
-- It should NOT claim any test is proven false-confidence — that requires a mutation and is
+- It should NOT claim any test is confirmed false-confidence — that requires a mutation and is
   `audit-test`'s job (hand off if it smells that way, don't judge it here).
 - It should NOT propose *new* tests for missing paths — that's `coverage-review`.
 - When scenario equivalence is uncertain, it keeps.

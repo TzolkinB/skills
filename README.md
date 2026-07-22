@@ -39,7 +39,7 @@ Skills that reason about whether your tests protect you. The flagship is **[`/au
 - **[`/test-plan`](./skills/test-plan/SKILL.md)** — Before you write code or tests: define what to test and at which layer (`unit`/`component`/`integration`/`e2e`).
 - **[`/qa-review`](./skills/qa-review/SKILL.md)** — During code review: catch untestable code before it ships.
 - **[`/coverage-review`](./skills/coverage-review/SKILL.md)** — After AI writes tests: find the missing cases and loose assertions.
-- **[`/audit-test`](./skills/audit-test/SKILL.md)** — A test passes but you don't trust it: run one targeted mutation to prove whether it would fail if the code broke. Labels findings **Proven** vs **Likely**, never an invented score. Runs on dev-served Playwright/Cypress, not just unit tests. *(Cypress needs single-test isolation for a clean proof — a one-test spec or the `@cypress/grep` plugin; without it `cypress run --spec` runs the whole file and the audit falls back to 🟡.)*
+- **[`/audit-test`](./skills/audit-test/SKILL.md)** — A test passes but you don't trust it: run one targeted mutation to prove whether it would fail if the code broke. Labels findings **Confirmed** vs **Likely**, never an invented score. Runs on dev-served Playwright/Cypress, not just unit tests. *(Cypress needs single-test isolation for a clean proof — a one-test spec or the `@cypress/grep` plugin; without it `cypress run --spec` runs the whole file and the audit falls back to 🟡.)*
 - **[`/prune-tests`](./skills/prune-tests/SKILL.md)** — The suite feels slow or noisy: cut tests that cost more than they protect (proposes before it deletes).
 - **[`/threat-model`](./skills/threat-model/SKILL.md)** — Before shipping something risky: what breaks in production, and would you notice — ranked by how long a failure would go unseen.
 - **[`/debug-test`](./skills/debug-test/SKILL.md)** — A Playwright test is failing: auto-diagnose and route the fix (also a flake mode).
@@ -121,11 +121,16 @@ Bootstrap is intentionally lightweight. You do not need to classify the entire l
 
 ## Roadmap
 
-Not built yet, but planned as this gets used for real:
+`/gate` and `/audit-test` deliberately shipped narrower than they could be — see
+[`docs/roadmap.md`](./docs/roadmap.md) for the full list of what's deferred, why, and the
+order it's getting picked back up in (short version: a taxonomy-wording fix, then
+coverage-aware ship semantics, then real evidence signing, then a calibration loop for a
+real confidence number).
+
+Separately, not built yet on the authoring side:
 - [ ] Starter templates for common frameworks (Jest, pytest, Playwright)
 - [ ] Progressive guide: unit → integration → E2E testing
 - [ ] Decision tree: "which test type for this scenario?"
-- [ ] Real test-runner integration (read actual coverage output, not just static analysis — see `ARCHITECTURE.md` tradeoffs)
 
 ## Examples
 

@@ -174,6 +174,18 @@ release heading.
   reasoning as ADR-0031 (v1.0 stays reserved for calibration). Default output filename
   `witness-bundle.json` → `gate-bundle.json`. Verified: gate self-test 81/81, `lint`/`changed` self-tests,
   all touched JSON valid, eval samples resynced.
+- **`proven` taxonomy renamed to `confirmed`** ([ADR-0034](docs/adr/0034-proven-confirmed-taxonomy-rename.md),
+  closes [#126](https://github.com/TzolkinB/skills/issues/126)). A second hostile review kept keying on the
+  headline word "proven" over its own hedges; renamed everywhere it named this evidence-provenance tier —
+  not just `gate`'s schema, since `sentinel` and the project's own top-level docs quote the same tally.
+  Schema fields `provenSolid`/`provenHollow` → `confirmedSolid`/`confirmedHollow`, derived `label: 'proven'`
+  → `'confirmed'`; two more MINOR bumps, same honesty-guard-#3 reasoning — `gate-audit-test/v0.1` →
+  **`gate-audit-test/v0.2`**, `gate-evidence-bundle/v0.2` → **`gate-evidence-bundle/v0.3`** (the label enum
+  lives in both). `audit-test`/`gate`/`sentinel`/`debug-test` SKILL prose, `GLOSSARY.md`, and the top-level
+  docs (README/ARCHITECTURE/CONTEXT/PLAN/REVIEWERS) updated to match; `ask-sentinel`/`audit-orchestrator`'s
+  separate routing-evidence "Proven" convention deliberately left alone, tracked as
+  [#131](https://github.com/TzolkinB/skills/issues/131). Verified: gate self-test green (every string
+  deliberately reworded, not find-replaced blind), `lint`/`changed` self-tests, all touched JSON valid.
 
 ### Fixed
 

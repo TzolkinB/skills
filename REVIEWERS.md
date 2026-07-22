@@ -56,11 +56,11 @@ run it in almost anything:
   ([`skills/audit-test/SKILL.md`](./skills/audit-test/SKILL.md)) and say: *"Follow this procedure to
   audit the test `X` in `path/to/test`, whose code is `path/to/code`. Clean git tree; mutate → run one
   test → revert."* Replace the `$ARGUMENTS` reference with your actual paths. It mutates, runs one
-  test, reverts, and gives the same execution-proven verdict as the installed skill. *(This is exactly
+  test, reverts, and gives the same execution-confirmed verdict as the installed skill. *(This is exactly
   how it was validated — pointed at the raw file, no install.)*
 - **A plain chat with no tools** (a vanilla Claude/ChatGPT window) → it can't run a mutation, so it
   falls back to the **reasoned-only 🟡** path the skill explicitly defines: static triage + a mutation
-  thought-experiment. Weaker (no proof), but honest — it won't dress reasoning up as a proven verdict.
+  thought-experiment. Weaker (no proof), but honest — it won't dress reasoning up as a confirmed verdict.
 
 ## One known limitation to watch (please poke at this)
 
