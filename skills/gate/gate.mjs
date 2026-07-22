@@ -12,7 +12,10 @@
 // (advisory / report-first).
 //
 // `ship` is reachable ONLY when Playwright PASSED and a PARSED audit-test verdict is
-// execution-confirmed clean (`PASSED`+`confirmed`) — the B→A graduation (TzolkinB/skills#49).
+// execution-confirmed clean (`PASSED`+`confirmed`) — the B→A graduation (TzolkinB/skills#49)
+// — AND the deep-audited fraction clears the examined-floor (default 50%, `--examined-floor`
+// overridable down to a 25% minimum) — the coverage-aware ship gate (#127, ADR-0035): a
+// confirmed-clean verdict that examined a minority of the suite is disclosed, not upgraded.
 // An opaque or absent audit-test still caps credibility at `canary`, and a parsed run
 // that examined nothing derives `unexamined` → also canary (theater guard).
 //
@@ -24,7 +27,7 @@
 // Usage:
 //   node gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
 //                    [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
-//                    [--commit=<sha>] [--out=<bundle.json>]   # ≥1 execution report; both allowed
+//                    [--examined-floor=<pct>] [--commit=<sha>] [--out=<bundle.json>]   # ≥1 execution report; both allowed
 //   node gate.mjs --self-test        # golden truth-table gate (deterministic)
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -39,6 +42,12 @@ const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
 const RANK = { hold: 0, canary: 1, ship: 2 }; // worst-wins ordinal: hold < canary < ship
+// Coverage-aware ship gate (#127, ADR-0035): a confirmed-clean audit-test verdict must ALSO
+// clear this examined-fraction (deepAudited/audited) to reach `ship`, not just narrate it.
+// `--examined-floor` overrides the default; never clamps below the minimum (never 0, never
+// silently trusts a 1-of-500 deep-audit).
+const EXAMINED_FLOOR_DEFAULT = 50;
+const EXAMINED_FLOOR_MIN = 25;
 // E2E frameworks that produce execution evidence on the same axis (result → proposal).
 // Both feed the gate identically; worst-wins across all present (a green Playwright can't
 // paper over a red Cypress). audit-test is the separate CREDIBILITY axis, not here.
@@ -231,17 +240,32 @@ export function assembleBundle({ commit, entries, producedOn }) {
 
 // ---- gate: worst-wins ordinal min (gate spec v0) ---------------------------
 
+function auditMetricsOf(auditEntry) {
+  return Object.fromEntries((auditEntry?.predicate?.verdict?.metrics ?? []).map((x) => [x.name, x.value]));
+}
+
 // Human-readable scope of an audit-test verdict, drawn from the evidence entry's own metrics
 // (#112): `ship` proves only the DEEP-AUDITED subset, so the rationale/report must say how much
 // of the suite that was and how much rode along `unexamined` (not evidence of health). Returns a
 // plain string — the digits live in prose, never as a numeric field in the gate predicate.
 function auditScope(auditEntry) {
-  const m = Object.fromEntries((auditEntry?.predicate?.verdict?.metrics ?? []).map((x) => [x.name, x.value]));
+  const m = auditMetricsOf(auditEntry);
   if (m.deepAudited === undefined || m.audited === undefined) return 'the deep-audited subset';
   return `the deep-audited subset (${m.deepAudited} of ${m.audited} triaged tests mutation-audited; ${m.unexamined ?? 0} unexamined — not evidence of health)`;
 }
 
-export function gate(bundle) {
+// Clamp a requested examined-floor into [EXAMINED_FLOOR_MIN, 100], defaulting when unset/invalid.
+// A human CLI flag, not attacker-controlled model output — but still never trusted past the
+// floor's own minimum, so `--examined-floor=0` can't reopen the 1-of-500 exploit (#127).
+export function resolveExaminedFloor(requested) {
+  if (requested === undefined || requested === null || requested === '') return EXAMINED_FLOOR_DEFAULT;
+  const n = Number(requested);
+  if (!Number.isFinite(n)) return EXAMINED_FLOOR_DEFAULT;
+  return Math.min(100, Math.max(EXAMINED_FLOOR_MIN, n));
+}
+
+export function gate(bundle, { examinedFloor } = {}) {
+  const floor = resolveExaminedFloor(examinedFloor);
   const entries = bundle.entries ?? [];
   const stageOf = (e) => e.predicate?.stage;
   const known = new Set([...EXECUTION_STAGES, 'audit-test', 'gate']);
@@ -277,24 +301,33 @@ export function gate(bundle) {
 
   // Credibility axis. A PARSED audit-test verdict (result+label, both categories the
   // ingest derived) can propose `ship` — but ONLY when it is execution-confirmed clean
-  // (`PASSED`+`confirmed`); anything less proposes `canary`. An OPAQUE or ABSENT audit
-  // both floor at `canary`, so there is no "run less, grade better" incentive and a
-  // bare green Playwright run can never launder into `ship` (theater guard).
+  // (`PASSED`+`confirmed`) AND the deep-audited fraction clears the examined-floor (#127,
+  // ADR-0035); anything less proposes `canary`. An OPAQUE or ABSENT audit both floor at
+  // `canary`, so there is no "run less, grade better" incentive and a bare green Playwright
+  // run can never launder into `ship` (theater guard).
   const auditResult = audit?.predicate?.verdict?.result;
   if (audit && auditResult) {
     const label = audit.predicate.verdict.label;
-    const proposed = auditResult === 'PASSED' && label === 'confirmed' ? 'ship' : 'canary';
+    const confirmedClean = auditResult === 'PASSED' && label === 'confirmed';
+    const m = auditMetricsOf(audit);
+    const examinedPct = m.audited > 0 ? Math.round((m.deepAudited / m.audited) * 100) : 0;
+    // Integer-domain comparison (deepAudited*100 vs floor*audited) — avoids float rounding
+    // ever letting a borderline fraction slip past the floor it was just short of.
+    const floorMet = confirmedClean && m.audited > 0 && m.deepAudited * 100 >= floor * m.audited;
+    const proposed = confirmedClean && floorMet ? 'ship' : 'canary';
     inputs.push({ stage: 'audit-test', result: auditResult, label, proposed });
     rationale.push(
       proposed === 'ship'
-        ? `audit-test PASSED + confirmed → ship-eligible — no hollow tests among ${auditScope(audit)}`
-        : auditResult === 'FAILED'
-          ? 'audit-test FAILED (confirmed false-confidence) → canary (a hollow test — fix it; not a red build)'
-          : auditResult === 'WARNED'
-            ? 'audit-test WARNED (likely-hollow / baseline-lock) → canary (credibility concern — a human must confirm)'
-            : label === 'unexamined'
-              ? 'audit-test PASSED but examined nothing (deep-audited 0) → canary (no proof of credibility — theater guard)'
-              : 'audit-test PASSED but reasoning-only (env not runnable) → canary (short of execution proof)',
+        ? `audit-test PASSED + confirmed → ship-eligible — no hollow tests among ${auditScope(audit)} (${examinedPct}% examined, clears the ${floor}% examined-floor)`
+        : confirmedClean
+          ? `audit-test PASSED + confirmed but only ${examinedPct}% examined (${m.deepAudited} of ${m.audited} triaged tests) → canary (below the ${floor}% examined-floor — coverage-aware ship gate, #127)`
+          : auditResult === 'FAILED'
+            ? 'audit-test FAILED (confirmed false-confidence) → canary (a hollow test — fix it; not a red build)'
+            : auditResult === 'WARNED'
+              ? 'audit-test WARNED (likely-hollow / baseline-lock) → canary (credibility concern — a human must confirm)'
+              : label === 'unexamined'
+                ? 'audit-test PASSED but examined nothing (deep-audited 0) → canary (no proof of credibility — theater guard)'
+                : 'audit-test PASSED but reasoning-only (env not runnable) → canary (short of execution proof)',
     );
   } else if (audit) {
     inputs.push({ stage: 'audit-test', opaque: true, proposed: 'canary' });
@@ -397,11 +430,17 @@ export function renderReport(bundle, gateEntry) {
   // audit-test. An opaque/absent audit-test still caps credibility at `canary`.
   const audit = gateEntry.predicate.inputs.find((i) => i.stage === 'audit-test');
   const auditOpaqueOrAbsent = audit && !('label' in audit);
+  // PASSED + confirmed + proposed canary is reachable only one way: confirmed-clean but the
+  // deep-audited fraction fell short of the examined-floor (#127, ADR-0035).
+  const belowExaminedFloor = audit?.result === 'PASSED' && audit?.label === 'confirmed' && audit?.proposed === 'canary';
   if (d === 'ship') {
     const execStages = gateEntry.predicate.inputs.filter((i) => EXECUTION_STAGES.has(i.stage)).map((i) => i.stage);
     const suites = execStages.join(' + ') || 'the E2E suite';
     const auditEv = bundle.entries.find((e) => e.predicate?.stage === 'audit-test');
     L.push(`> \`ship\` earned: ${suites} passed and \`audit-test\` found no hollow tests among ${auditScope(auditEv)}.`);
+  } else if (belowExaminedFloor) {
+    const auditEv = bundle.entries.find((e) => e.predicate?.stage === 'audit-test');
+    L.push(`> \`ship\` needs a *confirmed-clean* \`audit-test\` verdict that also clears the examined-floor — this run found no hollow tests but only deep-audited ${auditScope(auditEv)}. Deep-audit more of the suite, or re-gate with a lower (but never below ${EXAMINED_FLOOR_MIN}%) \`--examined-floor\` if you consciously accept the narrower scope.`);
   } else if (auditOpaqueOrAbsent) {
     L.push('> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
@@ -423,6 +462,7 @@ function main(argv) {
   if (flags.has('--help') || !hasExec) {
     console.log('usage: gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>)  # ≥1 required, both allowed');
     console.log('                   [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
+    console.log(`                   [--examined-floor=<pct>]  # default ${EXAMINED_FLOOR_DEFAULT}, clamped to a ${EXAMINED_FLOOR_MIN} minimum`);
     console.log('       gate.mjs --self-test');
     process.exit(hasExec ? 0 : 2);
   }
@@ -449,8 +489,14 @@ function main(argv) {
   if (tally) entries.push(auditTestParsedEntry(tally, { markdown: md }));
   else if (md) entries.push(auditTestEntry(md));
 
+  // Coverage-aware ship gate (#127, ADR-0035): disclose when a requested floor gets clamped,
+  // the same "never silently trust it" treatment as a malformed --audit-test-json.
+  const examinedFloor = resolveExaminedFloor(opts['examined-floor']);
+  if (opts['examined-floor'] !== undefined && Number(opts['examined-floor']) !== examinedFloor)
+    console.error(`⚠ --examined-floor=${opts['examined-floor']} is invalid or below the ${EXAMINED_FLOOR_MIN}% minimum — using ${examinedFloor}%.`);
+
   const bundle = assembleBundle({ commit: opts.commit, entries });
-  const { gateEntry } = gate(bundle);
+  const { gateEntry } = gate(bundle, { examinedFloor });
   bundle.entries.push(gateEntry);
 
   const errors = validateBundle(bundle);
@@ -511,13 +557,17 @@ function runSelfTest() {
   check('empty bundle → hold', gate(assembleBundle({ commit: 'x', entries: [] })).decision === 'hold');
 
   // ---- PARSED audit-test (the B→A graduation) — derivation is a mechanical restatement
+  // `confirmedClean` clears the default 50% examined-floor (4 of 8 = 50%, #127/ADR-0035);
+  // `confirmedBelowFloor` is the ISSUE'S OWN EXAMPLE (4 of 12 = 33%, was ship-eligible pre-#127).
   const T = {
-    confirmedClean:  { audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
-    confirmedHollow: { audited: 12, deepAudited: 4, confirmedSolid: 3, confirmedHollow: 1, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
-    likely:          { audited: 12, deepAudited: 2, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 1, baselineLock: 0, unexamined: 10 },
-    baselineLock:    { audited: 12, deepAudited: 2, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 1, unexamined: 10 },
-    examinedNothing: { audited: 12, deepAudited: 0, confirmedSolid: 0, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 12 },
-    inconclusive:    { audited: 0, deepAudited: 0, confirmedSolid: 0, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 },
+    confirmedClean:      { audited: 8,  deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 4 },
+    confirmedBelowFloor: { audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
+    confirmedVeryLow:    { audited: 20, deepAudited: 2, confirmedSolid: 2, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 18 },
+    confirmedHollow:     { audited: 12, deepAudited: 4, confirmedSolid: 3, confirmedHollow: 1, likelyHollow: 0, baselineLock: 0, unexamined: 8 },
+    likely:              { audited: 12, deepAudited: 2, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 1, baselineLock: 0, unexamined: 10 },
+    baselineLock:        { audited: 12, deepAudited: 2, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 1, unexamined: 10 },
+    examinedNothing:     { audited: 12, deepAudited: 0, confirmedSolid: 0, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 12 },
+    inconclusive:        { audited: 0,  deepAudited: 0, confirmedSolid: 0, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 },
   };
   check('deriveAuditResult: confirmedHollow>0 → FAILED', deriveAuditResult(T.confirmedHollow) === 'FAILED');
   check('deriveAuditResult: likelyHollow>0 → WARNED', deriveAuditResult(T.likely) === 'WARNED');
@@ -547,6 +597,36 @@ function runSelfTest() {
     decide('PASSED', true), decide('PASSED', false), // opaque + absent never ship
   ];
   check('ship reachable ONLY via playwright PASSED + parsed confirmed-clean', decideP('PASSED', T.confirmedClean) === 'ship' && !shipElsewhere.includes('ship'));
+
+  // ---- coverage-aware ship gate (#127, ADR-0035): confirmed-clean alone is not enough —
+  // the deep-audited fraction must also clear the examined-floor (default 50%, min 25%).
+  const decideF = (pw, tally, floorOpts) =>
+    gate(assembleBundle({ commit: 'deadbeef', entries: [...(pw ? [mkPw(pw)] : []), auditTestParsedEntry(tally)] }), floorOpts).decision;
+
+  check('deriveAuditLabel: confirmed-clean at 33% examined is still proof-grade "confirmed" (unaffected by the floor)',
+    deriveAuditLabel(T.confirmedBelowFloor) === 'confirmed');
+  check('resolveExaminedFloor: default when unset', resolveExaminedFloor(undefined) === EXAMINED_FLOOR_DEFAULT);
+  check('resolveExaminedFloor: clamps below the 25% minimum', resolveExaminedFloor(10) === EXAMINED_FLOOR_MIN);
+  check('resolveExaminedFloor: clamps above 100', resolveExaminedFloor(150) === 100);
+  check('resolveExaminedFloor: passes a valid override through', resolveExaminedFloor(30) === 30);
+  check('resolveExaminedFloor: invalid input falls back to default', resolveExaminedFloor('not-a-number') === EXAMINED_FLOOR_DEFAULT);
+
+  check('PASSED + parsed confirmed-clean at default 50% examined-floor → ship', decideF('PASSED', T.confirmedClean) === 'ship');
+  check("PASSED + parsed confirmed-clean at issue #127's own 33%-examined example → canary (THE FIX — was ship pre-#127)",
+    decideF('PASSED', T.confirmedBelowFloor) === 'canary');
+  check('override: lowering the floor to 25% lets the 33%-examined example ship (a conscious, disclosed choice)',
+    decideF('PASSED', T.confirmedBelowFloor, { examinedFloor: 25 }) === 'ship');
+  check('override: requesting a 10% floor is clamped to the 25% minimum — a 10%-examined run still cannot ship',
+    decideF('PASSED', T.confirmedVeryLow, { examinedFloor: 10 }) === 'canary');
+  check('override: a 30% floor still blocks the same 10%-examined run', decideF('PASSED', T.confirmedVeryLow, { examinedFloor: 30 }) === 'canary');
+  check('a run at exactly the floor (50%) ships — inclusive boundary', decideF('PASSED', T.confirmedClean, { examinedFloor: 50 }) === 'ship');
+
+  const belowFloorBundle = assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedBelowFloor)] });
+  const belowFloorGate = gate(belowFloorBundle);
+  belowFloorBundle.entries.push(belowFloorGate.gateEntry);
+  const belowFloorReport = renderReport(belowFloorBundle, belowFloorGate.gateEntry);
+  check('below-floor report names the examined-floor and #127 in its rationale', /examined-floor/.test(belowFloorReport) && /#127/.test(belowFloorReport));
+  check('below-floor report carries no manufactured number outside prose', !/\bconfidence\b\s*[:=]\s*\d/i.test(belowFloorReport));
 
   // #111 — empty/impossible evidence can never ship (the two disclosed exploits, defeated)
   const emptyPw = playwrightEntry({}); // `{}` → EMPTY

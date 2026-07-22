@@ -28,15 +28,14 @@ ADR-0033 corrected ADR-0032's. `ask-sentinel`/`audit-orchestrator`'s separate ro
 "Proven" convention was deliberately left out and tracked as [#131](https://github.com/TzolkinB/skills/issues/131).
 
 ### 2. Coverage-aware ship semantics
-[#127](https://github.com/TzolkinB/skills/issues/127) (open). Today `ship` is reachable with `deepAudited:4, unexamined:8` — 1-of-3
-examined is enough, disclosed honestly in the rationale line but not gated on. Decide whether
-`ship` should require a minimum examined-fraction (or a floor on `deepAudited` count) before
-the categorical decision is allowed to reach `ship` at all, rather than just narrating the
-gap. Flagged as open in `references/critique-synthesis.md` A3 and still unresolved after the
-disclosure fix.
-**Second**, because it's a real design decision (not just prose) but doesn't require new
-capability — it changes when the existing gate function returns `ship`, same shape as
-[ADR-0029](adr/0029-witness-parsed-audit-test-graduation.md)'s B→A change.
+[#127](https://github.com/TzolkinB/skills/issues/127) (closed, 2026-07-22 via [ADR-0035](adr/0035-gate-examined-floor.md)) — `ship` used
+to be reachable with `deepAudited:4, unexamined:8` (33% examined), disclosed honestly in the
+rationale line but not gated on. `gate()` now also requires the deep-audited fraction to clear
+an **examined-floor** (default 50%, `--examined-floor` overridable down to a 25% minimum,
+clamped with a warning below it) before a confirmed-clean verdict can propose `ship`; short of
+the floor it proposes `canary` — no new categorical rung, same shape as
+[ADR-0029](adr/0029-witness-parsed-audit-test-graduation.md)'s B→A change. Closes the gap
+`references/critique-synthesis.md` A3 flagged.
 
 ---
 

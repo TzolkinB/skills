@@ -19,6 +19,20 @@ release heading.
 
 ### Added
 
+- **Gate: coverage-aware ship gate — the examined-floor** ([ADR-0035](docs/adr/0035-gate-examined-floor.md),
+  closes #127). A confirmed-clean `audit-test` verdict used to be enough to propose `ship` regardless of how
+  small the deep-audited fraction was — the shipped fixture was `deepAudited:4, unexamined:8` (33% examined),
+  disclosed in the rationale (#112) but not gated on, exactly the "1-of-500" gap a hostile review flagged as
+  the sharpest unresolved finding. `gate()` now ALSO requires `deepAudited`/`audited` to clear an
+  **examined-floor** — default 50%, overridable via `--examined-floor` but clamped (with a warning) to a 25%
+  minimum, never silently honored below it. No new categorical rung: a confirmed-clean-but-below-floor result
+  proposes `canary`, same as every other under-proven credibility state, with a rationale line naming the
+  fraction, the floor, and #127. No schema-version bump (a `gate.mjs` runtime rule change, same precedent as
+  ADR-0029's B→A graduation); the floor's numbers live only in rationale prose, never as a predicate field
+  (honesty guard #3 unaffected). `fixtures/audit-test.confirmed.json` updated from 4-of-12 to 6-of-12 so the
+  shipped fixture demonstrates a run that clears the new default floor. Verified: golden self-test gains the
+  issue's own 33%-examined example (now `canary`, was `ship`), a 25%-override case, and a clamp-to-25% case;
+  CLI smoke-tested end to end for ship / below-floor / override / clamp.
 - **Gate ingests Cypress** — a second E2E framework on the execution axis
   ([ADR-0030](docs/adr/0030-witness-cypress-ingest.md), epic #49). `witness.mjs` gains a `--cypress` input
   that reads the **Cypress Module API result** (`CypressRunResult`, what `cypress.run()` resolves to) and maps
