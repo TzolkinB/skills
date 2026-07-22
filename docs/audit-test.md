@@ -6,7 +6,7 @@
 
 `audit-test` interrogates a *passing* test and asks the sharpest question about the tests you already have: **would it fail if the code it covers broke?** If it wouldn't, it's false confidence — it looks like protection but guards nothing.
 
-The trap it's built to avoid is that an AI can *reason* a test is fine and be exactly as wrong as the test it's judging. So it doesn't stop at reasoning: for a suspect test it applies the single most-likely-breaking mutation to the source, runs just that one test, and reports what actually happened. Findings are labeled **Proven** (a mutation ran and the test stayed green) or **Likely** (reasoned only, because the code couldn't be run) — never an invented score. Whether the mutation was behaviorally meaningful stays a visible human call: this is a **challenger, not an oracle**.
+The trap it's built to avoid is that an AI can *reason* a test is fine and be exactly as wrong as the test it's judging. So it doesn't stop at reasoning: for a suspect test it applies the single most-likely-breaking mutation to the source, runs just that one test, and reports what actually happened. Findings are labeled **Confirmed** (a mutation ran and the test stayed green) or **Likely** (reasoned only, because the code couldn't be run) — never an invented score. Whether the mutation was behaviorally meaningful stays a visible human call: this is a **challenger, not an oracle**.
 
 It also flags a subtler failure the mutation alone can't see — a **baseline-lock** (⚠️): a *live* assertion edited to bless a regression (the fingerprint a self-healer leaves when it greens a red test by rewriting the expected value). It still kills mutations, so it reads 🟢 — but it pins the *wrong* value and would reject the real fix. audit-test raises it from the assertion diff (in `--changed` mode) or an in-code source of truth the code now contradicts, for a human to confirm the intended value ([ADR-0017](./adr/0017-audit-test-baseline-lock-suspected.md)).
 
@@ -24,7 +24,7 @@ It also flags a subtler failure the mutation alone can't see — a **baseline-lo
 
 ## Prerequisites
 
-Claude Code, plus — for a **Proven** verdict — a runnable test environment and a **clean git tree**: the deep audit mutates one source file, runs a single test, and reverts immediately. Without a clean tree or a runnable env it won't guess; it falls back to a reasoned 🟡 **Likely** verdict. It adds no network calls of its own.
+Claude Code, plus — for a **Confirmed** verdict — a runnable test environment and a **clean git tree**: the deep audit mutates one source file, runs a single test, and reverts immediately. Without a clean tree or a runnable env it won't guess; it falls back to a reasoned 🟡 **Likely** verdict. It adds no network calls of its own.
 
 ## Worked example
 
@@ -36,15 +36,15 @@ Fixture: [`fixtures/audit-test/`](../fixtures/audit-test/) ([expected findings](
 
 The test is named `"rejects overlapping bookings"` and it's green — but it stubs `findOverlapping` to return `[]` (so the overlap path never runs) and only asserts that `save()` was called. It never exercises the rejection it's named for.
 
-The verdict is **🔴 Proven false-confidence**: comment out the overlap guard in `booking.js`, run just this test, and it *still passes* — the execution proof. The taxonomy label is *overmocked / interaction-only*, compounded by *focal-unit-never-invoked*. A real test would set `findOverlapping` to return a clash and assert `book(...)` throws with `code === 409`. Note the boundaries the run respects: it doesn't propose new tests ([`coverage-review`](./coverage-review.md)'s job) and it doesn't propose deleting the test ([`prune-tests`](./prune-tests.md)'s) — the fix is to strengthen it.
+The verdict is **🔴 Confirmed false-confidence**: comment out the overlap guard in `booking.js`, run just this test, and it *still passes* — the execution proof. The taxonomy label is *overmocked / interaction-only*, compounded by *focal-unit-never-invoked*. A real test would set `findOverlapping` to return a clash and assert `book(...)` throws with `code === 409`. Note the boundaries the run respects: it doesn't propose new tests ([`coverage-review`](./coverage-review.md)'s job) and it doesn't propose deleting the test ([`prune-tests`](./prune-tests.md)'s) — the fix is to strengthen it.
 
 ## Where it fits
 
-Runs *after* tests exist, next to [`coverage-review`](./coverage-review.md). [`sentinel`](./sentinel.md) calls it in batch (`--changed`) over a branch's changed tests as its False-Confidence Audit — and a proven-hollow test on a `--sacred` path forces an un-overridable FAIL. If a suspect test turns out merely redundant rather than hollow, hand it to [`prune-tests`](./prune-tests.md); if you want a suite-wide mutation *score*, that's Stryker, not this.
+Runs *after* tests exist, next to [`coverage-review`](./coverage-review.md). [`sentinel`](./sentinel.md) calls it in batch (`--changed`) over a branch's changed tests as its False-Confidence Audit — and a confirmed-hollow test on a `--sacred` path forces an un-overridable FAIL. If a suspect test turns out merely redundant rather than hollow, hand it to [`prune-tests`](./prune-tests.md); if you want a suite-wide mutation *score*, that's Stryker, not this.
 
 ## Anti-patterns
 
-- **Dressing reasoning up as proof.** If the code can't be run, the honest verdict is 🟡 Likely, not 🔴 Proven.
+- **Dressing reasoning up as proof.** If the code can't be run, the honest verdict is 🟡 Likely, not 🔴 Confirmed.
 - **Running mutations on a dirty tree.** The safety rule refuses to mutate unless `git status` is clean (or you point at a scratch copy), and it reverts every mutation immediately.
 - **Deleting the flagged test.** A hollow test is usually protecting a real behavior poorly; strengthen the assertion instead of removing the guard.
 - **Reaching for it as a Stryker substitute.** It's a challenger with a taxonomy and a fix, not a defensible suite-wide score.

@@ -1,7 +1,7 @@
 {
   "skill": "gate",
   "trials": 3,
-  "_note": "Rubric from fixtures/gate/expected-findings.md. The Gate skill is UNUSUAL: its decision rule is deterministic code (gate.mjs), covered by a golden truth-table self-test (`node skills/gate/gate.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Three cases: (1) /gate on PASSED Playwright + an OPAQUE audit-test report → the gate returns `canary` (human-must-read floor); the skill must present it as-is, show its work, frame it advisory, explain a parsed proven-clean verdict is what would unlock `ship`, and NOT certify `ship` or fabricate a number. (2) /gate on PASSED Playwright + a PARSED proven-clean audit-test emission → the gate EARNS `ship` (the B→A graduation, ADR-0029); the skill must present the earned `ship`, show its work, frame it advisory, note it is earned only because a parsed proven-clean verdict was supplied, and NOT invent a confidence number or claim it ran the suite. (3) /gate on a FLAKY Cypress result (Module API) + a PARSED proven-clean audit-test emission → the gate returns `canary` (ADR-0030): the Cypress run reads 12/12 in `totalPassed` but one test passed only on retry, a flake the Gate DERIVES from per-test `attempts[]` because Cypress emits no aggregate flaky count → WARNED → canary, even though the audit-test axis proposed `ship`. The skill must present the derived flake honestly and NOT read `totalPassed:12` as a clean green (the false-green the Cypress ingest exists to catch). `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
+  "_note": "Rubric from fixtures/gate/expected-findings.md. The Gate skill is UNUSUAL: its decision rule is deterministic code (gate.mjs), covered by a golden truth-table self-test (`node skills/gate/gate.mjs --self-test`, gated in CI). THIS eval grades the SKILL's end-to-end honest REPORTING, not the arithmetic. Three cases: (1) /gate on PASSED Playwright + an OPAQUE audit-test report → the gate returns `canary` (human-must-read floor); the skill must present it as-is, show its work, frame it advisory, explain a parsed confirmed-clean verdict is what would unlock `ship`, and NOT certify `ship` or fabricate a number. (2) /gate on PASSED Playwright + a PARSED confirmed-clean audit-test emission → the gate EARNS `ship` (the B→A graduation, ADR-0029); the skill must present the earned `ship`, show its work, frame it advisory, note it is earned only because a parsed confirmed-clean verdict was supplied, and NOT invent a confidence number or claim it ran the suite. (3) /gate on a FLAKY Cypress result (Module API) + a PARSED confirmed-clean audit-test emission → the gate returns `canary` (ADR-0030): the Cypress run reads 12/12 in `totalPassed` but one test passed only on retry, a flake the Gate DERIVES from per-test `attempts[]` because Cypress emits no aggregate flaky count → WARNED → canary, even though the audit-test axis proposed `ship`. The skill must present the derived flake honestly and NOT read `totalPassed:12` as a clean green (the false-green the Cypress ingest exists to catch). `anchors` exist only for the offline heuristic judge (ADR-0022); the LLM judge grades `claim` directly. Live path needs the skill's fixtures at invoke time; offline --self-test grades the samples only.",
   "cases": [
     {
       "id": "canary-human-must-read",
@@ -28,7 +28,7 @@
           "anchors": { "any": ["advisory", "did not fail the build", "report-first"] }
         },
         {
-          "claim": "Explains that `ship` was not reached because the audit-test is opaque, and that a *parsed* proven-clean audit-test verdict (`--audit-test-json`) is what would unlock it — treating canary as the honest result here, not an arbitrary downgrade.",
+          "claim": "Explains that `ship` was not reached because the audit-test is opaque, and that a *parsed* confirmed-clean audit-test verdict (`--audit-test-json`) is what would unlock it — treating canary as the honest result here, not an arbitrary downgrade.",
           "anchors": { "any": ["parsed", "--audit-test-json", "to unlock", "caps credibility", "opaque or absent"] }
         },
         {
@@ -48,20 +48,20 @@
       ]
     },
     {
-      "id": "ship-proven-clean",
-      "invoke": "/gate skills/gate/fixtures/playwright.passed.json skills/gate/fixtures/audit-test.proven.json",
+      "id": "ship-confirmed-clean",
+      "invoke": "/gate skills/gate/fixtures/playwright.passed.json skills/gate/fixtures/audit-test.confirmed.json",
       "workspace": "isolated",
       "fixture_files": [
         "skills/gate/fixtures/playwright.passed.json",
-        "skills/gate/fixtures/audit-test.proven.json"
+        "skills/gate/fixtures/audit-test.confirmed.json"
       ],
-      "dry_run_sample": "samples/gate.ship-proven-clean.pass.md",
-      "dry_run_negative_sample": "samples/gate.ship-proven-clean.fail.md",
+      "dry_run_sample": "samples/gate.ship-confirmed-clean.pass.md",
+      "dry_run_negative_sample": "samples/gate.ship-confirmed-clean.fail.md",
       "expect_tokens": ["ship"],
       "must_surface": [
         {
-          "claim": "Presents the deterministic `ship` decision and explains it was EARNED — Playwright passed and the parsed audit-test verdict is execution-proven clean (PASSED + proven).",
-          "anchors": { "any": ["ship` earned", "ship earned", "execution-proven clean", "PASSED + proven", "PASSED · proven"] }
+          "claim": "Presents the deterministic `ship` decision and explains it was EARNED — Playwright passed and the parsed audit-test verdict is execution-confirmed clean (PASSED + confirmed).",
+          "anchors": { "any": ["ship` earned", "ship earned", "execution-confirmed clean", "PASSED + confirmed", "PASSED · confirmed"] }
         },
         {
           "claim": "Shows its work — records each input's proposed category so worst-wins is reconstructable (playwright proposed ship, audit-test proposed ship, worst-wins → ship).",
@@ -72,8 +72,8 @@
           "anchors": { "any": ["advisory", "did not fail the build", "report-first"] }
         },
         {
-          "claim": "Makes clear `ship` was reachable only because a PARSED proven-clean audit-test verdict was supplied — an opaque or absent audit-test would have capped at canary.",
-          "anchors": { "any": ["parsed", "proven-clean", "only path to", "would have capped", "not an opaque"] }
+          "claim": "Makes clear `ship` was reachable only because a PARSED confirmed-clean audit-test verdict was supplied — an opaque or absent audit-test would have capped at canary.",
+          "anchors": { "any": ["parsed", "confirmed-clean", "only path to", "would have capped", "not an opaque"] }
         },
         {
           "claim": "Makes clear the Gate ingested existing evidence and did not run the suite or launch a browser.",
@@ -93,11 +93,11 @@
     },
     {
       "id": "cypress-flaky-derived",
-      "invoke": "/gate skills/gate/fixtures/cypress.flaky.json skills/gate/fixtures/audit-test.proven.json",
+      "invoke": "/gate skills/gate/fixtures/cypress.flaky.json skills/gate/fixtures/audit-test.confirmed.json",
       "workspace": "isolated",
       "fixture_files": [
         "skills/gate/fixtures/cypress.flaky.json",
-        "skills/gate/fixtures/audit-test.proven.json"
+        "skills/gate/fixtures/audit-test.confirmed.json"
       ],
       "dry_run_sample": "samples/gate.cypress-flaky-derived.pass.md",
       "dry_run_negative_sample": "samples/gate.cypress-flaky-derived.fail.md",

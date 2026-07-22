@@ -11,10 +11,10 @@ Batch mode judges tests exactly as single-test mode does; it does **not** know o
 
 ## Batch output (provenance tally)
 
-Show flagged findings plus a **provenance tally** — never a flat "hold up" count, which hides the difference between a test proven solid and one never examined ([ADR-0013](../../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). Only deep-audited tests can be 🟢; every test that never left triage is **Unexamined**, counted separately and never as green. Each line carries the test's **file path**:
+Show flagged findings plus a **provenance tally** — never a flat "hold up" count, which hides the difference between a test confirmed solid and one never examined ([ADR-0013](../../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). Only deep-audited tests can be 🟢; every test that never left triage is **Unexamined**, counted separately and never as green. Each line carries the test's **file path**:
 
 ```
-Audited 47 · deep-audited 5 (2 🟢 proven-solid · 1 🔴 proven-hollow · 1 🟡 likely-hollow · 1 ⚠️ baseline-lock) · 42 unexamined
+Audited 47 · deep-audited 5 (2 🟢 confirmed-solid · 1 🔴 confirmed-hollow · 1 🟡 likely-hollow · 1 ⚠️ baseline-lock) · 42 unexamined
 
 🔴 "rejects overlapping bookings" (booking.spec.ts) — overmocked (proof: removed guard, still green)
 ⚠️ "renders the initial deck" (seed.spec.ts) — baseline-lock: assertion 12→10 co-changed with the deck slice; robots.ts declares 12 (confirm intended count)
@@ -24,4 +24,4 @@ Audited 47 · deep-audited 5 (2 🟢 proven-solid · 1 🔴 proven-hollow · 1 �
 42 unexamined — triaged clean but never mutated; not evidence of health. Use `--all` to list them.
 ```
 
-In batch mode, `--all` additionally lists the **Unexamined** tests; without it they are summarized by count only — but they are **never** folded into the proven-solid greens.
+In batch mode, `--all` additionally lists the **Unexamined** tests; without it they are summarized by count only — but they are **never** folded into the confirmed-solid greens.

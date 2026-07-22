@@ -1,11 +1,11 @@
 {
-  "schema": "gate-audit-test/v0.1",
+  "schema": "gate-audit-test/v0.2",
   "producer": "audit-test",
   "scope": "--changed",
   "audited": 12,
   "deepAudited": 4,
-  "provenSolid": 4,
-  "provenHollow": 0,
+  "confirmedSolid": 4,
+  "confirmedHollow": 0,
   "likelyHollow": 0,
   "baselineLock": 0,
   "unexamined": 8

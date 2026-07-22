@@ -35,7 +35,7 @@ The tradeoff: `debug-test` now has an external dependency on the Playwright heal
 
 Several independent skills solve independent problems, but shipping a branch requires them at once, synthesized into one decision. `/sentinel` is the only skill that doesn't do original analysis — it calls the others in its chain (`test-plan`, `coverage-review`, `qa-review`, `debug-test`, and `audit-test` in batch over the changed tests) and reduces their output to a verdict. That's a deliberate layering: atomic skills for daily use, one orchestrator for the "am I safe to merge" moment. It is not a peer of the skills it runs.
 
-`audit-test` joined the chain deliberately: without it, a branch could pass Sentinel while its "passing" tests prove nothing — the exact false confidence the suite exists to expose. It runs as a batch False-Confidence Audit over the changed tests, and its 🔴 *proven* findings move the verdict (see the sacred-path override below).
+`audit-test` joined the chain deliberately: without it, a branch could pass Sentinel while its "passing" tests prove nothing — the exact false confidence the suite exists to expose. It runs as a batch False-Confidence Audit over the changed tests, and its 🔴 *confirmed* findings move the verdict (see the sacred-path override below).
 
 The alternative — teaching every skill to also produce a verdict — would mean several different opinions about shippability with no single source of truth. Centralizing that judgment in one place was worth the extra layer of indirection.
 
@@ -43,7 +43,7 @@ The alternative — teaching every skill to also produce a verdict — would mea
 
 Binary pass/fail either ships you something that isn't ready, or blocks you over a `LOW`-severity nit. Real QA judgment isn't binary — most branches are "shippable with known gaps," which is a real, distinct state from "solid" and from "broken." CAUTION exists so the report can be honest about risk without becoming a blocker for every minor gap. This mirrors the actual conversation you'd have in a PR review, not a CI gate.
 
-The one deliberate exception is the **sacred-path override** ([ADR-0007](docs/adr/0007-sentinel-sacred-path-fail-override.md)). On paths the user marks as sacred (`--sacred=<glob>`), "shippable with notes" is the wrong answer to a test that's been *proven* to guard nothing — so there, and only there, Sentinel drops the gradient and issues an un-overridable FAIL. This borrows J-Rig's binary rigor for the paths that earn it while keeping CAUTION everywhere else. It doesn't reintroduce numeric scoring: the override changes *which* categorical state is reached, not how it's expressed ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)).
+The one deliberate exception is the **sacred-path override** ([ADR-0007](docs/adr/0007-sentinel-sacred-path-fail-override.md)). On paths the user marks as sacred (`--sacred=<glob>`), "shippable with notes" is the wrong answer to a test that's been *confirmed* to guard nothing — so there, and only there, Sentinel drops the gradient and issues an un-overridable FAIL. This borrows J-Rig's binary rigor for the paths that earn it while keeping CAUTION everywhere else. It doesn't reintroduce numeric scoring: the override changes *which* categorical state is reached, not how it's expressed ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)).
 
 ## Why coverage-review flags loose assertions, not just missing ones
 

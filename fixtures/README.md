@@ -50,7 +50,7 @@ Then compare the run to that fixture's `expected-findings.md`.
 | `threat-model` | `refund.js` | Fire-and-forget refund: silent failure, all-refunds blast radius, hard reversibility (email sent, status flipped) |
 | `test-plan` | `discount-code.md` *(scenario — a ticket)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |
 | `bug-report` | `report-export.md` *(scenario — an observation)* | A report that fabricates the sparse input's missing fields — a specific browser/OS/version, an exact `TypeError`, a confident root cause — instead of marking them `Unknown — not provided` (the anti-guess rule) |
-| `sentinel` | `branch-scenario.md` *(scenario — a branch)* | Softening a proven-hollow test on a **sacred** path to 🟡 CAUTION ("shippable with notes") instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
+| `sentinel` | `branch-scenario.md` *(scenario — a branch)* | Softening a confirmed-hollow test on a **sacred** path to 🟡 CAUTION ("shippable with notes") instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
 
 Three more skills route/detect against a **warm sibling repo** and so keep only an
 `expected-findings.md` (no vendored input): `e2e-impact`, `contract-guard`, and

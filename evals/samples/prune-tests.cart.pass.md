@@ -2,7 +2,7 @@
      conservative, categorized plan (merge the redundant pair, rewrite the over-mock with a real
      collaborator, rename/rewrite the stale test, keep the boundary case) and deletes nothing. Used
      by run-eval.mjs --dry-run offline. Deliberately stays subtractive: it does NOT claim any test
-     is proven false-confidence (that needs a mutation → /audit-test) and does NOT propose new tests
+     is confirmed false-confidence (that needs a mutation → /audit-test) and does NOT propose new tests
      for missing paths (that's /coverage-review), so the must_not checks read as correctly absent. -->
 
 ## Prune Review: cart.spec.js

@@ -34,18 +34,18 @@ _Avoid_: test-assert (the retired predecessor)
 Sentinel reports confidence as named levels tied to concrete evidence, never as invented numbers.
 Every verdict input carries its **provenance** — how it is known
 ([ADR-0013](docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)):
-**Proven** (a mutation was run and observed), **Likely** (reasoned only — the code could not be
+**Confirmed** (a mutation was run and observed), **Likely** (reasoned only — the code could not be
 run), or **Unexamined** (read and triaged but never advanced past the funnel, so nothing executed
 or committed vouches for it). Sentinel *labels* provenance; it does not gate on execution — the
 hard execution gate is the future evidence pipeline's job.
 _Avoid_: numeric confidence scores (e.g. "87% confident") — reserve those for that pipeline; and
-never let an Unexamined test sit in a "holds up" tally as if it were Proven.
+never let an Unexamined test sit in a "holds up" tally as if it were Confirmed.
 
 **Sacred path**:
 A path (code or test) the user marks as critical for a `/sentinel` run, via `--sacred=<glob>`, so that
-Sentinel abandons its gradient there and applies binary rigor: a *proven* false-confidence finding or an
+Sentinel abandons its gradient there and applies binary rigor: a *confirmed* false-confidence finding or an
 unhandled boundary on that path forces an **un-overridable FAIL**. It's the one place Sentinel refuses
-CAUTION — and only ever on proven evidence, never a reasoned-only (Likely) finding. Off sacred paths the
+CAUTION — and only ever on confirmed evidence, never a reasoned-only (Likely) finding. Off sacred paths the
 gradient stands.
 _Avoid_: sacred regression (J-Rig's term for the release-blocking test case — related idea, different
 mechanism; ours keys off `audit-test`/`coverage-review` findings, not a designated failing case),

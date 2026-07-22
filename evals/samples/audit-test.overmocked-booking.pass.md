@@ -4,7 +4,7 @@
 
 ## audit-test: "rejects overlapping bookings"
 
-**Verdict:** 🔴 Proven false-confidence
+**Verdict:** 🔴 Confirmed false-confidence
 
 **How it fails:** Overmocked / interaction-only — the test asserts `save()` was called
 (`expect(repo.save).toHaveBeenCalled()`), never that an overlapping booking was rejected.

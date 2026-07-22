@@ -69,7 +69,7 @@ time. TEA governs each release in isolation; Gate is meant to be the memory acro
 
 > **Honest caveat, load-bearing:** the *audit-test* half of this pitch is credible **today** — it's a
 > shipping skill you can run on your own tests in ten minutes. The *Gate* half is a **design, not a
-> proven capability.** The calibrated number is only as good as the calibration loop, and that loop
+> confirmed capability.** The calibrated number is only as good as the calibration loop, and that loop
 > has not yet been shown to work on a real corpus (it needs a labeled flake/verdict history first).
 > **Do not read "calibrated release confidence" as a live feature.** Gate ships today as an
 > advisory evidence-bundle → ship/canary/hold gate; the calibration that would earn it the verdict is
@@ -108,8 +108,8 @@ structurally lacks — today, without adopting anything else.
 
 ## Caveats worth stating plainly
 
-- **The Gate half is a design, not proven** — restated because it's the easiest thing to over-sell.
-  Credible today: `audit-test`'s mutation proof. Not yet proven: Gate's calibrated number.
+- **The Gate half is a design, not confirmed** — restated because it's the easiest thing to over-sell.
+  Credible today: `audit-test`'s mutation proof. Not yet confirmed: Gate's calibrated number.
 - **Integration = orchestration, not code.** TEA is an agent persona, not an API; route to it, pass
   evidence, don't absorb.
 - **Licensing.** TEA is indicated free; confirm its license still permits treating it as an integrable
