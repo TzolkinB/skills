@@ -52,6 +52,22 @@ release heading.
 
 ### Added
 
+- **Gate: content-address the inputs — sha256 into the gate Statement subject**
+  ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §2, capability B1, closes #139). Every ingested input
+  file (the Playwright JSON, the Cypress JSON, the `audit-test` emission and/or report) is now sha256-digested
+  and recorded as a subject of the gate Statement's `subject[]`, alongside the existing `pr-head` git-commit
+  subject — swap or edit an input after the bundle is produced and its recorded digest no longer matches, so
+  the decision is now cryptographically bound to the exact bytes it ingested, not a typed commit string.
+  Digests are lowercase hex **strings** living in `subject`, never in the gate **predicate** — honesty guard #3
+  (no numeric field in the gate predicate) is unaffected. `assembleBundle` gains an `inputs: [{name, bytes}]`
+  parameter; the hashing (`sha256Hex`, `inputSubjects`) is pure, taking bytes as arguments — all file I/O stays
+  in the CLI wrapper (`main()`), keeping the new behavior exercisable offline in the self-test. The terminal
+  report gains an "Input digests" section so a reader can see the binding. `schemaVersion` takes an additive
+  minor bump, `gate-evidence-bundle/v0.3` → `v0.4` (`resourceDescriptor`'s shape is unchanged, so an old bundle
+  with only the `pr-head` subject still validates). Verified: golden self-test gains known-bytes→known-digest,
+  one-subject-per-input, and swap-changes-digest rows (function-level and bundle-level); CLI smoke-tested —
+  hashing a fixture reproduces its real `shasum -a 256`, and editing a Playwright report's bytes changes the
+  recorded digest end to end.
 - **Gate: coverage-aware ship gate — the examined-floor** ([ADR-0035](docs/adr/0035-gate-examined-floor.md),
   closes #127). A confirmed-clean `audit-test` verdict used to be enough to propose `ship` regardless of how
   small the deep-audited fraction was — the shipped fixture was `deepAudited:4, unexamined:8` (33% examined),
