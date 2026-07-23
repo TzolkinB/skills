@@ -19,6 +19,18 @@ release heading.
 
 ### Changed
 
+- **Gate docs honesty pass — build-coupled wording for DSSE signing**
+  ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) Decision 4, capability A, part of #141). Docs-only,
+  committed separately from the signing capability's code (same PR, separate commit, per ADR-0037's rule that
+  build-coupled wording must not land before its capability). `skills/gate/SKILL.md` now says a bundle is a
+  "DSSE-signed in-toto attestation" **only** when a signing key was supplied — the unsigned default keeps
+  saying "in-toto-shaped, not a signed attestation," ADR-0032's hedge, verbatim. Adds a "sign the bundle" usage
+  block (`--gen-key`/`--sign-key`/`--verify`), a Notes bullet on the self-signed scope (proves integrity +
+  continuity, never third-party identity — explicitly not Sigstore, never "verified identity" or "trusted
+  publisher"), and a `signed:`/`unsigned:` line in both Output Format examples. `README.md`'s `/gate` bullet
+  gets one added sentence noting the optional signing. Addresses finding 5 of
+  [`references/critique2-chatgpt.md`](references/critique2-chatgpt.md).
+
 - **Gate docs honesty pass — build-independent wording batch**
   ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) Decision 4, closes #138). Docs-only, no code or schema
   changes: `skills/gate/SKILL.md` and `README.md` now spell out the worst-wins rule in plain English (any
