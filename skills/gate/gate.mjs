@@ -4,7 +4,8 @@
 // Ingests the evidence a PR already produced (E2E execution evidence — a Playwright
 // JSON report and/or a Cypress Module API result — plus an audit-test verdict, either a
 // PARSED emission or an opaque Markdown report), binds it into one readable evidence
-// bundle (in-toto-shaped Statements — not signed attestations, ADR-0032 — over
+// bundle (in-toto-shaped Statements — DSSE-signed attestations when a key is supplied,
+// ADR-0032/ADR-0037 §1; unsigned bundles stay "shaped, not signed" — over
 // content-addressed subjects: the PR head commit plus a sha256 digest of each ingested
 // input file, #139/ADR-0037 §2 — so swapping a report out from under the verdict changes
 // its recorded digest), and derives a
@@ -30,21 +31,25 @@
 // Usage:
 //   node gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
 //                    [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
-//                    [--examined-floor=<pct>] [--commit=<sha>] [--out=<bundle.json>]   # ≥1 execution report; both allowed
+//                    [--examined-floor=<pct>] [--commit=<sha>] [--out=<bundle.json>] \
+//                    [--sign-key=<private-key.pem>]   # ≥1 execution report; both allowed
+//   node gate.mjs --gen-key=<path-prefix>              # writes <prefix>.pem + <prefix>.pub.pem
+//   node gate.mjs --verify --bundle=<bundle.json> --pubkey=<public-key.pem>
 //   node gate.mjs --self-test        # golden truth-table gate (deterministic)
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { createHash } from 'node:crypto';
+import { createHash, sign as cryptoSign, verify as cryptoVerify, createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.4'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2)
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.5'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1)
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
+const DSSE_PAYLOAD_TYPE = 'application/vnd.in-toto+json'; // the in-toto JSON media type (ADR-0037 §1)
 const RANK = { hold: 0, canary: 1, ship: 2 }; // worst-wins ordinal: hold < canary < ship
 // Coverage-aware ship gate (#127, ADR-0035): a confirmed-clean audit-test verdict must ALSO
 // clear this examined-fraction (deepAudited/audited) to reach `ship`, not just narrate it.
@@ -249,6 +254,113 @@ export function inputSubjects(inputs = []) {
   return inputs.map(({ name, bytes }) => ({ name, digest: { sha256: sha256Hex(bytes) } }));
 }
 
+// ---- sign the gate Statement with a self-signed DSSE envelope (#141, A, ADR-0037 §1) ----
+//
+// Opt-in, additive, zero-dep (node:crypto's ed25519 support, no new package). Gate signs only
+// the Statement IT produced — the bundle's content-addressed `subject[]` (pr-head + one sha256
+// per ingested input, #139) plus its own `gate.local/gate/v0` predicate — never the ingested
+// Playwright/Cypress/audit-test entries (signing those would falsely imply their producer
+// vouched for them). Self-signed ed25519 proves INTEGRITY (not altered after signing) and
+// CONTINUITY (same key across runs), never third-party IDENTITY — this is not Sigstore.
+//
+// Every function here is pure: it takes key material (a node:crypto KeyObject) and bytes/objects
+// as arguments and never touches the filesystem, so the self-test exercises sign, verify, and
+// keyid derivation entirely offline with in-memory keys. Key loading (reading PEM files) and key
+// generation live in the CLI wrapper (`main()`), not here.
+
+// DSSE pre-authentication encoding (PAE) — https://github.com/secure-systems-lab/dsse. The
+// signature covers this framed encoding of (payloadType, payload), never the raw JSON bytes
+// alone, so a payloadType confusion can't be used to reinterpret a signed payload.
+function dssePae(payloadType, payloadBytes) {
+  const typeBytes = Buffer.from(payloadType, 'utf8');
+  return Buffer.concat([
+    Buffer.from('DSSEv1 '),
+    Buffer.from(`${typeBytes.length} `),
+    typeBytes,
+    Buffer.from(` ${payloadBytes.length} `),
+    payloadBytes,
+  ]);
+}
+
+// The gate Statement, in the textbook in-toto shape this ADR is built on: a predicate (the
+// decision) asserted over named, content-addressed subjects (the exact bytes it ingested).
+// Reconstructed fresh from a bundle + its gate entry so signing and verification always see
+// the SAME shape — nothing is cached or trusted from an earlier run.
+export function gateStatementPayload(bundle, gateEntry) {
+  return { _type: STATEMENT_TYPE, predicateType: GATE_PREDICATE, subject: bundle.subject, predicate: gateEntry.predicate };
+}
+
+// `keyid` = sha256 of the public key (ADR-0037 §1) — a stable fingerprint independent of PEM
+// formatting, derived from the canonical SPKI/DER encoding so the same key always yields the
+// same id regardless of how it was loaded.
+export function keyidFromPublicKey(publicKey) {
+  return sha256Hex(publicKey.export({ type: 'spki', format: 'der' }));
+}
+
+// Sign an arbitrary JSON-serializable payload as a DSSE envelope. `privateKey` is a node:crypto
+// ed25519 KeyObject (or a PEM/DER input `crypto.sign` accepts) — never read from disk here.
+export function dsseSign(payload, privateKey) {
+  const payloadBytes = Buffer.from(JSON.stringify(payload), 'utf8');
+  const sig = cryptoSign(null, dssePae(DSSE_PAYLOAD_TYPE, payloadBytes), privateKey); // ed25519: algorithm arg is null
+  const publicKey = createPublicKey(privateKey);
+  return {
+    payloadType: DSSE_PAYLOAD_TYPE,
+    payload: payloadBytes.toString('base64'),
+    signatures: [{ keyid: keyidFromPublicKey(publicKey), sig: sig.toString('base64') }],
+  };
+}
+
+// Verify a DSSE envelope's signature against a public key. Checks ONLY that some signature in
+// the envelope validates against these exact `payload` bytes under this exact key — it does not
+// know whether `payload` still matches any particular bundle (that's `verifyGateBundle` below).
+// A malformed envelope, an unknown payloadType, or a bad base64/signature all fail closed.
+export function dsseVerify(envelope, publicKey) {
+  if (!envelope || envelope.payloadType !== DSSE_PAYLOAD_TYPE || !Array.isArray(envelope.signatures)) return false;
+  let payloadBytes;
+  try {
+    payloadBytes = Buffer.from(envelope.payload, 'base64');
+  } catch {
+    return false;
+  }
+  const pae = dssePae(envelope.payloadType, payloadBytes);
+  return envelope.signatures.some((s) => {
+    try {
+      return cryptoVerify(null, pae, publicKey, Buffer.from(s.sig, 'base64'));
+    } catch {
+      return false;
+    }
+  });
+}
+
+// Sign a bundle's gate entry, producing the DSSE envelope to attach at `bundle.dsseEnvelope`.
+export function signGateBundle(bundle, gateEntry, privateKey) {
+  return dsseSign(gateStatementPayload(bundle, gateEntry), privateKey);
+}
+
+// Verify a (possibly tampered) bundle end to end: the envelope's signature must validate AND
+// the payload it was signed over must still equal what the bundle currently says — so editing
+// `bundle.subject` (swapping an input's recorded digest) or the gate entry's `predicate` (the
+// decision, inputs, or rationale) AFTER signing, while leaving the old envelope in place, is
+// caught here even though the envelope's own signature still checks out against its embedded
+// (stale) payload.
+export function verifyGateBundle(bundle, publicKey) {
+  const envelope = bundle?.dsseEnvelope;
+  if (!envelope) return { valid: false, reason: 'bundle is unsigned (no dsseEnvelope)' };
+  if (!dsseVerify(envelope, publicKey)) return { valid: false, reason: 'signature invalid for the given public key' };
+  const gateEntry = (bundle.entries ?? []).find((e) => e.predicate?.stage === 'gate');
+  if (!gateEntry) return { valid: false, reason: 'bundle has no gate entry to check the signed payload against' };
+  let signedPayload;
+  try {
+    signedPayload = JSON.parse(Buffer.from(envelope.payload, 'base64').toString('utf8'));
+  } catch {
+    return { valid: false, reason: 'envelope payload is not valid base64 JSON' };
+  }
+  const expected = gateStatementPayload(bundle, gateEntry);
+  if (JSON.stringify(signedPayload) !== JSON.stringify(expected))
+    return { valid: false, reason: 'signed payload no longer matches the bundle (tampered after signing)' };
+  return { valid: true, keyid: keyidFromPublicKey(publicKey) };
+}
+
 // ---- assemble --------------------------------------------------------------
 
 // `inputs`: [{ name, bytes }] — the raw bytes of each ingested report/emission, read by the
@@ -414,6 +526,18 @@ export function validateBundle(bundle) {
   const gates = (bundle.entries ?? []).filter((e) => e.predicate?.stage === 'gate');
   if (gates.length > 1) errors.push('exactly one gate entry is allowed per bundle');
   for (const g of gates) errors.push(...validateGateEntry(g));
+  // Optional DSSE envelope (#141, ADR-0037 §1) — a bundle with none is unaffected (additive);
+  // a present one gets a shape check only (a signature check needs a public key, which
+  // `validateBundle` doesn't take — that's `verifyGateBundle`, given one explicitly).
+  if (bundle.dsseEnvelope !== undefined) {
+    const e = bundle.dsseEnvelope;
+    if (e.payloadType !== DSSE_PAYLOAD_TYPE) errors.push(`dsseEnvelope.payloadType must be "${DSSE_PAYLOAD_TYPE}"`);
+    if (typeof e.payload !== 'string') errors.push('dsseEnvelope.payload must be a base64 string');
+    if (!Array.isArray(e.signatures) || e.signatures.length < 1) errors.push('dsseEnvelope.signatures must have ≥1 entry');
+    for (const s of e.signatures ?? []) {
+      if (typeof s.keyid !== 'string' || typeof s.sig !== 'string') errors.push('dsseEnvelope.signatures[] entries need string keyid + sig');
+    }
+  }
   return errors;
 }
 
@@ -433,6 +557,13 @@ export function renderReport(bundle, gateEntry) {
   L.push(`## Gate decision: ${icon} ${d.toUpperCase()}  ·  advisory (did not fail the build)`);
   L.push('');
   L.push(`subject: pr-head \`${bundle.subject?.[0]?.digest?.gitCommit ?? 'unknown'}\`  ·  ${bundle.entries.length} entries`);
+  // Signed status (#141, A, ADR-0037 §1) — say "signed" ONLY when a DSSE envelope is actually
+  // present; the unsigned default keeps saying "shaped, not signed" (ADR-0032's hedge).
+  L.push(
+    bundle.dsseEnvelope
+      ? `signed: ✓ DSSE (ed25519, self-signed) — keyid \`${bundle.dsseEnvelope.signatures?.[0]?.keyid ?? '?'}\``
+      : 'signed: ✗ unsigned — in-toto-shaped, not a signed attestation (pass --sign-key to sign)',
+  );
   // Content-addressed inputs (#139): one sha256 subject per ingested file, alongside pr-head.
   // Surfacing them is what lets a reader see the decision is bound to these exact bytes.
   const inputSubjectsList = (bundle.subject ?? []).filter((s) => s.name !== 'pr-head');
@@ -494,11 +625,43 @@ function main(argv) {
 
   if (flags.has('--self-test')) process.exit(runSelfTest() ? 0 : 1);
 
+  // Key generation (#141, A, ADR-0037 §1) — a convenience the CLI wrapper owns; the core
+  // sign/verify/keyid functions never generate or load keys themselves. ed25519, node:crypto,
+  // zero new dependency. Writes PKCS8 private / SPKI public PEM, the formats `--sign-key` and
+  // `--pubkey` read back in below.
+  if (opts['gen-key']) {
+    const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+    const prefix = abs(opts['gen-key']);
+    writeFileSync(`${prefix}.pem`, privateKey.export({ type: 'pkcs8', format: 'pem' }));
+    writeFileSync(`${prefix}.pub.pem`, publicKey.export({ type: 'spki', format: 'pem' }));
+    console.log(`Wrote ${prefix}.pem (private — keep secret, pass via --sign-key) and ${prefix}.pub.pem (public — share for --verify).`);
+    console.log(`keyid: ${keyidFromPublicKey(publicKey)}`);
+    process.exit(0);
+  }
+
+  // Verify an existing bundle against a public key (#141, A) — standalone, no execution report
+  // needed. Self-signed ed25519 proves the bundle wasn't altered after Gate produced it and
+  // continuity of the signing key; it does NOT prove third-party identity (not Sigstore).
+  if (flags.has('--verify')) {
+    if (!opts.bundle || !opts.pubkey) {
+      console.error('usage: gate.mjs --verify --bundle=<gate-bundle.json> --pubkey=<public-key.pem>');
+      process.exit(2);
+    }
+    const bundle = JSON.parse(readFileSync(abs(opts.bundle), 'utf8'));
+    const publicKey = createPublicKey(readFileSync(abs(opts.pubkey), 'utf8'));
+    const result = verifyGateBundle(bundle, publicKey);
+    console.log(result.valid ? `✓ signature valid — bundle unaltered since signing (keyid ${result.keyid})` : `✗ verification failed: ${result.reason}`);
+    process.exit(result.valid ? 0 : 1);
+  }
+
   const hasExec = opts.playwright || opts.cypress;
   if (flags.has('--help') || !hasExec) {
     console.log('usage: gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>)  # ≥1 required, both allowed');
     console.log('                   [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
     console.log(`                   [--examined-floor=<pct>]  # default ${EXAMINED_FLOOR_DEFAULT}, clamped to a ${EXAMINED_FLOOR_MIN} minimum`);
+    console.log('                   [--sign-key=<private-key.pem>]  # opt-in DSSE signing (ed25519) — unsigned by default');
+    console.log('       gate.mjs --gen-key=<path-prefix>              # writes <prefix>.pem + <prefix>.pub.pem');
+    console.log('       gate.mjs --verify --bundle=<bundle.json> --pubkey=<public-key.pem>');
     console.log('       gate.mjs --self-test');
     process.exit(hasExec ? 0 : 2);
   }
@@ -553,6 +716,15 @@ function main(argv) {
   if (errors.length) {
     console.error('✗ bundle failed validation:\n' + errors.map((e) => '  - ' + e).join('\n'));
     process.exit(1); // a malformed bundle is a real defect, not an advisory decision
+  }
+
+  // Opt-in DSSE signing (#141, A, ADR-0037 §1) — strictly additive: with no --sign-key the
+  // bundle is byte-for-byte the same unsigned shape as before this capability landed. Only the
+  // CLI wrapper reads the key file; signing itself (`signGateBundle`) is pure.
+  if (opts['sign-key']) {
+    const privateKey = createPrivateKey(readFileSync(abs(opts['sign-key']), 'utf8'));
+    bundle.dsseEnvelope = signGateBundle(bundle, gateEntry, privateKey);
+    console.log(`✓ signed (keyid ${keyidFromPublicKey(createPublicKey(privateKey))})`);
   }
 
   const out = opts.out ?? 'gate-bundle.json';
@@ -781,6 +953,60 @@ function runSelfTest() {
   const noInputsGate = gate(noInputsBundle);
   check('report with no inputs carries no "Input digests" section', !/Input digests/.test(renderReport(noInputsBundle, noInputsGate.gateEntry)));
 
+  // ---- DSSE signing (#141, A, ADR-0037 §1) — self-signed ed25519. Sign/verify/keyid are pure
+  // functions taking key material as arguments; keys are generated in-memory here (a node:crypto
+  // call, not a file read) so every row runs fully offline, exactly as the ADR's Seam 1 asks.
+  const { publicKey: pkA, privateKey: skA } = generateKeyPairSync('ed25519');
+  const { publicKey: pkB, privateKey: skB } = generateKeyPairSync('ed25519'); // an unrelated key
+
+  check('keyidFromPublicKey: sha256 hex, stable for the same key', /^[0-9a-f]{64}$/.test(keyidFromPublicKey(pkA)) && keyidFromPublicKey(pkA) === keyidFromPublicKey(pkA));
+  check('keyidFromPublicKey: differs across keys', keyidFromPublicKey(pkA) !== keyidFromPublicKey(pkB));
+
+  const envelope = dsseSign({ hello: 'world' }, skA);
+  check('dsseSign: envelope carries the in-toto payloadType', envelope.payloadType === 'application/vnd.in-toto+json');
+  check("dsseSign: envelope's keyid matches the signer's public key", envelope.signatures[0].keyid === keyidFromPublicKey(pkA));
+  check('sign → verify round-trip: verifies against the signer\'s public key (THE UNLOCK)', dsseVerify(envelope, pkA) === true);
+  check('verify: the WRONG key fails', dsseVerify(envelope, pkB) === false);
+  const tamperedEnvelope = { ...envelope, payload: Buffer.from(JSON.stringify({ hello: 'tampered' })).toString('base64') };
+  check('verify: a TAMPERED payload fails (no longer matches the signed PAE)', dsseVerify(tamperedEnvelope, pkA) === false);
+  check('verify: a malformed/absent envelope fails closed, never throws', dsseVerify(null, pkA) === false && dsseVerify({}, pkA) === false);
+
+  // Bundle-level signing pairs A with B1 (ADR-0037 sequencing): the signed payload is the
+  // bundle's `subject` (pr-head + the #139 input digests) PLUS the gate predicate, so the
+  // signature covers the input digests too, not just the decision.
+  const signBundle = assembleBundle({
+    commit: 'deadbeef',
+    entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)],
+    inputs: [{ name: 'playwright-json', bytes: 'fixture bytes' }],
+  });
+  const { gateEntry: signGateEntry } = gate(signBundle);
+  signBundle.entries.push(signGateEntry);
+  signBundle.dsseEnvelope = signGateBundle(signBundle, signGateEntry, skA);
+
+  check('signGateBundle: the signed bundle still validates (shape)', validateBundle(signBundle).length === 0);
+  check('verifyGateBundle: valid signature + unaltered bundle → valid', verifyGateBundle(signBundle, pkA).valid === true);
+  check('verifyGateBundle: the WRONG key → invalid', verifyGateBundle(signBundle, pkB).valid === false);
+
+  const decisionTampered = JSON.parse(JSON.stringify(signBundle));
+  decisionTampered.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision = 'hold';
+  check('verifyGateBundle: the DECISION edited after signing (stale envelope left in place) → invalid',
+    verifyGateBundle(decisionTampered, pkA).valid === false);
+
+  const subjectTampered = JSON.parse(JSON.stringify(signBundle));
+  subjectTampered.subject[1].digest.sha256 = '0'.repeat(64);
+  check('verifyGateBundle: an INPUT DIGEST edited after signing → invalid (signature covers the #139 subjects too)',
+    verifyGateBundle(subjectTampered, pkA).valid === false);
+
+  const unsignedVerify = verifyGateBundle(digestBundle, pkA); // `digestBundle` from the #139 block above — never signed
+  check('verifyGateBundle: an unsigned bundle → invalid, reason names it unsigned', unsignedVerify.valid === false && /unsigned/.test(unsignedVerify.reason));
+  check('assembleBundle: no dsseEnvelope field at all unless signing ran (strictly additive)', assembleBundle({ commit: 'x', entries: [] }).dsseEnvelope === undefined);
+
+  const unsignedReport = renderReport(noInputsBundle, noInputsGate.gateEntry);
+  check('report: an unsigned bundle says "unsigned" / "not a signed attestation" (ADR-0032\'s hedge, unsigned default)',
+    /unsigned/.test(unsignedReport) && /not a signed attestation/.test(unsignedReport));
+  const signedReport = renderReport(signBundle, signGateEntry);
+  check('report: a SIGNED bundle says "signed" and surfaces its keyid', /signed: ✓/.test(signedReport) && signedReport.includes(keyidFromPublicKey(pkA)));
+
   // emission robustness — a model produced it, so never trust it blind
   check('parseAuditEmission: rejects non-JSON', parseAuditEmission('not json {') === null);
   check('parseAuditEmission: rejects missing/foreign schema', parseAuditEmission(JSON.stringify({ confirmedSolid: 1 })) === null);
@@ -830,6 +1056,18 @@ function runSelfTest() {
   check('ship report says ship earned', /`ship` earned/i.test(shipReport));
   check('ship report states examined/unexamined scope (#112)', /deep-audited subset/i.test(shipReport) && /unexamined/i.test(shipReport));
   check('ship report carries no manufactured number', !/\bconfidence\b\s*[:=]\s*\d/i.test(shipReport));
+
+  // end-to-end from the committed signed-bundle fixture (#141) — the demo key is fixture-only,
+  // committed for reproducibility; it signs nothing but this fixture and is not a secret worth
+  // protecting.
+  const signedFixtureBundle = JSON.parse(readFileSync(resolve(HERE, 'fixtures/gate-bundle.signed.json'), 'utf8'));
+  const demoPubKey = createPublicKey(readFileSync(resolve(HERE, 'fixtures/gate-signing-key.demo.pub.pem'), 'utf8'));
+  check('fixture: gate-bundle.signed.json carries a dsseEnvelope', signedFixtureBundle.dsseEnvelope !== undefined);
+  check('fixture: gate-bundle.signed.json validates (shape)', validateBundle(signedFixtureBundle).length === 0);
+  check('fixture: gate-bundle.signed.json verifies against its committed demo public key', verifyGateBundle(signedFixtureBundle, demoPubKey).valid === true);
+  const fixtureTampered = JSON.parse(JSON.stringify(signedFixtureBundle));
+  fixtureTampered.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision = 'hold';
+  check('fixture: tampering with the committed signed fixture is caught', verifyGateBundle(fixtureTampered, demoPubKey).valid === false);
 
   const passed = R.every((r) => r.ok);
   console.log('gate.mjs self-test:');

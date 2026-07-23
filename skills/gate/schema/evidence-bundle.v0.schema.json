@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gate.local/schema/evidence-bundle/v0.4",
-  "title": "Gate evidence bundle (v0.4)",
-  "description": "One readable JSON document binding per-stage in-toto-shaped Statement entries to content-addressed subjects at the bundle top level: the PR head commit plus one sha256 digest per ingested input file. Contract v0.4 — v0 (LOCKED — resolution of TzolkinB/skills#102) plus an additive `EMPTY` execution result (TzolkinB/skills#111, v0.1, ADR-0031) plus the internal witness:// -> gate:// identifier rename (TzolkinB/skills#113, v0.2, ADR-0033) plus the proven -> confirmed taxonomy rename (TzolkinB/skills#126, v0.3, ADR-0034) plus per-input sha256 subjects binding the decision to the exact ingested bytes (TzolkinB/skills#139, v0.4, ADR-0037 §2) — additive only, no shape change to `resourceDescriptor`. Backward-compatible with v0.3: a bundle with only the `pr-head` subject (no input digests) still validates, since `subject` only requires ≥1 entry. Execution evidence = Playwright JSON and/or a Cypress Module API result (added additively per contract Q1: `stage` is a free string, so a new framework needs no schema change or version bump); no numeric confidence. audit-test rides either OPAQUE (Markdown inline, caps at canary) or PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+confirmed unlocks ship). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
+  "$id": "https://gate.local/schema/evidence-bundle/v0.5",
+  "title": "Gate evidence bundle (v0.5)",
+  "description": "One readable JSON document binding per-stage in-toto-shaped Statement entries to content-addressed subjects at the bundle top level: the PR head commit plus one sha256 digest per ingested input file, optionally wrapped in a self-signed DSSE envelope. Contract v0.5 — v0 (LOCKED — resolution of TzolkinB/skills#102) plus an additive `EMPTY` execution result (TzolkinB/skills#111, v0.1, ADR-0031) plus the internal witness:// -> gate:// identifier rename (TzolkinB/skills#113, v0.2, ADR-0033) plus the proven -> confirmed taxonomy rename (TzolkinB/skills#126, v0.3, ADR-0034) plus per-input sha256 subjects binding the decision to the exact ingested bytes (TzolkinB/skills#139, v0.4, ADR-0037 §2) plus an OPTIONAL top-level `dsseEnvelope` — a self-signed ed25519 DSSE envelope over the bundle's `subject` + the gate entry's `predicate` (TzolkinB/skills#141, v0.5, ADR-0037 §1) — additive only, no shape change to `resourceDescriptor` or existing entries. Backward-compatible with v0.4: a bundle with no `dsseEnvelope` still validates (signing is opt-in), and one with only the `pr-head` subject (no input digests) still validates too, since `subject` only requires ≥1 entry. Execution evidence = Playwright JSON and/or a Cypress Module API result (added additively per contract Q1: `stage` is a free string, so a new framework needs no schema change or version bump); no numeric confidence. audit-test rides either OPAQUE (Markdown inline, caps at canary) or PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+confirmed unlocks ship). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
   "type": "object",
   "required": ["schemaVersion", "subject", "producedOn", "entries"],
   "properties": {
-    "schemaVersion": { "const": "gate-evidence-bundle/v0.4" },
+    "schemaVersion": { "const": "gate-evidence-bundle/v0.5" },
     "subject": {
       "description": "The bundle's content-addressed subjects (contract Q4): always the `pr-head` git-commit subject, plus one sha256-digest subject per ingested input file (TzolkinB/skills#139) — swap an input's bytes and its digest, and so its subject, changes. Digests are lowercase hex strings living here, never in the gate predicate (honesty guard #3 is unaffected). Per-entry subject is reserved for future cross-run aggregation.",
       "type": "array",
@@ -17,6 +17,29 @@
     "entries": {
       "type": "array",
       "items": { "$ref": "#/$defs/statement" }
+    },
+    "dsseEnvelope": {
+      "description": "OPTIONAL (TzolkinB/skills#141, ADR-0037 §1). A DSSE envelope — https://github.com/secure-systems-lab/dsse — self-signing this bundle: `payload` is base64 of `{_type, predicateType, subject, predicate}` reconstructed from THIS bundle's `subject` and its `gate` entry's `predicate`; the signature is over the DSSE pre-authentication encoding, not the raw payload bytes. Absent by default (unsigned bundles are unaffected, honest ceiling stays 'in-toto-shaped, not signed'). Self-signed ed25519 proves integrity + continuity, never third-party identity — not Sigstore.",
+      "type": "object",
+      "required": ["payloadType", "payload", "signatures"],
+      "properties": {
+        "payloadType": { "const": "application/vnd.in-toto+json" },
+        "payload": { "type": "string", "description": "base64 of the serialized signed Statement" },
+        "signatures": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["keyid", "sig"],
+            "properties": {
+              "keyid": { "type": "string", "description": "sha256 of the ed25519 public key (SPKI/DER)" },
+              "sig": { "type": "string", "description": "base64 ed25519 signature over the DSSE PAE" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     }
   },
   "additionalProperties": false,
@@ -41,7 +64,7 @@
       }
     },
     "statement": {
-      "description": "An in-toto-shaped Statement (ADR-0032) carrying one stage's evidence — not a signed attestation (kept readable — no DSSE/base64 in v0).",
+      "description": "An in-toto-shaped Statement (ADR-0032) carrying one stage's evidence — kept readable, never itself DSSE/base64-wrapped (that would falsely imply the stage's own producer signed it, ADR-0037 §1). Only the bundle's own gate entry may be covered by the bundle-level `dsseEnvelope`.",
       "type": "object",
       "required": ["_type", "predicateType", "predicate"],
       "properties": {
