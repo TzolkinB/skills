@@ -224,6 +224,20 @@ release heading.
 
 ### Fixed
 
+- **Gate: in-toto hedge applied consistently** (closes #132). [ADR-0032](docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)
+  already decided the permanent wording — "in-toto-*shaped* Statements (not signed attestations)," never
+  unqualified "in-toto Statements," never silent about the shape — but three spots had drifted from it since:
+  `gate.mjs`'s header comment still said bare "in-toto Statements" (the code comment was never updated when
+  ADR-0032 landed); `gate/SKILL.md` overcorrected the other way and dropped "in-toto" entirely, keeping only
+  "not a signed attestation"; and `schema/evidence-bundle.v0.schema.json`'s nested `statement.description`
+  said bare "An in-toto Statement" while the file's own top-level `description` two lines up correctly said
+  "in-toto-shaped." All three now cite ADR-0032 and use its exact hedge. No schema-version bump — a
+  description-string wording fix, not a shape/field change. The literal `_type` constant
+  (`https://in-toto.io/Statement/v1`) is untouched, per [ADR-0033](docs/adr/0033-witness-internal-identifier-rename.md)
+  ("the real external type... was never a 'Witness' identifier"). No new ADR — this corrects drift from an
+  existing decision, not a fresh one. Verified: `gate.mjs --self-test` green, schema JSON valid,
+  `evals/lint.mjs` clean on `gate/SKILL.md`.
+
 - **Gate no longer launders non-evidence into a green `ship`** (#111, from the pre-launch critique
   `references/critique-synthesis.md`). Two disclosed exploits closed: (1) an **empty / zero-test / unrun
   execution report** (`{}`, a wrong `--playwright` path, a suite that never ran) used to derive `PASSED` and

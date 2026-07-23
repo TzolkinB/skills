@@ -41,7 +41,7 @@
       }
     },
     "statement": {
-      "description": "An in-toto Statement carrying one stage's evidence (kept readable — no DSSE/base64 in v0).",
+      "description": "An in-toto-shaped Statement (ADR-0032) carrying one stage's evidence — not a signed attestation (kept readable — no DSSE/base64 in v0).",
       "type": "object",
       "required": ["_type", "predicateType", "predicate"],
       "properties": {
