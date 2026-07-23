@@ -4,7 +4,8 @@
 // Ingests the evidence a PR already produced (E2E execution evidence — a Playwright
 // JSON report and/or a Cypress Module API result — plus an audit-test verdict, either a
 // PARSED emission or an opaque Markdown report), binds it into one readable evidence
-// bundle (in-toto Statements over one subject — the PR head commit), and derives a
+// bundle (in-toto-shaped Statements — not signed attestations, ADR-0032 — over one subject,
+// the PR head commit), and derives a
 // categorical, advisory release decision — `ship | canary | hold` — by worst-wins
 // (ordinal min under hold < canary < ship).
 // It appends its reasoning back into the bundle as a `gate.local/gate/v0` entry

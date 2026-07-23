@@ -16,8 +16,9 @@ red spec → `/debug-test`.
 
 the Gate reads what a PR already produced — an E2E result (a Playwright JSON report and/or a Cypress
 `CypressRunResult`), and (if you ran it) an `audit-test` report — binds them into **one readable evidence
-bundle** (one structured JSON record per stage, sharing the PR head commit as subject — not a signed
-attestation), and derives one **categorical, advisory** release decision by taking the **most conservative**
+bundle** (in-toto-*shaped* Statement entries — [ADR-0032](../../docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)
+— one structured JSON record per stage, sharing the PR head commit as subject — **not a signed
+attestation**), and derives one **categorical, advisory** release decision by taking the **most conservative**
 category any input proposes (worst-wins). The decision rule is **deterministic code** (`gate.mjs`), not a
 judgment call: the same bundle always yields the same decision, because a release gate must be reproducible.
 
