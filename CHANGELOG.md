@@ -19,6 +19,18 @@ release heading.
 
 ### Changed
 
+- **Gate docs honesty pass — build-independent wording batch**
+  ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) Decision 4, closes #138). Docs-only, no code or schema
+  changes: `skills/gate/SKILL.md` and `README.md` now spell out the worst-wins rule in plain English (any
+  `hold` → `hold`; else any `canary` → `canary`; else `ship`), state plainly that the Gate is advisory only —
+  it does not abort the build and a `hold`/`canary` does not by itself stop a deployment — and scope the
+  "deterministic" claim to the gate *decision* step, not the upstream Playwright/Cypress/`audit-test`
+  evidence-gathering that fills the bundle. `skills/gate/SKILL.md` also gets a naming note recording that
+  pre-rename ADRs say "Witness" by design ([ADR-0032](docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)) and
+  are not being rewritten. `README.md`'s Contributing & Support section now opens with an explicit
+  **Status: prototype** line. Addresses findings 3, 7, 8, 9, 10 of
+  [`references/critique2-chatgpt.md`](references/critique2-chatgpt.md).
+
 - **`ask-sentinel`/`audit-orchestrator` routing-evidence label: `Proven` → `Confirmed`**
   ([ADR-0036](docs/adr/0036-ask-sentinel-audit-orchestrator-confirmed-rename.md), closes #131). The residual
   scope ADR-0034/#126 deliberately deferred: these two skills apply the same `Proven`/`Likely`/`Unexamined`
