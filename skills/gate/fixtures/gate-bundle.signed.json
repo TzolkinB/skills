@@ -1,0 +1,154 @@
+{
+  "schemaVersion": "gate-evidence-bundle/v0.5",
+  "subject": [
+    {
+      "name": "pr-head",
+      "digest": {
+        "gitCommit": "fixture"
+      }
+    },
+    {
+      "name": "playwright-json",
+      "digest": {
+        "sha256": "084b1c75a70790a66e486e598eca417147c7d010dea112c840d0d3c8a4609349"
+      }
+    },
+    {
+      "name": "audit-test-json",
+      "digest": {
+        "sha256": "f638d225f3ccd62753cf623c05fc0e58e5a652b7a3838f4293ff8b60fe1d60e2"
+      }
+    }
+  ],
+  "producedOn": "2026-07-23T20:30:00.372Z",
+  "entries": [
+    {
+      "_type": "https://in-toto.io/Statement/v1",
+      "predicateType": "https://gate.local/evidence/qa-stage/v0",
+      "subject": [],
+      "predicate": {
+        "stage": "playwright",
+        "producer": {
+          "id": "gate://playwright@1.x",
+          "startedOn": "2026-07-17T10:00:00.000Z"
+        },
+        "verdict": {
+          "result": "PASSED",
+          "metrics": [
+            {
+              "name": "expected",
+              "value": 12
+            },
+            {
+              "name": "unexpected",
+              "value": 0
+            },
+            {
+              "name": "flaky",
+              "value": 0
+            },
+            {
+              "name": "skipped",
+              "value": 0
+            }
+          ]
+        },
+        "byproducts": [
+          {
+            "name": "playwright-json",
+            "uri": "skills/gate/fixtures/playwright.passed.json",
+            "mediaType": "application/json"
+          }
+        ],
+        "annotations": {}
+      }
+    },
+    {
+      "_type": "https://in-toto.io/Statement/v1",
+      "predicateType": "https://gate.local/evidence/qa-stage/v0",
+      "subject": [],
+      "predicate": {
+        "stage": "audit-test",
+        "producer": {
+          "id": "gate://audit-test@0.x"
+        },
+        "verdict": {
+          "result": "PASSED",
+          "label": "confirmed",
+          "metrics": [
+            {
+              "name": "audited",
+              "value": 12
+            },
+            {
+              "name": "deepAudited",
+              "value": 6
+            },
+            {
+              "name": "confirmedSolid",
+              "value": 6
+            },
+            {
+              "name": "confirmedHollow",
+              "value": 0
+            },
+            {
+              "name": "likelyHollow",
+              "value": 0
+            },
+            {
+              "name": "baselineLock",
+              "value": 0
+            },
+            {
+              "name": "unexamined",
+              "value": 6
+            }
+          ]
+        },
+        "byproducts": [],
+        "annotations": {}
+      }
+    },
+    {
+      "_type": "https://in-toto.io/Statement/v1",
+      "predicateType": "https://gate.local/gate/v0",
+      "subject": [],
+      "predicate": {
+        "stage": "gate",
+        "producer": {
+          "id": "gate://gate@0.x"
+        },
+        "decision": "ship",
+        "inputs": [
+          {
+            "stage": "playwright",
+            "result": "PASSED",
+            "proposed": "ship"
+          },
+          {
+            "stage": "audit-test",
+            "result": "PASSED",
+            "label": "confirmed",
+            "proposed": "ship"
+          }
+        ],
+        "rationale": [
+          "playwright PASSED → ship-baseline",
+          "audit-test PASSED + confirmed → ship-eligible — no hollow tests among the deep-audited subset (6 of 12 triaged tests mutation-audited; 6 unexamined — not evidence of health) (50% examined, clears the 50% examined-floor)",
+          "worst-wins over {ship} → ship"
+        ]
+      }
+    }
+  ],
+  "dsseEnvelope": {
+    "payloadType": "application/vnd.in-toto+json",
+    "payload": "eyJfdHlwZSI6Imh0dHBzOi8vaW4tdG90by5pby9TdGF0ZW1lbnQvdjEiLCJwcmVkaWNhdGVUeXBlIjoiaHR0cHM6Ly9nYXRlLmxvY2FsL2dhdGUvdjAiLCJzdWJqZWN0IjpbeyJuYW1lIjoicHItaGVhZCIsImRpZ2VzdCI6eyJnaXRDb21taXQiOiJmaXh0dXJlIn19LHsibmFtZSI6InBsYXl3cmlnaHQtanNvbiIsImRpZ2VzdCI6eyJzaGEyNTYiOiIwODRiMWM3NWE3MDc5MGE2NmU0ODZlNTk4ZWNhNDE3MTQ3YzdkMDEwZGVhMTEyYzg0MGQwZDNjOGE0NjA5MzQ5In19LHsibmFtZSI6ImF1ZGl0LXRlc3QtanNvbiIsImRpZ2VzdCI6eyJzaGEyNTYiOiJmNjM4ZDIyNWYzY2NkNjI3NTNjZjYyM2MwNWZjMGU1OGU1YTY1MmI3YTM4MzhmNDI5M2ZmOGI2MGZlMWQ2MGUyIn19XSwicHJlZGljYXRlIjp7InN0YWdlIjoiZ2F0ZSIsInByb2R1Y2VyIjp7ImlkIjoiZ2F0ZTovL2dhdGVAMC54In0sImRlY2lzaW9uIjoic2hpcCIsImlucHV0cyI6W3sic3RhZ2UiOiJwbGF5d3JpZ2h0IiwicmVzdWx0IjoiUEFTU0VEIiwicHJvcG9zZWQiOiJzaGlwIn0seyJzdGFnZSI6ImF1ZGl0LXRlc3QiLCJyZXN1bHQiOiJQQVNTRUQiLCJsYWJlbCI6ImNvbmZpcm1lZCIsInByb3Bvc2VkIjoic2hpcCJ9XSwicmF0aW9uYWxlIjpbInBsYXl3cmlnaHQgUEFTU0VEIOKGkiBzaGlwLWJhc2VsaW5lIiwiYXVkaXQtdGVzdCBQQVNTRUQgKyBjb25maXJtZWQg4oaSIHNoaXAtZWxpZ2libGUg4oCUIG5vIGhvbGxvdyB0ZXN0cyBhbW9uZyB0aGUgZGVlcC1hdWRpdGVkIHN1YnNldCAoNiBvZiAxMiB0cmlhZ2VkIHRlc3RzIG11dGF0aW9uLWF1ZGl0ZWQ7IDYgdW5leGFtaW5lZCDigJQgbm90IGV2aWRlbmNlIG9mIGhlYWx0aCkgKDUwJSBleGFtaW5lZCwgY2xlYXJzIHRoZSA1MCUgZXhhbWluZWQtZmxvb3IpIiwid29yc3Qtd2lucyBvdmVyIHtzaGlwfSDihpIgc2hpcCJdfX0=",
+    "signatures": [
+      {
+        "keyid": "c514e0c03540285eeceeba29af72627b4f8b0b17ee59111c20dc09159ded86d7",
+        "sig": "205ZDxg5+Ptl4mb+sKMA+VAYN0d990fGn334eC6rrqC/Vw425Q7qtwEdvHuyLa4TP2E4GGq3CdNaS/0BICtlBA=="
+      }
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the bundle with a self-signed ed25519 key so a reader can verify it was not altered after Gate produced it — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -19,8 +19,10 @@ the Gate reads what a PR already produced — an E2E result (a Playwright JSON r
 bundle** (in-toto-*shaped* Statement entries — [ADR-0032](../../docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)
 — one structured JSON record per stage, over **content-addressed subjects**: the PR head commit plus a sha256
 digest of every ingested input file ([#139](https://github.com/TzolkinB/skills/issues/139),
-[ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2) — **not a signed
-attestation**), and derives one **categorical, advisory** release decision by taking the **most conservative**
+[ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2) — **DSSE-signed in-toto attestations when a
+signing key is supplied** ([#141](https://github.com/TzolkinB/skills/issues/141), ADR-0037 §1); **unsigned by
+default**, in which case a bundle stays exactly what it always was — in-toto-*shaped*, not a signed
+attestation), and derives one **categorical, advisory** release decision by taking the **most conservative**
 category any input proposes — **worst-wins, spelled out**: if any input proposes `hold` → `hold`; else if any
 input proposes `canary` → `canary`; else `ship`. The decision rule is **deterministic code** (`gate.mjs`), not a
 judgment call: given the same bundle, it always yields the same decision. That determinism is scoped to this one
@@ -77,16 +79,36 @@ Run the bundled script from **this skill's base directory** (shown to you when t
 ```
 node "<skill base dir>/gate.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
      [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--examined-floor=<pct>] \
-     --commit=<sha> --out=gate-bundle.json
+     [--sign-key=<private-key.pem>] --commit=<sha> --out=gate-bundle.json
 ```
 (Pass `--playwright`, `--cypress`, or both — at least one is required. `--examined-floor` defaults to
 `50`; a requested value below the `25` minimum is clamped, with a warning, never silently accepted —
-only pass it when you consciously want to accept a narrower deep-audited scope than the default.)
+only pass it when you consciously want to accept a narrower deep-audited scope than the default.
+`--sign-key` is optional — omit it and the bundle is unsigned, exactly as before this option existed.)
 
 The script ([`gate.mjs`](./gate.mjs)) ingests, assembles the bundle, runs the worst-wins gate, appends a
 `gate.local/gate/v0` entry, validates against the honesty guard
 ([`schema/evidence-bundle.v0.schema.json`](./schema/evidence-bundle.v0.schema.json)), and prints the report.
 **Do not recompute or override the decision** — it is the script's deterministic output.
+
+**Optional: sign the bundle** ([#141](https://github.com/TzolkinB/skills/issues/141),
+[ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §1). With no `--sign-key`, stop here — the bundle
+is the same unsigned, in-toto-*shaped* JSON it has always been. To make it tamper-evident:
+
+```
+node "<skill base dir>/gate.mjs" --gen-key=<path-prefix>              # once: writes <prefix>.pem (private,
+                                                                       # keep secret) + <prefix>.pub.pem (public)
+node "<skill base dir>/gate.mjs" ... --sign-key=<prefix>.pem --out=gate-bundle.json   # signs at gate time
+node "<skill base dir>/gate.mjs" --verify --bundle=gate-bundle.json --pubkey=<prefix>.pub.pem  # anyone with
+                                                                       # the public key can check it later
+```
+
+A signed bundle carries a `dsseEnvelope` — a DSSE envelope over an ed25519 signature (`node:crypto`, zero new
+dependency) covering the bundle's `subject[]` (pr-head + the #139 input digests) and the gate decision itself,
+so editing either after signing invalidates it. This is **self-signed**, proving **integrity** (unaltered since
+signing) and **continuity** (same key across runs) — it is **not Sigstore** and proves nothing about
+third-party **identity**. Report it accordingly: a signed bundle may be called "signed," "tamper-evident," or
+a "DSSE-signed attestation"; never "Sigstore-verified," "trusted publisher," or "verified identity."
 
 ### 3. Present the decision — as-is
 Show the script's report: the decision, the per-input proposals (it **shows its work**), and the rationale.
@@ -131,6 +153,7 @@ confirmed-clean audit-test) look like:
 ## Gate decision: 🟡 CANARY  ·  advisory (did not fail the build)
 
 subject: pr-head `<sha>`  ·  3 entries
+signed: ✗ unsigned — in-toto-shaped, not a signed attestation (pass --sign-key to sign)
 
 ### Input digests (content-addressed — swap a file's bytes and this changes)
 - `playwright-json` — sha256:084b1c75a70790a66e486e598eca417147c7d010dea112c840d0d3c8a4609349
@@ -154,6 +177,7 @@ Bundle written to gate-bundle.json
 ## Gate decision: 🟢 SHIP  ·  advisory (did not fail the build)
 
 subject: pr-head `<sha>`  ·  3 entries
+signed: ✓ DSSE (ed25519, self-signed) — keyid `2801ebd3ab3cb4fd6944202388352de3593831f4f1ce0b3276f999a9a0e944d4`
 
 ### Input digests (content-addressed — swap a file's bytes and this changes)
 - `playwright-json` — sha256:084b1c75a70790a66e486e598eca417147c7d010dea112c840d0d3c8a4609349
@@ -204,8 +228,19 @@ Bundle written to gate-bundle.json
   the gate Statement, alongside the existing `pr-head` commit subject — a lowercase hex **string**, never a
   field on the gate **predicate** (honesty guard #3 untouched). Swap or edit an input file after the bundle is
   produced and its recorded digest no longer matches: the decision is bound to the exact bytes it ingested, not
-  to a typed commit string. This is **not** a signature — it detects a swapped input, it does not prove the
-  bundle itself wasn't edited after the fact (that is DSSE signing, a separate, not-yet-built capability).
+  to a typed commit string. On its own this is **not** a signature — it detects a swapped input, it does not
+  prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that.
+- **Optional DSSE signing** ([#141](https://github.com/TzolkinB/skills/issues/141),
+  [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §1) — **opt-in and unsigned by default**. Pass
+  `--sign-key=<private-key.pem>` and `gate.mjs` wraps the bundle's `subject[]` (pr-head + the content-addressed
+  input digests above) and the gate decision in a [DSSE](https://github.com/secure-systems-lab/dsse) envelope:
+  an ed25519 signature (`node:crypto`, no new dependency) over the DSSE pre-authentication encoding, with
+  `keyid` = sha256 of the public key. `--verify --bundle=<path> --pubkey=<path>` then confirms a signed bundle
+  wasn't altered after Gate produced it — a tampered payload or the wrong key both fail closed. This is
+  **self-signed**: it proves **integrity** (unaltered since signing) and **continuity** (same key across runs),
+  never third-party **identity** — it is **not Sigstore**, and the skill must not say "Sigstore," "verified
+  identity," or "trusted publisher." Only a bundle that *is* signed earns "signed" / "tamper-evident" /
+  "attestation"; an unsigned bundle (the default) keeps saying "in-toto-shaped, not a signed attestation."
 - **No manufactured number.** There is no `confidence`/score anywhere; the gate reasons over categories, not
   magnitudes. The schema forbids a numeric field in the gate entry — re-adding one requires a schema-version
   bump, which is the signal a real calibration loop has landed.

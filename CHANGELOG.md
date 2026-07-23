@@ -19,6 +19,18 @@ release heading.
 
 ### Changed
 
+- **Gate docs honesty pass — build-coupled wording for DSSE signing**
+  ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) Decision 4, capability A, part of #141). Docs-only,
+  committed separately from the signing capability's code (same PR, separate commit, per ADR-0037's rule that
+  build-coupled wording must not land before its capability). `skills/gate/SKILL.md` now says a bundle is a
+  "DSSE-signed in-toto attestation" **only** when a signing key was supplied — the unsigned default keeps
+  saying "in-toto-shaped, not a signed attestation," ADR-0032's hedge, verbatim. Adds a "sign the bundle" usage
+  block (`--gen-key`/`--sign-key`/`--verify`), a Notes bullet on the self-signed scope (proves integrity +
+  continuity, never third-party identity — explicitly not Sigstore, never "verified identity" or "trusted
+  publisher"), and a `signed:`/`unsigned:` line in both Output Format examples. `README.md`'s `/gate` bullet
+  gets one added sentence noting the optional signing. Addresses finding 5 of
+  [`references/critique2-chatgpt.md`](references/critique2-chatgpt.md).
+
 - **Gate docs honesty pass — build-independent wording batch**
   ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) Decision 4, closes #138). Docs-only, no code or schema
   changes: `skills/gate/SKILL.md` and `README.md` now spell out the worst-wins rule in plain English (any
@@ -51,6 +63,34 @@ release heading.
   routing-evidence `Proven` mentions outside the excluded historical set.
 
 ### Added
+
+- **Gate: DSSE-sign the gate Statement — opt-in, self-signed ed25519**
+  ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §1, capability A, closes #141). With a signing key,
+  `gate.mjs` now emits a [DSSE](https://github.com/secure-systems-lab/dsse) envelope over the gate Statement —
+  `payloadType` is the in-toto JSON media type, `payload` is base64 of `{_type, predicateType, subject,
+  predicate}` reconstructed from the bundle's `subject[]` (pr-head + the #139 input digests) and the gate
+  entry's `predicate`, and `signatures[].sig` is an ed25519 signature over the DSSE pre-authentication encoding
+  (not the raw JSON) with `keyid` = sha256 of the public key. Pairing with #139 means the signature covers the
+  content-addressed inputs, not just the decision. With no key, the bundle keeps the same unsigned *shape* it
+  had before this capability (no new required field, `dsseEnvelope` simply absent) — signing is strictly
+  additive and opt-in; only `schemaVersion` itself moves, the same additive-minor-bump treatment every prior
+  Gate capability has gotten. New pure, exported primitives —
+  `dsseSign`/`dsseVerify`/`keyidFromPublicKey`/`signGateBundle`/`verifyGateBundle` — take key material and
+  bytes/objects as arguments and never touch the filesystem; key loading and generation live in the CLI wrapper
+  only (`--sign-key=<path>` to sign, `--gen-key=<prefix>` to write a fresh PKCS8/SPKI PEM pair, `--verify
+  --bundle=<path> --pubkey=<path>` to check an existing bundle). `verifyGateBundle` checks the envelope's
+  signature AND that its signed payload still matches the bundle's current `subject`/gate `predicate` — so
+  editing the decision or an input digest after signing while leaving a stale envelope in place is caught, not
+  just a raw signature mismatch. Zero new dependency (`node:crypto`'s built-in ed25519). `schemaVersion` takes
+  an additive minor bump, `gate-evidence-bundle/v0.4` → `v0.5` (the optional top-level `dsseEnvelope` — every
+  existing field and an unsigned bundle's shape are unchanged). The terminal report now states a bundle's
+  signed/unsigned status plainly. Verified: golden self-test gains keyid-derivation, sign→verify round-trip,
+  wrong-key-fail, tampered-payload-fail, decision-tampered-after-signing-fail, and
+  input-digest-tampered-after-signing-fail rows, plus an end-to-end check against a newly committed
+  fixture (`skills/gate/fixtures/gate-bundle.signed.json` + its demo keypair, fixture-only — not a secret) —
+  all offline, in-memory keys. Self-signed ed25519 proves integrity + continuity, never third-party identity —
+  not Sigstore; the docs commit updating `SKILL.md`'s wording to say "signed"/"attestation" only for signed
+  bundles lands separately (ADR-0037 Decision 4).
 
 - **Gate: content-address the inputs — sha256 into the gate Statement subject**
   ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §2, capability B1, closes #139). Every ingested input
