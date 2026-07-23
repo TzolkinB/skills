@@ -123,6 +123,32 @@ silent upgrade.
   loop ([#129](https://github.com/TzolkinB/skills/issues/129)): digests are strings, and the run-trace numbers live
   in the `audit-test` **evidence** entry (which legitimately carries counts today), never in the gate predicate.
 
+### 4. A claims/docs honesty pass ships alongside the build — as its own reviewable slice
+
+Capabilities A–B2 change *what wording is honest*: a signed bundle may say "attestation," an unsigned one may
+not; a content-addressed, cross-checked self-report warrants a softer caveat than a bare one. So the user-facing
+claims must move **in lockstep** with the build — but committed **separately from the capability code**, so the
+wording diff reviews on its own and the launch's claim surface never drifts ahead of (or behind) the
+implementation. Driven by the still-live wording findings in `references/critique2-chatgpt.md` that the build does
+not itself resolve, this pass has two parts:
+
+- **Build-coupled wording (lands with its capability, as a separate commit from the code).** The
+  signed-attestation language ships **only** with **A** and **only** to the self-signed level — `gate/SKILL.md` +
+  README may then say "signed / tamper-evident / attestation," never "Sigstore / verified identity / trusted
+  publisher" (critique2 finding 5). The softened self-report caveat ships with **B1/B2**: reworded to state the new
+  content-addressing / cross-check properties, **not deleted** — Gate still cannot re-execute, so "advisory,
+  self-reported status" stays true (critique2 finding 4). This wording must **not** land before its capability, or
+  it becomes the exact overclaim the critique names.
+- **Build-independent wording (may land now, before A/B1/B2, as a cheap pre-launch batch).** The findings the build
+  never touches: advisory / "does not abort the build" framing (finding 3), the determinism nuance — the gate
+  *decision* is deterministic, the upstream evidence-gathering is not (finding 7), the Witness→Gate doc + ADR-filename
+  sweep (finding 8), explicit prototype/solo-project status labeling (finding 9), and a plain-English worst-wins rule
+  statement (finding 10). None depend on the build; they de-risk the launch regardless of how far A/B1/B2 gets.
+
+The proven→confirmed Blocker (critique2 finding 1) and the examined-subset finding (finding 6) are already resolved
+([ADR-0034](0034-proven-confirmed-taxonomy-rename.md), [ADR-0035](0035-gate-examined-floor.md)) and are out of scope
+here.
+
 ### Sequencing
 
 **A** and **B1** are Gate-only, self-contained, and land first (either order; B1 pairs naturally with A since the
@@ -130,6 +156,10 @@ signature then covers the input digests). **B2** is cross-skill and lands last, 
 emission change; it is the acceptable spill point if the runway runs short — A + B1 alone already move the product
 from "typed commit string + swappable inputs + unsigned" to "signed decision cryptographically bound to the exact
 input files," which is an honest v1 story on its own.
+
+The **build-independent wording batch** (Decision 4) has no code dependency and can land first of all; the
+**build-coupled wording** lands with A and B1/B2 respectively but as a **separate commit** from each capability's
+code, so `/to-tickets` should slice the docs work as its own ticket(s), not bury it inside the code tickets.
 
 ## Considered options
 
@@ -164,6 +194,12 @@ input files," which is an honest v1 story on its own.
   honest-limits discipline stands: Gate still cannot re-run any stage, so its verdict is still an aggregation of
   (now content-addressed, cross-checked, and signed) self-reports. `SKILL.md` keeps a caveat to that effect —
   reworded to state the new integrity properties precisely, not removed.
+- **The claims/docs honesty pass (Decision 4) is part of this work, reviewed separately.** The build alone does not
+  neutralize `references/critique2-chatgpt.md`: it resolves the attestation finding (finding 5, via A) and reduces
+  the self-report finding (finding 4), but the wording findings (3, 7, 8, 9, 10) and the caveat rewording are what
+  actually close the "bold claims vs. minimal implementation" thesis. Shipping the build *without* the wording pass
+  would add claim surface while leaving those findings live — so the docs pass is scoped in, committed apart from
+  the code, and its build-independent half can precede the build.
 - **Determinism and the honesty guards are preserved.** The gate decision is still deterministic prose over
   categories; signing wraps the *output*, it does not enter the decision. Honesty guard #3 (no number in the gate
   predicate) is untouched — the new fields are string digests in `subject` and counts in the `audit-test` evidence
