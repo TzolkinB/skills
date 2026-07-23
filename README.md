@@ -59,7 +59,7 @@ The release-decision layer: it never runs a suite, it **ingests the evidence a P
 
 ### User-invoked
 
-- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR: bind your existing Playwright/Cypress results + an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by worst-wins. Deterministic code, carries no confidence number, never fails the build. Recommends `ship` only when every E2E suite is green **and** a parsed `audit-test` verdict reports no hollow tests among the tests it deep-audited (a shape-checked self-report, not an independent re-verification).
+- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR: bind your existing Playwright/Cypress results + an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`). The decision step itself is deterministic code, carries no confidence number, and is advisory only — it does not abort the build, and a `hold`/`canary` doesn't by itself stop a deployment; that's on your CI or your team. Recommends `ship` only when every E2E suite is green **and** a parsed `audit-test` verdict reports no hollow tests among the tests it deep-audited (a shape-checked self-report, not an independent re-verification).
 
 ## Dependencies
 
@@ -203,7 +203,7 @@ A: That's up to you — copy it into your pull request, post it to Slack, use it
 
 ## Contributing & Support
 
-A personal project, built and maintained by one QA engineer. If a skill's judgment seems off, or something doesn't work, please file an issue — real usage against real code is exactly what sharpens these skills. See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+**Status: prototype.** A personal project, built and maintained by one QA engineer — not a commercially supported product, and there's no team or SLA behind it. If a skill's judgment seems off, or something doesn't work, please file an issue — real usage against real code is exactly what sharpens these skills. See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## License
 

@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -19,8 +19,12 @@ the Gate reads what a PR already produced — an E2E result (a Playwright JSON r
 bundle** (in-toto-*shaped* Statement entries — [ADR-0032](../../docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)
 — one structured JSON record per stage, sharing the PR head commit as subject — **not a signed
 attestation**), and derives one **categorical, advisory** release decision by taking the **most conservative**
-category any input proposes (worst-wins). The decision rule is **deterministic code** (`gate.mjs`), not a
-judgment call: the same bundle always yields the same decision, because a release gate must be reproducible.
+category any input proposes — **worst-wins, spelled out**: if any input proposes `hold` → `hold`; else if any
+input proposes `canary` → `canary`; else `ship`. The decision rule is **deterministic code** (`gate.mjs`), not a
+judgment call: given the same bundle, it always yields the same decision. That determinism is scoped to this one
+step — the gate *decision* over an already-produced bundle is reproducible; the upstream evidence-gathering that
+fills the bundle (the Playwright/Cypress run, the `audit-test` mutation) is not itself claimed to be
+deterministic, and the Gate makes no promise about it.
 
 ## Steps
 
@@ -111,7 +115,9 @@ Tell the user where the bundle was written. Then interpret it honestly:
   is deliberately hard to reach — a single red suite, an **empty/zero-test** report, an opaque, absent, or
   vacuous audit, or a confirmed-clean audit that examined too little of the suite, never gets here.
 
-The decision is **advisory** — it never fails the build (blocking is a future opt-in,
+The decision is **advisory only** — the Gate does not abort the build, and a `hold` or `canary` does not by
+itself stop a deployment; nothing here enforces anything, so treat the report as input to a human or CI decision,
+not as the decision itself (blocking is a future opt-in,
 [ADR-0026](../../docs/adr/0026-live-evals-opt-in-pr-and-scheduled-drift.md)).
 
 ## Output Format
@@ -186,8 +192,13 @@ Bundle written to gate-bundle.json
   magnitudes. The schema forbids a numeric field in the gate entry — re-adding one requires a schema-version
   bump, which is the signal a real calibration loop has landed.
 - **Advisory / report-first** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) —
-  it recommends, it never blocks a merge in v0.
+  it recommends, it never blocks a merge in v0. A `hold` or `canary` is a recommendation for a human or a CI
+  pipeline to act on; the Gate has no mechanism of its own to stop a build or a deployment.
 - **Housing & extraction:** everything lives under this one directory with a `gate://` namespace, so
   lifting the Gate to a standalone plugin is a folder move ([#99](https://github.com/TzolkinB/skills/issues/99),
   [#102](https://github.com/TzolkinB/skills/issues/102)).
+- **Naming:** this skill was called "Witness" before [ADR-0032](../../docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)
+  renamed it to "Gate" ([#113](https://github.com/TzolkinB/skills/issues/113)). ADRs and other historical records
+  written before that rename still say "Witness" by design — history isn't rewritten — but every current
+  user-facing surface (this file, the README, the CLI output) says "Gate."
 - `--explain` is not supported — procedural, not pedagogical.
