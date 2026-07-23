@@ -71,8 +71,10 @@ release heading.
   predicate}` reconstructed from the bundle's `subject[]` (pr-head + the #139 input digests) and the gate
   entry's `predicate`, and `signatures[].sig` is an ed25519 signature over the DSSE pre-authentication encoding
   (not the raw JSON) with `keyid` = sha256 of the public key. Pairing with #139 means the signature covers the
-  content-addressed inputs, not just the decision. With no key, the bundle is byte-for-byte the unsigned shape
-  it was before this capability — signing is strictly additive and opt-in. New pure, exported primitives —
+  content-addressed inputs, not just the decision. With no key, the bundle keeps the same unsigned *shape* it
+  had before this capability (no new required field, `dsseEnvelope` simply absent) — signing is strictly
+  additive and opt-in; only `schemaVersion` itself moves, the same additive-minor-bump treatment every prior
+  Gate capability has gotten. New pure, exported primitives —
   `dsseSign`/`dsseVerify`/`keyidFromPublicKey`/`signGateBundle`/`verifyGateBundle` — take key material and
   bytes/objects as arguments and never touch the filesystem; key loading and generation live in the CLI wrapper
   only (`--sign-key=<path>` to sign, `--gen-key=<prefix>` to write a fresh PKCS8/SPKI PEM pair, `--verify
