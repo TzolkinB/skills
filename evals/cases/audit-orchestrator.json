@@ -24,8 +24,8 @@
           "anchors": { "any": ["/audit-test", "reachability wall", "reachability guard", "can't reach", "can't touch", "dev-served"] }
         },
         {
-          "claim": "Preserves audit-test's honest 🟡 on a stale/build-served harness instead of a false 🔴 — the reachability guard, and labels the routing Proven.",
-          "anchors": { "any": ["honest 🟡", "🟡", "false 🔴", "proven", "provenance"] }
+          "claim": "Preserves audit-test's honest 🟡 on a stale/build-served harness instead of a false 🔴 — the reachability guard, and labels the routing Confirmed.",
+          "anchors": { "any": ["honest 🟡", "🟡", "false 🔴", "confirmed", "provenance"] }
         }
       ],
       "must_not": [

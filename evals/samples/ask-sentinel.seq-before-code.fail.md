@@ -7,6 +7,6 @@
 **Use:** `/test-plan`
 **Why:** it gives you the cases and layers to test before you write any code.
 **Run:** `/test-plan checkout feature`
-**Evidence:** Proven (own).
+**Evidence:** Confirmed (own).
 
 **Next in the flow:** write the tests.

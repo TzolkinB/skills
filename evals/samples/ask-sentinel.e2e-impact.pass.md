@@ -6,6 +6,6 @@
 **Use:** `/e2e-impact`
 **Why:** the question is *which E2E specs this diff plausibly hits* — `/e2e-impact` maps the changed files to the Playwright/Cypress specs via import, route, and selector/test-id signals, with a confidence per spec and an honest run-all fallback for anything it can't trace.
 **Run:** `/e2e-impact main...HEAD`
-**Evidence:** Proven (own) — heuristic v0; never silently drops a changed file.
+**Evidence:** Confirmed (own) — heuristic v0; never silently drops a changed file.
 
 **Next in the flow:** run the mapped specs; if one goes red, `/debug-test`.

@@ -7,6 +7,6 @@
 **Use:** `/audit-orchestrator`
 **Why:** it's the stack-aware Audit entry point — it picks the right prover *for your stack* (unit JS/TS → Stryker/Tautest, app-driven Playwright/Cypress → `/audit-test`), so you don't have to choose the tool yourself.
 **Run:** `/audit-orchestrator path/to/suspect.spec.ts`
-**Evidence:** advice — Tautest Proven, StrykerJS Likely, audit-test Proven.
+**Evidence:** advice — Tautest Confirmed, StrykerJS Likely, audit-test Confirmed.
 
 **Next in the flow:** it routes into the prover it picked; act on that tool's verdict.

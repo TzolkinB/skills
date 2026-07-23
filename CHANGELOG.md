@@ -17,6 +17,27 @@ release heading.
 
 ## [Unreleased]
 
+### Changed
+
+- **`ask-sentinel`/`audit-orchestrator` routing-evidence label: `Proven` → `Confirmed`**
+  ([ADR-0036](docs/adr/0036-ask-sentinel-audit-orchestrator-confirmed-rename.md), closes #131). The residual
+  scope ADR-0034/#126 deliberately deferred: these two skills apply the same `Proven`/`Likely`/`Unexamined`
+  ternary ([ADR-0013](docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) to grade a *routing
+  recommendation*'s evidence, not `audit-test`'s per-test mutation verdict — but the same headline-word risk
+  applied, and leaving it unrenamed after #126 shipped would have been a fresh inconsistency (schema says
+  `confirmed`, the skills routing to/from it still said `proven`). Same word swap, same scope discipline as
+  ADR-0034 (ordinary-verb "proven"/"provenance" untouched): `skills/ask-sentinel/SKILL.md`,
+  `skills/audit-orchestrator/SKILL.md`, `docs/orchestration-map.md` (plus one stray lowercase
+  `audit-test proven/likely/unexamined labels` mention on the same page — the #126 axis, found while sweeping
+  this one), `evals/cases/audit-orchestrator.json`, the affected `evals/samples/ask-sentinel.*` /
+  `evals/samples/audit-orchestrator.*` samples, and `fixtures/audit-orchestrator/expected-findings.md` (the
+  rubric backing the touched eval case). No schema-version bump — prose/eval-fixture only, no JSON field.
+  Historical ADRs, CHANGELOG, and the locked `references/witness-ingestible-evidence-audit.md` contract audit
+  stay untouched (ADR-0034 §5 precedent). Verified: both skills' `run-eval.mjs --self-test` green
+  (pass-samples pass, negative-samples still correctly fail), `evals/lint.mjs` clean on both `SKILL.md`
+  files, `evals/lint.mjs`/`evals/changed.mjs` self-tests green, repo-wide grep confirms no remaining
+  routing-evidence `Proven` mentions outside the excluded historical set.
+
 ### Added
 
 - **Gate: coverage-aware ship gate — the examined-floor** ([ADR-0035](docs/adr/0035-gate-examined-floor.md),
