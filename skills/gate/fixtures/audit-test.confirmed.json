@@ -3,10 +3,10 @@
   "producer": "audit-test",
   "scope": "--changed",
   "audited": 12,
-  "deepAudited": 4,
-  "confirmedSolid": 4,
+  "deepAudited": 6,
+  "confirmedSolid": 6,
   "confirmedHollow": 0,
   "likelyHollow": 0,
   "baselineLock": 0,
-  "unexamined": 8
+  "unexamined": 6
 }

@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread or unparsed; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; never fails the build. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -52,7 +52,9 @@ pass: a green-looking `{}` is exactly the false confidence the Gate exists to re
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
   - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.2` tally written by `/audit-test --emit-json=<path>`.
-    This is the **graduated** input — a *parsed* confirmed-clean verdict is the only thing that can lift the ceiling to `ship`.
+    This is the **graduated** input — a *parsed* confirmed-clean verdict that also clears the **examined-floor**
+    (`deepAudited`/`audited` ≥ 50% by default) is the only thing that can lift the ceiling to `ship`
+    ([#127](https://github.com/TzolkinB/skills/issues/127), [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)).
   - **Opaque report** (`--audit-test`): a Markdown report from a prior `/audit-test` run. Carried verbatim but not
     machine-read → caps the decision at `canary` (`human-must-read`).
   - **Neither**: fine — *absence* also floors at `canary` (`no-credibility-evidence`), so a bare green Playwright run
@@ -67,10 +69,12 @@ Run the bundled script from **this skill's base directory** (shown to you when t
 
 ```
 node "<skill base dir>/gate.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
-     [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
+     [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--examined-floor=<pct>] \
      --commit=<sha> --out=gate-bundle.json
 ```
-(Pass `--playwright`, `--cypress`, or both — at least one is required.)
+(Pass `--playwright`, `--cypress`, or both — at least one is required. `--examined-floor` defaults to
+`50`; a requested value below the `25` minimum is clamped, with a warning, never silently accepted —
+only pass it when you consciously want to accept a narrower deep-audited scope than the default.)
 
 The script ([`gate.mjs`](./gate.mjs)) ingests, assembles the bundle, runs the worst-wins gate, appends a
 `gate.local/gate/v0` entry, validates against the honesty guard
@@ -93,13 +97,18 @@ Tell the user where the bundle was written. Then interpret it honestly:
     test(s) (`/audit-test` names them), then re-gate.
   - examined-nothing / reasoning-only: the audit ran but proved nothing (deep-audited 0, or the env wasn't
     runnable) — nothing was execution-verified, so credibility is unconfirmed.
+  - **below the examined-floor**: `PASSED` + `confirmed`, but the deep-audited fraction fell short of the
+    floor (default 50%) — a real confirmed-clean result over too small a slice to call the whole suite honest
+    ([#127](https://github.com/TzolkinB/skills/issues/127)). Deep-audit more of the suite and re-gate, or
+    re-run with a consciously lower `--examined-floor` (never below 25%) if the narrower scope is acceptable.
 - **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green **and** a *parsed*
-  `audit-test` verdict is `PASSED` + `confirmed`: the deep audits ran, killed their mutations, and found no
-  hollow tests **among the deep-audited subset** (the tests triage flagged as worth mutating). This proves
-  that subset, not the whole suite — `unexamined` tests are *not* evidence of health, and the report states
-  the examined/unexamined split so the scope is never oversold. This is the one path to `ship`, and it is
-  deliberately hard to reach — a single red suite, an **empty/zero-test** report, or an opaque, absent, or
-  vacuous audit, never gets here.
+  `audit-test` verdict is `PASSED` + `confirmed` **and** the deep-audited fraction clears the examined-floor
+  (`deepAudited`/`audited` ≥ 50% by default): the deep audits ran, killed their mutations, found no hollow
+  tests **among the deep-audited subset**, and that subset was big enough to call the result honest. This
+  proves that subset, not the whole suite — `unexamined` tests are *not* evidence of health, and the report
+  states the examined/unexamined split so the scope is never oversold. This is the one path to `ship`, and it
+  is deliberately hard to reach — a single red suite, an **empty/zero-test** report, an opaque, absent, or
+  vacuous audit, or a confirmed-clean audit that examined too little of the suite, never gets here.
 
 The decision is **advisory** — it never fails the build (blocking is a future opt-in,
 [ADR-0026](../../docs/adr/0026-live-evals-opt-in-pr-and-scheduled-drift.md)).
@@ -139,10 +148,10 @@ subject: pr-head `<sha>`  ·  3 entries
 
 ### Rationale
 - playwright PASSED → ship-baseline
-- audit-test PASSED + confirmed → ship-eligible — no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health)
+- audit-test PASSED + confirmed → ship-eligible — no hollow tests among the deep-audited subset (6 of 12 triaged tests mutation-audited; 6 unexamined — not evidence of health) (50% examined, clears the 50% examined-floor)
 - worst-wins over {ship} → ship
 
-> `ship` earned: playwright passed and `audit-test` found no hollow tests among the deep-audited subset (4 of 12 triaged tests mutation-audited; 8 unexamined — not evidence of health). Advisory / report-first.
+> `ship` earned: playwright passed and `audit-test` found no hollow tests among the deep-audited subset (6 of 12 triaged tests mutation-audited; 6 unexamined — not evidence of health). Advisory / report-first.
 
 Bundle written to gate-bundle.json
 ```
@@ -165,6 +174,13 @@ Bundle written to gate-bundle.json
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
   is structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; an opaque, absent, or examined-nothing
   audit all cap at `canary`, so there is no "run less, grade better" incentive.
+- **Coverage-aware ship gate — the examined-floor** ([#127](https://github.com/TzolkinB/skills/issues/127),
+  [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)). A confirmed-clean verdict alone used to be enough to
+  ship, even if `deepAudited` was a small minority of `audited` (the shipped fixture used to be `4 of 12` — 33%).
+  The gate now ALSO requires `deepAudited`/`audited` to clear a floor — default **50%**, overridable via
+  `--examined-floor` but never below a **25%** minimum, clamped (with a warning) rather than silently honored.
+  Like everything else in the gate, the floor's numbers live only in rationale *prose*, never as a field on the
+  gate predicate (honesty guard #3 still holds).
 - **No manufactured number.** There is no `confidence`/score anywhere; the gate reasons over categories, not
   magnitudes. The schema forbids a numeric field in the gate entry — re-adding one requires a schema-version
   bump, which is the signal a real calibration loop has landed.
