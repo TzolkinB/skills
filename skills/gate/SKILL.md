@@ -17,7 +17,9 @@ red spec → `/debug-test`.
 the Gate reads what a PR already produced — an E2E result (a Playwright JSON report and/or a Cypress
 `CypressRunResult`), and (if you ran it) an `audit-test` report — binds them into **one readable evidence
 bundle** (in-toto-*shaped* Statement entries — [ADR-0032](../../docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)
-— one structured JSON record per stage, sharing the PR head commit as subject — **not a signed
+— one structured JSON record per stage, over **content-addressed subjects**: the PR head commit plus a sha256
+digest of every ingested input file ([#139](https://github.com/TzolkinB/skills/issues/139),
+[ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2) — **not a signed
 attestation**), and derives one **categorical, advisory** release decision by taking the **most conservative**
 category any input proposes — **worst-wins, spelled out**: if any input proposes `hold` → `hold`; else if any
 input proposes `canary` → `canary`; else `ship`. The decision rule is **deterministic code** (`gate.mjs`), not a
@@ -130,6 +132,10 @@ confirmed-clean audit-test) look like:
 
 subject: pr-head `<sha>`  ·  3 entries
 
+### Input digests (content-addressed — swap a file's bytes and this changes)
+- `playwright-json` — sha256:084b1c75a70790a66e486e598eca417147c7d010dea112c840d0d3c8a4609349
+- `audit-test-report` — sha256:8d0f0197a96b852e3c4e4157efeae154b493e2a92eb1335bd6159b4611a55eb6
+
 ### Inputs — worst-wins (each input proposed a category)
 - `playwright` — result=PASSED → proposes **ship**
 - `audit-test` — present but opaque (unread) → proposes **canary**
@@ -148,6 +154,10 @@ Bundle written to gate-bundle.json
 ## Gate decision: 🟢 SHIP  ·  advisory (did not fail the build)
 
 subject: pr-head `<sha>`  ·  3 entries
+
+### Input digests (content-addressed — swap a file's bytes and this changes)
+- `playwright-json` — sha256:084b1c75a70790a66e486e598eca417147c7d010dea112c840d0d3c8a4609349
+- `audit-test-json` — sha256:f638d225f3ccd62753cf623c05fc0e58e5a652b7a3838f4293ff8b60fe1d60e2
 
 ### Inputs — worst-wins (each input proposed a category)
 - `playwright` — result=PASSED → proposes **ship**
@@ -188,6 +198,14 @@ Bundle written to gate-bundle.json
   `--examined-floor` but never below a **25%** minimum, clamped (with a warning) rather than silently honored.
   Like everything else in the gate, the floor's numbers live only in rationale *prose*, never as a field on the
   gate predicate (honesty guard #3 still holds).
+- **Content-addressed inputs** ([#139](https://github.com/TzolkinB/skills/issues/139),
+  [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2). Every ingested file (the Playwright JSON,
+  the Cypress JSON, the `audit-test` emission and/or report) is sha256-digested and recorded as a subject of
+  the gate Statement, alongside the existing `pr-head` commit subject — a lowercase hex **string**, never a
+  field on the gate **predicate** (honesty guard #3 untouched). Swap or edit an input file after the bundle is
+  produced and its recorded digest no longer matches: the decision is bound to the exact bytes it ingested, not
+  to a typed commit string. This is **not** a signature — it detects a swapped input, it does not prove the
+  bundle itself wasn't edited after the fact (that is DSSE signing, a separate, not-yet-built capability).
 - **No manufactured number.** There is no `confidence`/score anywhere; the gate reasons over categories, not
   magnitudes. The schema forbids a numeric field in the gate entry — re-adding one requires a schema-version
   bump, which is the signal a real calibration loop has landed.

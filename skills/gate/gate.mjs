@@ -4,8 +4,10 @@
 // Ingests the evidence a PR already produced (E2E execution evidence — a Playwright
 // JSON report and/or a Cypress Module API result — plus an audit-test verdict, either a
 // PARSED emission or an opaque Markdown report), binds it into one readable evidence
-// bundle (in-toto-shaped Statements — not signed attestations, ADR-0032 — over one subject,
-// the PR head commit), and derives a
+// bundle (in-toto-shaped Statements — not signed attestations, ADR-0032 — over
+// content-addressed subjects: the PR head commit plus a sha256 digest of each ingested
+// input file, #139/ADR-0037 §2 — so swapping a report out from under the verdict changes
+// its recorded digest), and derives a
 // categorical, advisory release decision — `ship | canary | hold` — by worst-wins
 // (ordinal min under hold < canary < ship).
 // It appends its reasoning back into the bundle as a `gate.local/gate/v0` entry
@@ -34,11 +36,12 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.3'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034)
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.4'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2)
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
@@ -228,12 +231,33 @@ function statement(predicateType, predicate) {
   return { _type: STATEMENT_TYPE, predicateType, subject: [], predicate };
 }
 
+// ---- content-address the inputs (#139, B1, ADR-0037 §2) --------------------
+//
+// Pure hashing over bytes the caller already has in hand — no file I/O here (that stays
+// in the CLI wrapper, `main()`, so this is exercisable offline in the self-test). A sha256
+// digest is a lowercase hex STRING and lives in the Statement's `subject`, never in the gate
+// `predicate` — honesty guard #3 (`findNumbers` scans `predicate` only) is untouched.
+
+export function sha256Hex(bytes) {
+  return createHash('sha256').update(bytes).digest('hex');
+}
+
+// One subject per ingested input file, in the order given. Swap the bytes behind a `name`
+// and its digest — and so its subject — changes; nothing else about the bundle notices on
+// its own, which is exactly the point (the caller still has to re-gate to catch it).
+export function inputSubjects(inputs = []) {
+  return inputs.map(({ name, bytes }) => ({ name, digest: { sha256: sha256Hex(bytes) } }));
+}
+
 // ---- assemble --------------------------------------------------------------
 
-export function assembleBundle({ commit, entries, producedOn }) {
+// `inputs`: [{ name, bytes }] — the raw bytes of each ingested report/emission, read by the
+// CLI wrapper. Retains the existing `pr-head` commit subject, then adds one content-addressed
+// subject per input (#139) — additive, so a bundle with no inputs is identical to pre-#139.
+export function assembleBundle({ commit, entries, producedOn, inputs = [] }) {
   return {
     schemaVersion: SCHEMA_VERSION,
-    subject: [{ name: 'pr-head', digest: { gitCommit: commit ?? 'unknown' } }],
+    subject: [{ name: 'pr-head', digest: { gitCommit: commit ?? 'unknown' } }, ...inputSubjects(inputs)],
     producedOn: producedOn ?? new Date().toISOString(),
     entries,
   };
@@ -409,6 +433,17 @@ export function renderReport(bundle, gateEntry) {
   L.push(`## Gate decision: ${icon} ${d.toUpperCase()}  ·  advisory (did not fail the build)`);
   L.push('');
   L.push(`subject: pr-head \`${bundle.subject?.[0]?.digest?.gitCommit ?? 'unknown'}\`  ·  ${bundle.entries.length} entries`);
+  // Content-addressed inputs (#139): one sha256 subject per ingested file, alongside pr-head.
+  // Surfacing them is what lets a reader see the decision is bound to these exact bytes.
+  const inputSubjectsList = (bundle.subject ?? []).filter((s) => s.name !== 'pr-head');
+  if (inputSubjectsList.length) {
+    L.push('');
+    L.push('### Input digests (content-addressed — swap a file\'s bytes and this changes)');
+    for (const s of inputSubjectsList) {
+      const [algo, hex] = Object.entries(s.digest ?? {})[0] ?? [];
+      L.push(`- \`${s.name}\` — ${algo}:${hex}`);
+    }
+  }
   L.push('');
   L.push('### Inputs — worst-wins (each input proposed a category)');
   for (const i of gateEntry.predicate.inputs) {
@@ -469,26 +504,40 @@ function main(argv) {
   }
 
   // Execution evidence: Playwright JSON report and/or Cypress Module API result. At least
-  // one is required; both may be present (worst-wins across them in the gate).
+  // one is required; both may be present (worst-wins across them in the gate). Raw bytes are
+  // kept alongside the parsed form so they can be content-addressed into the bundle's
+  // subjects (#139) — the hashing itself is pure (`inputSubjects`), only the read is here.
   const entries = [];
+  const inputs = [];
   if (opts.playwright) {
-    const report = JSON.parse(readFileSync(abs(opts.playwright), 'utf8'));
-    entries.push(playwrightEntry(report, { uri: opts.playwright }));
+    const { raw, parsed } = readJsonInput(opts.playwright);
+    entries.push(playwrightEntry(parsed, { uri: opts.playwright }));
+    inputs.push({ name: 'playwright-json', bytes: raw });
   }
   if (opts.cypress) {
-    const cyResult = JSON.parse(readFileSync(abs(opts.cypress), 'utf8'));
-    entries.push(cypressEntry(cyResult, { uri: opts.cypress }));
+    const { raw, parsed } = readJsonInput(opts.cypress);
+    entries.push(cypressEntry(parsed, { uri: opts.cypress }));
+    inputs.push({ name: 'cypress-json', bytes: raw });
   }
 
   // Credibility evidence: prefer a PARSED audit-test emission (can unlock `ship`);
   // fall back to the OPAQUE Markdown report (floors at canary). A malformed emission
-  // degrades to opaque-if-md-else-absent — never crash, never silently upgrade.
+  // degrades to opaque-if-md-else-absent — never crash, never silently upgrade. Only
+  // bytes that actually made it into an entry are content-addressed — a rejected,
+  // never-ingested emission contributes no subject.
   const md = opts['audit-test'] ? readFileSync(abs(opts['audit-test']), 'utf8') : undefined;
-  const tally = opts['audit-test-json'] ? parseAuditEmission(readFileSync(abs(opts['audit-test-json']), 'utf8')) : null;
-  if (opts['audit-test-json'] && !tally)
+  const auditJsonRaw = opts['audit-test-json'] ? readFileSync(abs(opts['audit-test-json']), 'utf8') : undefined;
+  const tally = auditJsonRaw ? parseAuditEmission(auditJsonRaw) : null;
+  if (auditJsonRaw && !tally)
     console.error(`⚠ --audit-test-json is not a valid gate-audit-test emission — ignoring it (falling back to ${md ? 'the opaque report' : 'no credibility evidence'}).`);
-  if (tally) entries.push(auditTestParsedEntry(tally, { markdown: md }));
-  else if (md) entries.push(auditTestEntry(md));
+  if (tally) {
+    entries.push(auditTestParsedEntry(tally, { markdown: md }));
+    inputs.push({ name: 'audit-test-json', bytes: auditJsonRaw });
+    if (md) inputs.push({ name: 'audit-test-report', bytes: md });
+  } else if (md) {
+    entries.push(auditTestEntry(md));
+    inputs.push({ name: 'audit-test-report', bytes: md });
+  }
 
   // Coverage-aware ship gate (#127, ADR-0035): disclose when a requested floor gets clamped,
   // the same "never silently trust it" treatment as a malformed --audit-test-json.
@@ -496,7 +545,7 @@ function main(argv) {
   if (opts['examined-floor'] !== undefined && Number(opts['examined-floor']) !== examinedFloor)
     console.error(`⚠ --examined-floor=${opts['examined-floor']} is invalid or below the ${EXAMINED_FLOOR_MIN}% minimum — using ${examinedFloor}%.`);
 
-  const bundle = assembleBundle({ commit: opts.commit, entries });
+  const bundle = assembleBundle({ commit: opts.commit, entries, inputs });
   const { gateEntry } = gate(bundle, { examinedFloor });
   bundle.entries.push(gateEntry);
 
@@ -515,6 +564,13 @@ function main(argv) {
 
 function abs(p) {
   return isAbsolute(p) ? p : resolve(process.cwd(), p);
+}
+
+// Reads a JSON input file once, keeping the raw bytes alongside the parsed form — the raw
+// bytes are what gets content-addressed (#139), the parsed form is what gets ingested.
+function readJsonInput(path) {
+  const raw = readFileSync(abs(path), 'utf8');
+  return { raw, parsed: JSON.parse(raw) };
 }
 
 // ---- golden truth-table self-test (deterministic, offline, zero-dep) -------
@@ -691,6 +747,39 @@ function runSelfTest() {
   check('fixture e2e: cypress PASSED + parsed confirmed-clean → ship', gCyShip.decision === 'ship');
   check('fixture e2e: cypress ship bundle validates', validateBundle(cyShip).length === 0);
   check('fixture e2e: cypress ship report names the suite', /cypress/i.test(renderReport(cyShip, gCyShip.gateEntry)));
+
+  // ---- content-addressed inputs (#139, B1, ADR-0037 §2) — sha256 into the gate Statement subject
+  check('sha256Hex: known bytes → known digest', sha256Hex('hello') === '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');
+  check('sha256Hex: digest is lowercase hex', /^[0-9a-f]{64}$/.test(sha256Hex('anything')));
+
+  const twoSubjects = inputSubjects([{ name: 'playwright-json', bytes: '{}' }, { name: 'audit-test-report', bytes: '# md' }]);
+  check('inputSubjects: one subject per input, in order', twoSubjects.length === 2 && twoSubjects[0].name === 'playwright-json' && twoSubjects[1].name === 'audit-test-report');
+  check('inputSubjects: no inputs → no subjects', inputSubjects([]).length === 0);
+
+  const [digestBefore] = inputSubjects([{ name: 'playwright-json', bytes: '{"a":1}' }]);
+  const [digestAfter] = inputSubjects([{ name: 'playwright-json', bytes: '{"a":2}' }]);
+  check('inputSubjects: swap-changes-digest (different bytes → different digest, same name)', digestBefore.digest.sha256 !== digestAfter.digest.sha256);
+
+  const withInputs = assembleBundle({ commit: 'deadbeef', entries: [], inputs: [{ name: 'playwright-json', bytes: '{}' }, { name: 'audit-test-json', bytes: '{}' }] });
+  check('assembleBundle: pr-head subject retained, then one subject per input', withInputs.subject.length === 3 && withInputs.subject[0].name === 'pr-head'
+    && withInputs.subject[0].digest.gitCommit === 'deadbeef' && withInputs.subject[1].name === 'playwright-json' && withInputs.subject[2].name === 'audit-test-json');
+  check('assembleBundle: no inputs → pr-head-only subject (pre-#139 shape, unchanged)', assembleBundle({ commit: 'x', entries: [] }).subject.length === 1);
+
+  const bundleBeforeSwap = assembleBundle({ commit: 'x', entries: [], inputs: [{ name: 'playwright-json', bytes: 'original bytes' }] });
+  const bundleAfterSwap = assembleBundle({ commit: 'x', entries: [], inputs: [{ name: 'playwright-json', bytes: 'tampered bytes' }] });
+  check('assembleBundle: swap-changes-digest at the bundle level', bundleBeforeSwap.subject[1].digest.sha256 !== bundleAfterSwap.subject[1].digest.sha256);
+
+  const digestBundle = assembleBundle({ commit: 'deadbeef', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)], inputs: [{ name: 'playwright-json', bytes: 'fixture bytes' }] });
+  const digestGate = gate(digestBundle);
+  check("digest subjects are strings, not numbers — validateGateEntry's honesty guard #3 is unaffected",
+    validateGateEntry(digestGate.gateEntry).length === 0 && typeof digestBundle.subject[1].digest.sha256 === 'string');
+  digestBundle.entries.push(digestGate.gateEntry);
+  const digestReport = renderReport(digestBundle, digestGate.gateEntry);
+  check('report surfaces the input digest (or its presence) alongside pr-head', /playwright-json/.test(digestReport) && /sha256:[0-9a-f]{64}/.test(digestReport));
+
+  const noInputsBundle = bundleOf('PASSED', true);
+  const noInputsGate = gate(noInputsBundle);
+  check('report with no inputs carries no "Input digests" section', !/Input digests/.test(renderReport(noInputsBundle, noInputsGate.gateEntry)));
 
   // emission robustness — a model produced it, so never trust it blind
   check('parseAuditEmission: rejects non-JSON', parseAuditEmission('not json {') === null);
