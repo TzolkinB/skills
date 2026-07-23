@@ -13,7 +13,7 @@ It **routes; it doesn't analyze.** It may **read your stack manifests** — `pac
 
 **Every recommendation carries its evidence label** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) — this is the map's *"no proof → no recommendation"* rule applied to routing:
 
-- **Proven / Likely → advice.** Reach for it with confidence; the label says what backs it.
+- **Confirmed / Likely → advice.** Reach for it with confidence; the label says what backs it.
 - **Unexamined → a lead, not advice.** "There's a tool here worth checking — we haven't verified it in our context." Never dressed up as a confident recommendation.
 - A **self-healer** is surfaced only *with its credibility caveat* — it heals or skips to green, which can mask a real regression; that's a hazard, not an endorsement.
 
@@ -38,22 +38,22 @@ It **routes; it doesn't analyze.** It may **read your stack manifests** — `pac
 
 ## The wider map: the best tool by stage + stack
 
-Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best* tool may be an external one. This is the ecosystem map (full evidence ledger in [`orchestration-map.md`](../../docs/orchestration-map.md)), distilled to what's routable today. **Advice** = Proven/Likely; **lead** = Unexamined, named but unverified.
+Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best* tool may be an external one. This is the ecosystem map (full evidence ledger in [`orchestration-map.md`](../../docs/orchestration-map.md)), distilled to what's routable today. **Advice** = Confirmed/Likely; **lead** = Unexamined, named but unverified.
 
 | Stage | The question | Reach for (best for your stack) | Label |
 |---|---|---|---|
-| **1 · Plan** | What should I test / what's the blast radius? | `/test-plan`, `/threat-model` | advice · Proven (own) |
-| | | Playwright **Planner** agent (app → Markdown plan), **TEA** risk tables (P0–P3; TEA also serves the Gate) | advice · Proven (external) |
-| **2 · Author** | Write the tests | Playwright **Generator** agent, **Cypress AI** (Studio AI auto-assert; `cy.prompt()` **self-heals → caveat**) — first-party authoring (commodity) | advice · Proven (external) |
-| | Is what they wrote *testable*? | `/qa-review` | advice · Proven (own) |
-| **3 · Audit** | Is this *passing* test real? | **unit JS/TS →** `Tautest` / `StrykerJS` · **app-driven →** `/audit-test` (let `/audit-orchestrator` pick) · static pre-screen: **Exspec** (structural smells, no mutation) | advice · Tautest / audit-test / Exspec **Proven**, Stryker **Likely** |
+| **1 · Plan** | What should I test / what's the blast radius? | `/test-plan`, `/threat-model` | advice · Confirmed (own) |
+| | | Playwright **Planner** agent (app → Markdown plan), **TEA** risk tables (P0–P3; TEA also serves the Gate) | advice · Confirmed (external) |
+| **2 · Author** | Write the tests | Playwright **Generator** agent, **Cypress AI** (Studio AI auto-assert; `cy.prompt()` **self-heals → caveat**) — first-party authoring (commodity) | advice · Confirmed (external) |
+| | Is what they wrote *testable*? | `/qa-review` | advice · Confirmed (own) |
+| **3 · Audit** | Is this *passing* test real? | **unit JS/TS →** `Tautest` / `StrykerJS` · **app-driven →** `/audit-test` (let `/audit-orchestrator` pick) · static pre-screen: **Exspec** (structural smells, no mutation) | advice · Tautest / audit-test / Exspec **Confirmed**, Stryker **Likely** |
 | **4 · Coverage** | What's untested? | `/coverage-review` (assertion quality, app-driven paths) | advice · own |
 | | | *caveat-lead:* `coverage-guard` — auto-generates tests looping to 100% line coverage → **manufactured-confidence hazard**; pair with `/coverage-review` | hazard, not advice |
 | **5 · Flake** | Is this run stable? | `/debug-test --flake` (detect → quarantine → **route**, never heal-to-hide); Playwright **`flaky` flag** for retry-then-pass | advice · Likely |
 | | | *caveat-lead:* self-healers (Healenium, Cypress self-heal) — **heal to green, can mask a regression** | hazard, not advice |
-| **6 · Triage** | Why did it fail? | `/debug-test`, `/diagnosing-bugs`, `/bug-report`; `/e2e-impact` (which specs a diff hits); `/contract-guard` (contract drift). Evidence sources: Playwright **trace viewer / Test Replay**, **cypress-flaky-test-audit** (per-command runtime, diagnosis-only) | advice · Proven |
+| **6 · Triage** | Why did it fail? | `/debug-test`, `/diagnosing-bugs`, `/bug-report`; `/e2e-impact` (which specs a diff hits); `/contract-guard` (contract drift). Evidence sources: Playwright **trace viewer / Test Replay**, **cypress-flaky-test-audit** (per-command runtime, diagnosis-only) | advice · Confirmed |
 | | | *caveat-lead:* Playwright **Healer** agent — heals/skips to green | hazard, not advice |
-| **7 · Gate** | Am I safe to ship? | `/sentinel` (net verdict across the chain); **TEA** categorical governance gate (PASS/CONCERNS/FAIL/WAIVED + compliance audit trail) | advice · own + TEA **Proven** |
+| **7 · Gate** | Am I safe to ship? | `/sentinel` (net verdict across the chain); **TEA** categorical governance gate (PASS/CONCERNS/FAIL/WAIVED + compliance audit trail) | advice · own + TEA **Confirmed** |
 
 ## Steps
 
@@ -65,7 +65,7 @@ Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best*
 **Point-route (single question):**
 
 5. Match the situation to exactly one primary tool using the routing signals below — a router that returns five options has routed nothing. If two questions are genuinely in play, prefer the one whose *single question* most directly matches what the user asked, name it first, then the secondary as a follow-up. If the situation is the merge/ship decision over a whole branch, route to `/sentinel` and note it will call the atomic shippability skills for you — don't also tell the user to run those by hand.
-6. **Attach the evidence label.** Proven/Likely → recommend it. Unexamined → surface it as a *lead, not advice*. For an external tool, **point — don't absorb**: name it, give the invocation + a one-line setup note, and never claim to run it. For the Audit stage, prefer routing *into* `/audit-orchestrator` rather than re-deriving the unit-vs-app-driven fork yourself. Output in the point format below.
+6. **Attach the evidence label.** Confirmed/Likely → recommend it. Unexamined → surface it as a *lead, not advice*. For an external tool, **point — don't absorb**: name it, give the invocation + a one-line setup note, and never claim to run it. For the Audit stage, prefer routing *into* `/audit-orchestrator` rather than re-deriving the unit-vs-app-driven fork yourself. Output in the point format below.
 
 **Sequence (ordered path):**
 
@@ -133,7 +133,7 @@ For a matched situation:
 **Use:** `/skill-name` or **[external tool]**
 **Why:** [one sentence tying the tool's one question to the situation]
 **Run:** `/skill-name <args>`   (external → the invocation + a one-line setup note)
-**Evidence:** [Proven | Likely | Unexamined — one line on what backs it; Unexamined = "a lead, not advice"]
+**Evidence:** [Confirmed | Likely | Unexamined — one line on what backs it; Unexamined = "a lead, not advice"]
 
 **Next in the flow:** [the natural follow-up tool, or "— this is the ship gate" for /sentinel]
 ```
@@ -145,7 +145,7 @@ For a lifecycle / workflow ask (sequence mode):
 
 **The path** — run as few or as many as you need; each stage stands alone:
 
-1. **[Stage] · `/tool` or [external]** ([Proven | Likely | Unexamined]) — [why this stage, for this change]
+1. **[Stage] · `/tool` or [external]** ([Confirmed | Likely | Unexamined]) — [why this stage, for this change]
    ↳ escalate-if: [what result sends you on to the next stage]
 2. **[Stage] · …** ([label]) — …
    ↳ escalate-if: …

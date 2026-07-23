@@ -7,11 +7,11 @@
 
 **The path** — run as few or as many as you need; each stage stands alone:
 
-1. **Plan · `/test-plan` (+ `/threat-model`)** (Proven, own) — decide the cases and layers before any code exists, and rank them by blast radius.
+1. **Plan · `/test-plan` (+ `/threat-model`)** (Confirmed, own) — decide the cases and layers before any code exists, and rank them by blast radius.
    ↳ escalate-if: the plan surfaces a genuinely risky path → `/threat-model` on that path first.
-2. **Author · `/qa-review`** (Proven, own) — as the code lands, check it's even testable (hidden deps, `Date.now()`, coupling) before trusting any generated tests.
+2. **Author · `/qa-review`** (Confirmed, own) — as the code lands, check it's even testable (hidden deps, `Date.now()`, coupling) before trusting any generated tests.
    ↳ escalate-if: untestable seams → fix them before writing assertions.
-3. **Audit · `/audit-orchestrator`** (advice — Tautest Proven, Stryker Likely, audit-test Proven) — once tests are green, prove they'd fail if the code broke; it picks the prover for your stack.
+3. **Audit · `/audit-orchestrator`** (advice — Tautest Confirmed, Stryker Likely, audit-test Confirmed) — once tests are green, prove they'd fail if the code broke; it picks the prover for your stack.
    ↳ escalate-if: it flags false-confidence → fix those tests before spending Coverage.
 4. **Coverage · `/coverage-review`** (own) — of what's testable, what's still missing or asserted loosely.
    ↳ escalate-if: material gaps → add cases, then re-audit.

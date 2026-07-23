@@ -8,7 +8,7 @@
 
 1. **Coverage · `/coverage-review`** (own) — of what's testable in the change, what's still missing or asserted loosely.
    ↳ escalate-if: gaps → add cases before trusting the suite.
-2. **Audit · `/audit-orchestrator`** (advice — Tautest Proven, Stryker Likely, audit-test Proven) — prove the green tests would actually fail if the code broke; it picks the prover for your stack.
+2. **Audit · `/audit-orchestrator`** (advice — Tautest Confirmed, Stryker Likely, audit-test Confirmed) — prove the green tests would actually fail if the code broke; it picks the prover for your stack.
    ↳ escalate-if: false-confidence flagged → fix those tests, then continue.
 3. **Gate · `/sentinel`** — one PASS / CAUTION / FAIL over the branch.
 

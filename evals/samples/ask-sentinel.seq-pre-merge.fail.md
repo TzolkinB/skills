@@ -6,7 +6,7 @@
 
 **The path** — run as few or as many as you need; each stage stands alone:
 
-1. **Plan · `/test-plan`** (Proven, own) — decide the cases and layers to test.
+1. **Plan · `/test-plan`** (Confirmed, own) — decide the cases and layers to test.
    ↳ escalate-if: risky path → `/threat-model`.
 2. **Coverage · `/coverage-review`** (own) — what's missing or loosely asserted.
    ↳ escalate-if: gaps → add cases.

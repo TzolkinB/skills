@@ -25,7 +25,9 @@ renamed to `confirmed`/`Confirmed` everywhere it named this evidence-provenance 
 **not** contained to one skill's contract as first estimated — `sentinel` and the project's own
 top-level docs quote the same tally, so ADR-0034 corrected the scope estimate the same way
 ADR-0033 corrected ADR-0032's. `ask-sentinel`/`audit-orchestrator`'s separate routing-evidence
-"Proven" convention was deliberately left out and tracked as [#131](https://github.com/TzolkinB/skills/issues/131).
+"Proven" convention was deliberately left out and tracked as [#131](https://github.com/TzolkinB/skills/issues/131)
+— **closed, 2026-07-22 via [ADR-0036](adr/0036-ask-sentinel-audit-orchestrator-confirmed-rename.md)**, same
+word swap extended to the routing-evidence axis, no residual left.
 
 ### 2. Coverage-aware ship semantics
 [#127](https://github.com/TzolkinB/skills/issues/127) (closed, 2026-07-22 via [ADR-0035](adr/0035-gate-examined-floor.md)) — `ship` used
