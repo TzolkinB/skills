@@ -14,9 +14,9 @@ each time Job 1 runs, whether or not anything changed.
 |---|---|---|---|
 | StrykerJS | npm `@stryker-mutator/core` dist-tags.latest | 9.6.1 (113 versions, modified 2026-05-13) | 2026-07-23 |
 | Tautest | npm `tautest` dist-tags.latest | 1.10.1 (10 versions, modified 2026-06-04) | 2026-07-23 |
-| Exspec | GitHub `mnapoli/exspec` releases API, latest tag | 0.1.7 (11 releases, published 2026-04-13) | 2026-07-22 (blocked this pass — see note) |
-| TEA (BMAD Test Architect) | GitHub `bmad-code-org/bmad-method-test-architecture-enterprise` releases API, latest tag | v1.19.1 (30 releases, published 2026-07-17) | 2026-07-22 (blocked this pass — see note) |
-| Playwright test agents | GitHub `microsoft/playwright` releases API, latest tag + grep release body for `planner`/`generator`/`healer`/`agent` | v1.61.1 (published 2026-06-23; agents feature landed 1.56; latest release body has no agent-keyword hits) | 2026-07-22 (blocked this pass — see note) |
+| Exspec | GitHub `mnapoli/exspec` releases API, latest tag | 0.1.7 (11 releases, published 2026-04-13) | 2026-07-23 (blocked this pass — see note) |
+| TEA (BMAD Test Architect) | GitHub `bmad-code-org/bmad-method-test-architecture-enterprise` releases API, latest tag | v1.19.1 (30 releases, published 2026-07-17) | 2026-07-23 (blocked this pass — see note) |
+| Playwright test agents | GitHub `microsoft/playwright` releases API, latest tag + grep release body for `planner`/`generator`/`healer`/`agent` | v1.61.1 (published 2026-06-23; agents feature landed 1.56; latest release body has no agent-keyword hits) | 2026-07-23 (blocked this pass — see note) |
 | Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 15.19.1 at top of changelog | 2026-07-23 |
 | Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; GitHub `LambdaTest/evidence-cli` HTTP status; `evidence-cli.dev` DNS | kane-cli 0.6.4; evidence-cli 0.1.7 (6 versions); repo status not re-checked this pass (GitHub scope restricted — see note); DNS NXDOMAIN | 2026-07-23 (npm + DNS legs only) |
 
