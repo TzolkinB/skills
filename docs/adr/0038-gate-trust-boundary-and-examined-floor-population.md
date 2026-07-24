@@ -1,11 +1,11 @@
 # Gate's trust-boundary posture, and the examined-floor's population — aggregator not executor; certify with breadth, not funnel-inflation
 
-**Status: Proposed (2026-07-24) — awaiting Kim's decision on Decision 1's fork; Decision 2 is a firm
-recommendation.** From [#159](https://github.com/TzolkinB/skills/issues/159), the design half of the Tier 2.3
-external critique (finding F6 + the trust-boundary question it raised). No code lands until this is Accepted;
-the downstream code issues (caveat reword, optional certification mode) are filed only after that. Amends —
-does not overturn — [ADR-0035](0035-gate-examined-floor.md); reaffirms and extends
-[ADR-0010](0010-execution-out-temporal-deferred-behind-a-seam.md).
+**Status: Accepted (2026-07-24).** From [#159](https://github.com/TzolkinB/skills/issues/159), the design half
+of the Tier 2.3 external critique (finding F6 + the trust-boundary question it raised). Both decisions were
+Kim's calls, taken 2026-07-24: **Decision 2 → aggregator + integrity-trust** (decline verification-trust);
+**Decision 1 → Option B** (reframe *and* build the opt-in certification sample mode). The downstream code
+issues are filed off this ADR. Amends — does not overturn — [ADR-0035](0035-gate-examined-floor.md); reaffirms
+and extends [ADR-0010](0010-execution-out-temporal-deferred-behind-a-seam.md).
 
 ## Context
 
@@ -37,7 +37,7 @@ and they have very different answers.
 
 ## Decision
 
-### Decision 2 first — Gate's trust-boundary posture across three axes *(firm recommendation)*
+### Decision 2 first — Gate's trust-boundary posture across three axes *(decided: aggregator + integrity-trust)*
 
 "Should Gate be a trust boundary?" has no single answer because "trust" splits three ways:
 
@@ -64,12 +64,12 @@ and they have very different answers.
    under the roadmap's future work and must not be conflated with either integrity or verification. (And it
    remains subject to the no-manufactured-number honesty guard until a real loop exists.)
 
-**Recommendation: keep Gate on the ingest/aggregator side of the ADR-0010 seam. Build the integrity boundary
+**Decided: keep Gate on the ingest/aggregator side of the ADR-0010 seam. Build the integrity boundary
 (#158). Decline the verification boundary as a conscious product choice, not a bug backlog.** If we ever want
 verification-trust (Gate re-executing), it is its own future ADR with its own justification — never something
 reached one "tighten the self-report" PR at a time.
 
-### Decision 1 — the examined-floor's population *(needs Kim's pick; recommendation below)*
+### Decision 1 — the examined-floor's population *(decided: Option B — reframe + build the certification mode)*
 
 The denominator must **not** change to the flagged/suspect population. If `deepAudited` were measured against
 "mutation-eligible = flagged" tests, the ratio would sit at ~100% for any funnel run (you deep-audit all the
@@ -108,10 +108,10 @@ to stop framing `canary` as a shortfall and give certification an **honest, prin
   consciously buys a cheaper, narrower certification, exactly per ADR-0035's "surface the cost, don't assume it
   away."
 
-**The open fork for Kim:** whether to commit to (1b) — the certification/sample mode — or to stop at (1a) +
-an explicit "diagnostic funnel runs cap at `canary` by design" statement (Option D below), accepting that the
-only path to `ship` is a manual broad audit or a lowered floor. (1a) ships regardless; the decision is whether
-(1b) is on the roadmap or we reaffirm the ADR-0035 status quo with only better words.
+**Decided (Kim, 2026-07-24): commit to (1b).** Both the reframe and the certification sample mode land — the
+funnel gets a principled, breadth-based path to `ship` rather than being permanently capped at `canary`. (1a)
+ships first (cheap, claims-safe); (1b) follows as its own spec'd build. Option D (reaffirm the status quo with
+only better words) was considered and declined — it leaves the funnel with no honest route to `ship`.
 
 ## Considered options
 
@@ -120,7 +120,7 @@ only path to `ship` is a manual broad audit or a lowered floor. (1a) ships regar
 - **(A) Reframe only, no new mechanism.** Ship (1a); do not build (1b). Honest and cheapest, but leaves the
   funnel with no honest route to `ship` on a healthy suite — you relabel `canary` without giving a path. Viable
   if we decide `ship` should simply be rare and deliberate.
-- **(B) Certification sample mode — RECOMMENDED.** (1a) + (1b). Gives the funnel a principled path to `ship`
+- **(B) Certification sample mode — CHOSEN.** (1a) + (1b). Gives the funnel a principled path to `ship`
   via random sampling, keeps #127's guard intact, matches ADR-0035's cost-surfacing philosophy. Costs a new
   opt-in mode in `audit-test` and a fixture/self-test pass.
 - **(C) Change the denominator to the flagged/eligible population. REJECTED** — makes the ratio ~100% for any
@@ -146,9 +146,10 @@ only path to `ship` is a manual broad audit or a lowered floor. (1a) ships regar
 - **ADR-0035 stands.** Its floor, default, 25% clamp, and honesty-guard treatment are unchanged. This ADR only
   refines the *caveat wording* and (if B) adds an orthogonal opt-in path; it does not redefine "confirmed" or
   the floor arithmetic.
-- **Downstream issues filed only after Accepted:** (1a) rationale/caveat reword in `gate.mjs` + `gate/SKILL.md`
-  (claims-safe, agent-ready); and, if (B) is chosen, a spec for `audit-test`'s certification/sample mode
-  (scope, the `sample ∪ suspects` rule, cost guard interaction, fixtures, self-test rows).
+- **Downstream issues (filed off this Accepted ADR):** (1a) rationale/caveat reword in `gate.mjs` +
+  `gate/SKILL.md` (claims-safe, agent-ready); and (1b) a spec for `audit-test`'s certification/sample mode
+  (scope, the `sample ∪ suspects` rule, cost-guard interaction, how it clears the floor, fixtures, self-test
+  rows). (1a) ships first; (1b) is the larger build.
 - **Gate's identity is documented and defended.** Future critiques that read Gate as an independent verifier
   now have a decision to point to: integrity is the boundary we build (#158), verification is declined by
   design (ADR-0010), calibration is separate. This is the reusable answer, not a per-PR rebuttal.
