@@ -515,7 +515,7 @@ export function gate(bundle, { examinedFloor } = {}) {
       proposed === 'ship'
         ? `audit-test PASSED + confirmed → ship-eligible — no hollow tests among ${auditScope(audit)} (${examinedPct}% examined, clears the ${floor}% examined-floor)`
         : confirmedClean
-          ? `audit-test PASSED + confirmed but only ${examinedPct}% examined (${m.deepAudited} of ${m.audited} triaged tests) → canary (below the ${floor}% examined-floor — coverage-aware ship gate, #127)`
+          ? `audit-test PASSED + confirmed but only ${examinedPct}% examined (${m.deepAudited} of ${m.audited} triaged tests) → canary (a diagnostic run — no problems found among the suspects it examined, which is not a certification of the whole suite; below the ${floor}% examined-floor — coverage-aware ship gate, #127)`
           : auditResult === 'FAILED'
             ? 'audit-test FAILED (confirmed false-confidence) → canary (a hollow test — fix it; not a red build)'
             : auditResult === 'WARNED'
@@ -665,7 +665,7 @@ export function renderReport(bundle, gateEntry) {
     L.push(`> \`ship\` earned: ${suites} passed and \`audit-test\` found no hollow tests among ${auditScope(auditEv)}.`);
   } else if (belowExaminedFloor) {
     const auditEv = bundle.entries.find((e) => e.predicate?.stage === 'audit-test');
-    L.push(`> \`ship\` needs a *confirmed-clean* \`audit-test\` verdict that also clears the examined-floor — this run found no hollow tests but only deep-audited ${auditScope(auditEv)}. Deep-audit more of the suite, or re-gate with a lower (but never below ${EXAMINED_FLOOR_MIN}%) \`--examined-floor\` if you consciously accept the narrower scope.`);
+    L.push(`> \`ship\` needs a *certification*-scope \`audit-test\` verdict — this run was **diagnostic**: no problems found among the suspects it examined (${auditScope(auditEv)}), which is not evidence about the rest of the suite. Run audit-test's certification mode (forthcoming) for a representative-breadth verdict, or re-gate with a consciously lower (but never below ${EXAMINED_FLOOR_MIN}%) \`--examined-floor\` to accept this narrower certified scope.`);
   } else if (auditOpaqueOrAbsent) {
     L.push('> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
