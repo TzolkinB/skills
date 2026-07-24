@@ -156,8 +156,10 @@ and to a *claim of superiority* only at **Confirmed** (observed result).
 ## Where Gate fits
 
 Gate is **our gap-tool at the Gate stage (7)** — the execution/evidence pipeline: ingest
-Playwright JSON → weighted `ReleaseConfidence` (0–100) → ship/canary/hold gate → evidence bundle
-→ (planned) calibration loop.
+Playwright/Cypress JSON + an `audit-test` verdict → one content-addressed evidence bundle → a
+**categorical, worst-wins** `ship`/`canary`/`hold` decision (**no** confidence number — the gate
+reasons over categories, not magnitudes, and the schema's honesty guard forbids a numeric field in
+the gate entry) → (planned) calibration loop.
 
 But its role in *this* framing is bigger and more defensible than "smarter flake classifier"
 (experiments killed that claim — see caveats). In an orchestration layer, **the single source of
