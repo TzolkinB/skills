@@ -19,6 +19,22 @@ release heading.
 
 ### Fixed
 
+- **`gate.mjs` guards execution-completeness — a near-all-skipped suite no longer reads `PASSED` → `ship`**
+  (closes #157, ChatGPT Tier 2.3 critique finding F9). `deriveResult`/`deriveCypressResult` computed `PASSED`
+  from `expected+unexpected+flaky` (Playwright) / `totalPassed+totalFailed` (Cypress) alone, excluding
+  skipped/pending from the denominator — a discovery/filter/config mistake that ran 1 of 1000 tests still read
+  `PASSED`, and paired with a confirmed `audit-test` verdict, reached `ship` with the skip count buried in the
+  bundle metrics and absent from the terminal rationale. Adds an **executed-floor** (default 50%,
+  `--executed-floor` overridable down to a 25% minimum), mirroring the existing examined-floor (#127,
+  ADR-0035): the gate now states the executed-vs-discovered split in its rationale for *every* execution
+  suite, and caps a `PASSED` suite at `canary` instead of proposing `ship-baseline` when skips dominate.
+  Applies to both Playwright (`skipped`) and Cypress (`totalPending`/`totalSkipped`). No new field on the gate
+  predicate or bundle schema — the capped state is detectable from the existing `result`/`proposed` fields
+  alone, so honesty guard #3 and the schema version are both unaffected. `README.md` and `gate/SKILL.md`'s
+  "every E2E suite is green" wording is reconciled with the new completeness semantics; the issue's own
+  `expected:1, skipped:999` exploit is pinned as a self-test regression row, alongside a Cypress analog and
+  the floor override/clamp checks.
+
 - **`gate.mjs` hardens the `audit-test` self-report contract — exact outcome accounting + run-trace
   exit-signal/uniqueness** (closes #155, ChatGPT Tier 2.3 critique findings F1 + F3,
   [ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §3 amended). `parseAuditEmission` now enforces
