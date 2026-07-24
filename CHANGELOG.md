@@ -19,6 +19,17 @@ release heading.
 
 ### Fixed
 
+- **`audit-test`'s 🟢 verdict no longer has a reasoning-only escape hatch — it now requires an
+  executed, failing mutation** (closes #156, ChatGPT Tier 2.3 critique finding F2,
+  [ADR-0039](docs/adr/0039-audit-test-green-requires-execution.md)). `SKILL.md:50` and `:76` both
+  carried "(or no plausible green-surviving change exists)" as an alternate path to 🟢/`confirmedSolid`
+  — the exact `emit-json` count that lets `/gate` reach `ship`. That let an *inability to devise a
+  mutation* (pure reasoning) count as execution-confirmed, when it's closer to unexamined/hollow than
+  solid. Both clauses are cut: 🟢 now requires a mutation that actually ran and failed; reasoning-only
+  outcomes route to 🟡 Likely or Unexamined. **Behavior change** — some runs that previously tallied
+  `confirmedSolid` will now tally `likelyHollow` or `unexamined` instead. No schema change; the
+  `runs[]` contract already required a real command/mutation/exit-code per 🟢 and had no matching gap.
+
 - **`gate.mjs --verify` now shape-validates the bundle before trusting the signature, and reports the
   narrow scope it actually vouches for** (post-#141 signature-verification hardening). Two gaps in the DSSE
   verify path, both fail-*closed* (neither could forge a decision): (1) `--verify` called `verifyGateBundle`
