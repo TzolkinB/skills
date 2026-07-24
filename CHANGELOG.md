@@ -19,6 +19,18 @@ release heading.
 
 ### Fixed
 
+- **`gate.mjs` hardens the `audit-test` self-report contract — exact outcome accounting + run-trace
+  exit-signal/uniqueness** (closes #155, ChatGPT Tier 2.3 critique findings F1 + F3,
+  [ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §3 amended). `parseAuditEmission` now enforces
+  `Σ(outcomes) === deepAudited` (was `≤`), so an emission claiming deep audits with no recorded outcome —
+  e.g. `{deepAudited:100, confirmedSolid:1, rest:0}` — is rejected instead of deriving `confirmed`. The
+  optional `runs[]` cross-check gains two guards: a record's `exitCode` must agree with its outcome
+  (`killed ⇒ exitCode ≠ 0`, `survived ⇒ exitCode === 0`), and each `(test, mutation, command)` triple must be
+  distinct (duplicated records can no longer pad a `killed` count). All three degrade a violating emission to
+  opaque — never a silent upgrade — and none opens a new path to `ship`. Honesty guard #3 intact (no numeric
+  field enters the gate predicate). `audit-test/SKILL.md` and the emission JSON schema document the new
+  requirements; the exact F1/F3 exploit inputs are pinned as regression rows.
+
 - **`audit-test`'s 🟢 verdict no longer has a reasoning-only escape hatch — it now requires an
   executed, failing mutation** (closes #156, ChatGPT Tier 2.3 critique finding F2,
   [ADR-0039](docs/adr/0039-audit-test-green-requires-execution.md)). `SKILL.md:50` and `:76` both

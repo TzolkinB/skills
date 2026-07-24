@@ -141,7 +141,11 @@ revert:
 - `command` — the exact single-test command you ran ([reference/run-one-test.md](reference/run-one-test.md)),
   copy-pasteable, not paraphrased.
 - `outcome` — `"killed"` for 🟢 (the test failed as it should), `"survived"` for 🔴 (the test stayed green).
-- `exitCode` — the single-test run's actual process exit code.
+- `exitCode` — the single-test run's actual process exit code. It must **agree with the outcome**: a
+  `killed` record failed as it should, so its `exitCode` is **non-zero**; a `survived` record stayed
+  green, so its `exitCode` is **0**. Gate rejects a self-contradictory record (`killed`+`exitCode:0` or
+  `survived`+non-zero exit) — degrading the whole emission to opaque — so report the exit code you
+  actually observed, not a placeholder.
 
 **Never fabricate a record.** `runs[]` is bookkeeping of a run you already performed, not a new claim —
 add a record only for a test you actually mutated and ran this session, with the mutation, command, and
@@ -149,10 +153,16 @@ exit code you actually observed. A 🟡 Likely verdict (env not runnable, or the
 running app) and a ⚠️ Baseline-lock verdict get **no** record — they were never execution-confirmed, and a
 record would misrepresent reasoning-only work as proof. Unexamined tests never had a mutation proposed at
 all, so they never get one either. `runs.length` must never exceed `deepAudited`, and the record count for
-each outcome must match its count (`killed` records = `confirmedSolid`, `survived` records = `confirmedHollow`)
-— Gate cross-checks this and degrades an inconsistent tally to opaque rather than trusting it
+each outcome must match its count (`killed` records = `confirmedSolid`, `survived` records = `confirmedHollow`).
+Each record must also be a **distinct** `(test, mutation, command)` triple — a confirmed outcome maps to a
+distinct test identity, so don't repeat one record to pad a count. Gate cross-checks all of this and degrades
+an inconsistent tally to opaque rather than trusting it
 ([ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §3). `runs[]` is entirely optional: omitting it
 leaves the emission exactly as it behaves today.
+
+Likewise the counts must be **exhaustively** accounted for: every deep-audited test lands in exactly one
+verdict class, so `confirmedSolid + confirmedHollow + likelyHollow + baselineLock` must **equal**
+`deepAudited` (not merely be ≤ it) — a deep audit with no recorded outcome is rejected as inconsistent.
 
 ## Explain Mode (`--explain`)
 

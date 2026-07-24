@@ -209,14 +209,18 @@ export function parseAuditEmission(raw) {
     if (!Number.isFinite(v) || v < 0 || !Number.isInteger(v)) return null;
     tally[k] = v;
   }
-  // Cross-field consistency (#111): reject an arithmetically impossible tally rather than silently
-  // deriving `confirmed` from it. A model produced these counts, so `{confirmedSolid:1, deepAudited:0}`
-  // must not slip through. These are the counts' own definitions, not a trust/authenticity check:
+  // Cross-field consistency (#111, tightened #155): reject an arithmetically impossible tally rather
+  // than silently deriving `confirmed` from it. A model produced these counts, so
+  // `{confirmedSolid:1, deepAudited:0}` must not slip through. These are the counts' own definitions,
+  // not a trust/authenticity check:
   //   • every triaged test is either deep-audited or not →  audited === deepAudited + unexamined
-  //   • each outcome class is a subset of the deep audits →  Σ(outcomes) ≤ deepAudited
+  //   • every deep-audited test lands in EXACTLY one outcome class (🟢/🔴/🟡/⚠️, per audit-test
+  //     Verdicts) →  Σ(outcomes) === deepAudited. This is `===`, not `≤` (#155/F1): the loose
+  //     bound let `{deepAudited:100, confirmedSolid:1, rest:0}` derive `confirmed` from 99 deep
+  //     audits with no recorded outcome. Equality forces every claimed deep audit to be accounted for.
   const outcomes = tally.confirmedSolid + tally.confirmedHollow + tally.likelyHollow + tally.baselineLock;
   if (tally.deepAudited + tally.unexamined !== tally.audited) return null;
-  if (outcomes > tally.deepAudited) return null;
+  if (outcomes !== tally.deepAudited) return null;
 
   // Run trace (#142, B2, ADR-0037 §3) — OPTIONAL, additive: an emission with no `runs` is
   // unaffected (behaves exactly as v0.2). When present, it's a per-test record of an
@@ -225,15 +229,27 @@ export function parseAuditEmission(raw) {
   // tally: the whole emission is rejected (never a silent upgrade; the caller degrades to the
   // opaque report or absence). `runs.length` must never exceed `deepAudited`, and each outcome's
   // record count must equal its matching count (killed→confirmedSolid, survived→confirmedHollow).
+  // Two further internal-consistency checks (#155/F3):
+  //   • outcome/exit-signal agreement — a `killed` record means the test FAILED as it should, so its
+  //     process exitCode must be non-zero; a `survived` record means it stayed green, so exitCode
+  //     must be 0. A `killed`+`exitCode:0` record is self-contradictory and rejected.
+  //   • record uniqueness — a confirmed outcome maps to a DISTINCT test identity; four identical
+  //     (test, mutation, command) records must not satisfy `killed === confirmedSolid:4`.
   if (obj.runs !== undefined) {
     if (!Array.isArray(obj.runs)) return null;
     const runs = [];
+    const seen = new Set();
     for (const r of obj.runs) {
       if (!r || typeof r !== 'object') return null;
       if (typeof r.test !== 'string' || typeof r.mutation !== 'string' || typeof r.command !== 'string') return null;
       if (r.outcome !== 'killed' && r.outcome !== 'survived') return null;
       const exitCode = Number(r.exitCode);
       if (!Number.isFinite(exitCode) || !Number.isInteger(exitCode) || exitCode < 0) return null;
+      if (r.outcome === 'killed' && exitCode === 0) return null; // failed-as-it-should ⇒ non-zero exit
+      if (r.outcome === 'survived' && exitCode !== 0) return null; // stayed-green ⇒ exit 0
+      const identity = JSON.stringify([r.test, r.mutation, r.command]);
+      if (seen.has(identity)) return null; // duplicate (test, mutation, command) record
+      seen.add(identity);
       runs.push({ test: r.test, mutation: r.mutation, command: r.command, outcome: r.outcome, exitCode });
     }
     if (runs.length > tally.deepAudited) return null;
@@ -1114,6 +1130,27 @@ function runSelfTest() {
     parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [{ test: 't0', mutation: 'm', command: 'c', outcome: 'ambiguous', exitCode: 1 }] })) === null);
   check('parseAuditEmission: `runs` present but not an array → rejected',
     parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: 'nope' })) === null);
+
+  // ---- exact outcome accounting (#155/F1): Σ(outcomes) === deepAudited, not ≤. Every claimed deep
+  // audit must land in exactly one outcome class — an unaccounted-for deep audit is rejected.
+  check('parseAuditEmission #155/F1: unclassified deep audits (deepAudited:100, confirmedSolid:1, rest:0) → rejected (the F1 exploit)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 100, deepAudited: 100, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission #155/F1: Σ(outcomes) < deepAudited (deepAudited:4, one class short) → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 7, deepAudited: 4, confirmedSolid: 3, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 3 })) === null);
+  check('parseAuditEmission #155/F1: Σ(outcomes) === deepAudited (every deep audit classified) → accepted',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })) !== null);
+
+  // ---- run-trace exit-signal consistency + uniqueness (#155/F3) --------------------------------
+  // `mkRun` already takes an explicit exitCode (3rd arg), so it covers the contradictory-exit and
+  // duplicate-identity cases directly — no separate helper needed.
+  check('parseAuditEmission #155/F3: killed record with exitCode:0 (failed-as-it-should but green exit) → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), mkRun('t3', 'killed', 0)] })) === null);
+  check('parseAuditEmission #155/F3: survived record with non-zero exitCode → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived', 1)] })) === null);
+  check('parseAuditEmission #155/F3: four identical (test,mutation,command) killed records satisfying killed===confirmedSolid:4 → rejected (the F3 dup exploit)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: Array.from({ length: 4 }, () => mkRun('dup', 'killed', 1)) })) === null);
+  check('parseAuditEmission #155/F3: distinct killed records with non-zero exits still accepted (regression guard)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(4) })) !== null);
 
   const consistentHollowTally = parseAuditEmission(JSON.stringify({
     schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived')],
