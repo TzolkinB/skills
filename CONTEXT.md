@@ -78,3 +78,13 @@ behavior. Distinct from legitimate mocking at *external* boundaries (network, th
 clock/randomness, expensive side effects). `prune-tests`' "rewrite with real collaborator" category;
 surfaces to users as **Overmocking** in `GLOSSARY.md`.
 _Avoid_: mocking (the practice itself is fine — over-application at internal seams is the problem).
+
+**Subject vs. predicate (integrity vs. endorsement)**:
+In an in-toto Statement, the **subject** names bytes the predicate is *about*; the **predicate** is the
+claim being made. Gate's signed predicate asserts only its own decision — it never endorses a stage it
+didn't produce. But Gate *may* bind other producers' bytes into `subject` by content-addressed digest:
+that only says "my decision was rendered over exactly these bytes," which is integrity-binding, not
+endorsement, so it never launders a self-report as vouched-for ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md)
+§1, [ADR-0040](docs/adr/0040-widen-gate-signed-scope-to-entries.md)). This is the line that lets Gate widen
+what it binds (inputs, then parsed entries) without ever widening what it endorses.
+_Avoid_: "signing an entry" (ambiguous — say whether it's bound as a subject or asserted as a predicate).
