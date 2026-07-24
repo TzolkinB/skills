@@ -60,7 +60,7 @@ that never ran, or a wrong `--playwright` path) is treated as **no execution evi
 pass: a green-looking `{}` is exactly the false confidence the Gate exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
-  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.2` tally written by `/audit-test --emit-json=<path>`.
+  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.3` tally written by `/audit-test --emit-json=<path>`.
     This is the **graduated** input — a *parsed* confirmed-clean verdict that also clears the **examined-floor**
     (`deepAudited`/`audited` ≥ 50% by default) is the only thing that can lift the ceiling to `ship`
     ([#127](https://github.com/TzolkinB/skills/issues/127), [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)).
@@ -209,7 +209,7 @@ Bundle written to gate-bundle.json
   the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
   labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
 - **`audit-test` rides in two grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
-  batch tally as `gate-audit-test/v0.2` structured data — the per-class **counts**, not prose. the Gate derives
+  batch tally as `gate-audit-test/v0.3` structured data — the per-class **counts**, not prose. the Gate derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and
   the gate reads only the derived category, never the counts (honesty guard #1). *Opaque* (`--audit-test`): the
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
