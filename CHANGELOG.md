@@ -17,6 +17,30 @@ release heading.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`evals/changed.mjs`: `REPO_ROOT` resolved one directory too high, so the change-detection gate ran
+  every git call outside the repo and always silently reported zero affected skills** (closes #148, found
+  while implementing #140). `REPO_ROOT` was a hand-rolled `resolve(EVALS_ROOT, '../..')` — one `..` too
+  many now that `evals/` sits directly under the repo root (likely a leftover from before
+  [ADR-0032](docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)'s flatten). Every `git` call ran
+  with that wrong `cwd`, failed (not a git repo), and was silently swallowed by a `status !== 0` fallback
+  written for a different, legitimately-benign case (an unfetched base ref) — so `changedFiles()` was
+  always empty and `node evals/changed.mjs` always printed "nothing to run," confirmed both locally and on
+  a real PR's `--gate` CI run. Fixed three ways: (1) `REPO_ROOT` now resolves via
+  `git rev-parse --show-toplevel` (run with `cwd=EVALS_ROOT`, which is always inside the repo regardless
+  of nesting depth) instead of a hardcoded relative path; (2) the shared `git()` helper is split into
+  `gitStrict()` (throws on any unexpected failure) and `gitAllowMissingRef()` (the one call — the
+  committed-diff leg against a possibly-unfetched `baseRef` — where a failure is genuinely expected and
+  benign), so a real error can no longer be conflated with and swallowed as the benign case; (3)
+  `--self-test` gains a real git-integration check (`REPO_ROOT` contains `.git` and `evals/changed.mjs`;
+  a trivial `changedFiles('HEAD')` call must not throw) alongside the existing pure-classifier check —
+  the previous self-test only ever fed a synthetic file list, so it structurally could not have caught
+  this. Verified: `node evals/changed.mjs --self-test` green (mapping, harness-core fan-out, repo-root,
+  git-integration all `true`); `node evals/changed.mjs --base=<a pre-#140 commit>` now correctly reports
+  `audit-test` as affected and runs its self-test + lint, where it previously reported zero affected
+  skills for the same diff.
+
 ### Changed
 
 - **Gate docs honesty pass — build-coupled wording for DSSE signing**

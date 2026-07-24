@@ -34,7 +34,6 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const EVALS_ROOT = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(EVALS_ROOT, '../..');
 const RUN_EVAL = resolve(EVALS_ROOT, 'run-eval.mjs');
 const LINT = resolve(EVALS_ROOT, 'lint.mjs');
 
@@ -45,9 +44,31 @@ const opts = Object.fromEntries(
 const flags = new Set(argv.filter((a) => a.startsWith('--') && !a.includes('=')));
 const base = opts.base ?? 'main';
 
+// Resolved via git, not a hardcoded `../..` relative path (#148): a repo
+// restructure (e.g. ADR-0032's flatten) silently broke a hand-rolled path and
+// no test caught it, because `--self-test` only ever exercised the pure
+// classifier below, never this seam. `git rev-parse` runs with cwd=EVALS_ROOT,
+// which is always inside the repo regardless of how deep `evals/` sits. A
+// clean top-level try/catch here (and around `main()` below) means a real git
+// failure now fails LOUD with a readable message, instead of the old
+// swallow-to-`''` that let this exact bug hide for however many PRs landed
+// since the flatten.
+let REPO_ROOT;
+try {
+  REPO_ROOT = resolveRepoRoot();
+} catch (err) {
+  console.error(`\n✗ changed.mjs: ${err.message}\n`);
+  process.exit(1);
+}
+
 if (flags.has('--self-test')) process.exit(runSelfTest() ? 0 : 1);
 
-main();
+try {
+  main();
+} catch (err) {
+  console.error(`\n✗ changed.mjs: ${err.message}\n`);
+  process.exit(1);
+}
 
 // ---- main -----------------------------------------------------------------
 
@@ -122,19 +143,49 @@ export function classifyChanges(files, skillsWithCase) {
 
 function changedFiles(baseRef) {
   // PR diff (three-dot: changes on HEAD since the merge-base) plus the working
-  // tree, so it is useful locally before you commit as well as in CI.
-  const committed = git(['diff', '--name-only', `${baseRef}...HEAD`]);
-  const worktree = git(['diff', '--name-only']); // unstaged
-  const staged = git(['diff', '--name-only', '--cached']);
-  const untracked = git(['ls-files', '--others', '--exclude-standard']);
+  // tree, so it is useful locally before you commit as well as in CI. Only the
+  // committed-diff leg has a LEGITIMATE reason to fail (`baseRef` not fetched
+  // locally, e.g. a bare `--base=origin/main` before `git fetch`) — the other
+  // three run against a checkout `resolveRepoRoot()` already proved is real, so
+  // a failure there is a bug (wrong cwd, corrupt repo), not an expected case,
+  // and must not be swallowed the same way (#148: the two were conflated,
+  // which is exactly how a broken REPO_ROOT went undetected).
+  const committed = gitAllowMissingRef(['diff', '--name-only', `${baseRef}...HEAD`]);
+  const worktree = gitStrict(['diff', '--name-only']); // unstaged
+  const staged = gitStrict(['diff', '--name-only', '--cached']);
+  const untracked = gitStrict(['ls-files', '--others', '--exclude-standard']);
   const all = [committed, worktree, staged, untracked].join('\n').split('\n').map((s) => s.trim()).filter(Boolean);
   return [...new Set(all)].sort();
 }
 
-function git(args) {
+function gitStrict(args) {
   const r = spawnSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
-  if (r.status !== 0) return ''; // a missing base ref just yields no committed diff
+  if (r.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed in ${REPO_ROOT}: ${(r.stderr ?? '').trim() || `exit ${r.status}`}`);
+  }
   return r.stdout ?? '';
+}
+
+// The one call whose failure is EXPECTED and benign — see changedFiles() above.
+function gitAllowMissingRef(args) {
+  const r = spawnSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' });
+  if (r.status !== 0) return '';
+  return r.stdout ?? '';
+}
+
+// Find the real repo root via git itself rather than a hand-rolled relative
+// path — this is the one thing here allowed to run before REPO_ROOT exists,
+// so it hardcodes its own cwd (EVALS_ROOT) rather than depending on it (#148).
+// Failure here is a hard invariant violation (not a git repo at all): fail
+// loud immediately rather than let every downstream call silently no-op.
+function resolveRepoRoot() {
+  const r = spawnSync('git', ['rev-parse', '--show-toplevel'], { cwd: EVALS_ROOT, encoding: 'utf8' });
+  if (r.status !== 0) {
+    throw new Error(
+      `changed.mjs: could not resolve the repo root from ${EVALS_ROOT} (git rev-parse --show-toplevel failed): ${(r.stderr ?? '').trim()}`,
+    );
+  }
+  return r.stdout.trim();
 }
 
 function discoverCases() {
@@ -223,8 +274,37 @@ function runSelfTest() {
   const core = classifyChanges(['evals/lib/grade.mjs'], skillsWithCase);
   const okCore = core.harnessCore === true && eq(core.affected, ['audit-test', 'contract-guard', 'debug-test']);
 
-  const passed = okBasic && okCore;
-  console.log(`changed.mjs self-test: mapping=${okBasic}, harness-core fan-out=${okCore} → ${passed ? 'OK' : 'BROKEN'}`);
-  if (!passed) console.log('  got:', JSON.stringify(got), '\n  core:', JSON.stringify(core));
+  // #148: the classifier checks above are all PURE — synthetic file lists, no
+  // real git involved — so they could never have caught a broken REPO_ROOT.
+  // Prove the real git-integration seam too: REPO_ROOT must land on the
+  // actual repo (not two directories too high), and a real, trivial
+  // (base=HEAD, so the committed leg is an empty no-op diff) call to
+  // changedFiles() must not throw — that is the exact call that silently
+  // returned `''` for however many PRs landed under the old `'../..'` path.
+  const okRoot = repoRootLooksReal(REPO_ROOT);
+  let okGitIntegration = false;
+  let gitIntegrationError = '';
+  try {
+    changedFiles('HEAD');
+    okGitIntegration = true;
+  } catch (err) {
+    gitIntegrationError = err.message;
+  }
+
+  const passed = okBasic && okCore && okRoot && okGitIntegration;
+  console.log(
+    `changed.mjs self-test: mapping=${okBasic}, harness-core fan-out=${okCore}, ` +
+      `repo-root=${okRoot}, git-integration=${okGitIntegration} → ${passed ? 'OK' : 'BROKEN'}`,
+  );
+  if (!okBasic || !okCore) console.log('  got:', JSON.stringify(got), '\n  core:', JSON.stringify(core));
+  if (!okRoot) console.log(`  REPO_ROOT resolved to ${REPO_ROOT}, which doesn't look like the repo root`);
+  if (!okGitIntegration) console.log(`  changedFiles('HEAD') threw: ${gitIntegrationError}`);
   return passed;
+}
+
+// A real repo root must contain both `.git` and this very file's directory —
+// a cheap, self-contained check that doesn't depend on any particular commit
+// existing (unlike diffing fixed SHAs, which would be brittle history to pin).
+function repoRootLooksReal(root) {
+  return existsSync(resolve(root, '.git')) && existsSync(resolve(root, 'evals', 'changed.mjs'));
 }
