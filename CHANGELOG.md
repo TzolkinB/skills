@@ -88,6 +88,28 @@ release heading.
 
 ### Added
 
+- **Gate: cross-check the `audit-test` tally against its run trace**
+  ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §3, capability B2, closes #142). `gate.mjs` now parses
+  the optional `runs[]` per-test run trace a `gate-audit-test/v0.3` emission may carry (added by #140) and
+  cross-checks it against the tally it rides alongside: `confirmedSolid` must equal the count of `killed`
+  records, `confirmedHollow` the count of `survived` records, and `runs.length` must never exceed
+  `deepAudited`. A tally that disagrees with its own trace — or a malformed run record — is rejected the
+  same way an arithmetically-impossible tally is today: the whole emission degrades to the opaque report or
+  absence, never a silent upgrade. An emission with no `runs[]` is unaffected (purely additive). When a trace
+  passes the cross-check, its record count surfaces as a `runsVerified` metric on the audit-test *evidence*
+  entry — never on the gate predicate, so honesty guard #3 (no numeric field in the gate predicate) stays
+  intact. Ship-eligibility is unchanged: this hardens the evidence behind a `confirmed` label, it does not
+  open a new path to `ship`. `AUDIT_EMISSION_SCHEMA` moves to the already-published exact-match string
+  `gate-audit-test/v0.3` (the old `v0.2` string is no longer accepted, per the existing exact-match-not-a-prefix
+  rule — a bogus/stale version degrades the emission rather than being silently honored). No bundle
+  `schemaVersion` bump: same entry shape, only the audit-test entry's own `metrics` array gains an optional
+  item. New fixture `skills/gate/fixtures/audit-test.confirmed-with-runs.json`. Verified:
+  golden self-test gains rows for a consistent trace, a killed-count mismatch, a survived-count mismatch, an
+  over-count, a malformed run record, a non-array `runs`, the `runsVerified` metric appearing/not-appearing,
+  the gate predicate staying number-free with it present, and an unchanged ship-eligibility check — all
+  green. The docs commit softening the audit-test self-report caveat to state the new cross-check property
+  lands separately (ADR-0037 Decision 4).
+
 - **`audit-test`: optional per-test run trace (`runs[]`) in `--emit-json`**
   ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §3, capability B2 prefactor, closes #140). The
   `--emit-json` emission gains an optional `runs[]` array — one record per test a mutation was actually
