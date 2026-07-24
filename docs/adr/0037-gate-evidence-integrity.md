@@ -103,6 +103,13 @@ against the trace**: `confirmedSolid` must equal the count of `killed` runs, `co
 trace is rejected the same way an arithmetically-impossible tally is today — it **degrades to opaque**, never a
 silent upgrade.
 
+> **Amended by [#155](https://github.com/TzolkinB/skills/issues/155) (ChatGPT Tier 2.3 critique, F1 + F3).** The
+> cross-check is tightened to close three fabrication-by-accident gaps, all within this same decision (still no new
+> path to `ship`): (a) the tally-consistency bound is exact — `Σ(outcomes) === deepAudited`, not `≤` — so a deep
+> audit with no recorded outcome is rejected; (b) each trace record's `exitCode` must **agree** with its outcome
+> (`killed ⇒ exitCode ≠ 0`, `survived ⇒ exitCode === 0`), so a self-contradictory record no longer validates; and
+> (c) each `(test, mutation, command)` triple must be **distinct**, so duplicated records can't pad a `killed` count.
+
 - **Honest degradation for the un-runnable subset.** `audit-test` cannot execute a mutation in every environment
   (the `likelyHollow` = "env not runnable" class exists for exactly this). Those tests have **no** trace record and
   keep their existing "**reasoned-only**" standing; B2 covers only the executed (`confirmedSolid` +
