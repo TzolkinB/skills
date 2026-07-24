@@ -21,7 +21,11 @@
 // overridable down to a 25% minimum) — the coverage-aware ship gate (#127, ADR-0035): a
 // confirmed-clean verdict that examined a minority of the suite is disclosed, not upgraded.
 // An opaque or absent audit-test still caps credibility at `canary`, and a parsed run
-// that examined nothing derives `unexamined` → also canary (theater guard).
+// that examined nothing derives `unexamined` → also canary (theater guard). A PASSED execution
+// suite must ALSO clear an executed-floor (default 50%, `--executed-floor` overridable down to
+// a 25% minimum) on its own discovered-vs-executed fraction — the execution-completeness gate
+// (#157): a 1-of-1000 run with the rest skipped reads PASSED but is capped at canary, not
+// laundered into `ship`.
 //
 // This is DETERMINISTIC CODE, not model judgment: the same bundle always yields
 // the same decision (a release gate must be reproducible). The SKILL.md
@@ -31,8 +35,8 @@
 // Usage:
 //   node gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
 //                    [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
-//                    [--examined-floor=<pct>] [--commit=<sha>] [--out=<bundle.json>] \
-//                    [--sign-key=<private-key.pem>]   # ≥1 execution report; both allowed
+//                    [--examined-floor=<pct>] [--executed-floor=<pct>] [--commit=<sha>] \
+//                    [--out=<bundle.json>] [--sign-key=<private-key.pem>]   # ≥1 execution report; both allowed
 //   node gate.mjs --gen-key=<path-prefix>              # writes <prefix>.pem + <prefix>.pub.pem
 //   node gate.mjs --verify --bundle=<bundle.json> --pubkey=<public-key.pem>
 //   node gate.mjs --self-test        # golden truth-table gate (deterministic)
@@ -57,6 +61,13 @@ const RANK = { hold: 0, canary: 1, ship: 2 }; // worst-wins ordinal: hold < cana
 // silently trusts a 1-of-500 deep-audit).
 const EXAMINED_FLOOR_DEFAULT = 50;
 const EXAMINED_FLOOR_MIN = 25;
+// Execution-completeness floor (#157): a suite can report PASSED while having executed only a
+// sliver of what the framework discovered (a discovery/filter/config mistake — `expected:1,
+// skipped:999` is the disclosed exploit). Same shape as the examined-floor above: a fraction
+// floor on discovered-but-unexecuted tests, gating `ship-baseline` separately from the
+// PASSED/FAILED/WARNED verdict itself. `--executed-floor` overrides; never below the minimum.
+const EXECUTED_FLOOR_DEFAULT = 50;
+const EXECUTED_FLOOR_MIN = 25;
 // E2E frameworks that produce execution evidence on the same axis (result → proposal).
 // Both feed the gate identically; worst-wins across all present (a green Playwright can't
 // paper over a red Cypress). audit-test is the separate CREDIBILITY axis, not here.
@@ -459,8 +470,36 @@ export function resolveExaminedFloor(requested) {
   return Math.min(100, Math.max(EXAMINED_FLOOR_MIN, n));
 }
 
-export function gate(bundle, { examinedFloor } = {}) {
+// Clamp a requested executed-floor into [EXECUTED_FLOOR_MIN, 100], defaulting when unset/invalid
+// — same treatment as `resolveExaminedFloor` (never trusted past the floor's own minimum, so
+// `--executed-floor=0` can't reopen the 1-of-1000 exploit, #157).
+export function resolveExecutedFloor(requested) {
+  if (requested === undefined || requested === null || requested === '') return EXECUTED_FLOOR_DEFAULT;
+  const n = Number(requested);
+  if (!Number.isFinite(n)) return EXECUTED_FLOOR_DEFAULT;
+  return Math.min(100, Math.max(EXECUTED_FLOOR_MIN, n));
+}
+
+// Executed / skipped / discovered counts read straight from an execution entry's own metrics —
+// a mechanical restatement, not a new derivation. `discovered` is executed+skipped, so a report
+// that never mentions `skipped` (an older shape, or a framework with no such field) reads as
+// fully discovered — this never manufactures a denominator the report didn't itself supply.
+function executionCounts(entry) {
+  const m = Object.fromEntries((entry?.predicate?.verdict?.metrics ?? []).map((x) => [x.name, x.value]));
+  if (entry?.predicate?.stage === 'cypress') {
+    const executed = Number(m.totalPassed ?? 0) + Number(m.totalFailed ?? 0);
+    const skipped = Number(m.totalPending ?? 0) + Number(m.totalSkipped ?? 0);
+    const discovered = m.totalTests !== undefined ? Number(m.totalTests) : executed + skipped;
+    return { executed, skipped, discovered };
+  }
+  const executed = Number(m.expected ?? 0) + Number(m.unexpected ?? 0) + Number(m.flaky ?? 0);
+  const skipped = Number(m.skipped ?? 0);
+  return { executed, skipped, discovered: executed + skipped };
+}
+
+export function gate(bundle, { examinedFloor, executedFloor } = {}) {
   const floor = resolveExaminedFloor(examinedFloor);
+  const execFloor = resolveExecutedFloor(executedFloor);
   const entries = bundle.entries ?? [];
   const stageOf = (e) => e.predicate?.stage;
   const known = new Set([...EXECUTION_STAGES, 'audit-test', 'gate']);
@@ -480,16 +519,38 @@ export function gate(bundle, { examinedFloor } = {}) {
     for (const e of execEntries) {
       const stage = stageOf(e);
       const result = e.predicate?.verdict?.result ?? 'FAILED';
-      const proposed = result === 'FAILED' || result === 'EMPTY' ? 'hold' : result === 'WARNED' ? 'canary' : 'ship';
+      let proposed = result === 'FAILED' || result === 'EMPTY' ? 'hold' : result === 'WARNED' ? 'canary' : 'ship';
+
+      // Execution-completeness (#157): a suite can be PASSED/WARNED while having executed only a
+      // sliver of what the framework discovered — surface the executed-vs-skipped split for EVERY
+      // execution suite (not just buried in the entry's own metrics), and when a would-be `ship`
+      // is dominated by skips, cap it at `canary` instead of laundering a 1-of-1000 run into green.
+      const counts = executionCounts(e);
+      const executedPct = counts.discovered > 0 ? Math.round((counts.executed / counts.discovered) * 100) : 0;
+      const scope = counts.discovered > 0
+        ? ` (${counts.executed} of ${counts.discovered} discovered tests executed — ${executedPct}%; ${counts.skipped} skipped)`
+        : '';
+      // Integer-domain comparison, same treatment as the examined-floor, to avoid float rounding
+      // ever letting a borderline fraction slip past the floor it was just short of.
+      const executedFloorMet = counts.discovered > 0 && counts.executed * 100 >= execFloor * counts.discovered;
+      if (proposed === 'ship' && !executedFloorMet) proposed = 'canary';
+
+      // No new field needed to mark this: `result === 'PASSED'` with `proposed === 'canary'` is
+      // otherwise unreachable on the execution axis (pre-#157, PASSED always proposed `ship`), so
+      // it's a sufficient, schema-stable signal for the report to key off — same treatment
+      // `belowExaminedFloor` already gets from the audit-test input's existing fields.
       inputs.push({ stage, result, proposed });
+
       rationale.push(
         result === 'FAILED'
-          ? `${stage} FAILED → hold (execution failed — dominates)`
+          ? `${stage} FAILED${scope} → hold (execution failed — dominates)`
           : result === 'EMPTY'
             ? `${stage} produced no test results (empty/zero-test report) → hold (an unrun or empty report is not a pass — #111)`
             : result === 'WARNED'
-              ? `${stage} WARNED (flaky) → canary (a trust defect, not buried under a note)`
-              : `${stage} PASSED → ship-baseline`,
+              ? `${stage} WARNED (flaky)${scope} → canary (a trust defect, not buried under a note)`
+              : executedFloorMet
+                ? `${stage} PASSED${scope} → ship-baseline`
+                : `${stage} PASSED but only executed ${counts.executed} of ${counts.discovered} discovered tests (${executedPct}% — ${counts.skipped} skipped) → canary (execution incomplete — below the ${execFloor}% executed-floor, #157)`,
       );
     }
   }
@@ -658,6 +719,17 @@ export function renderReport(bundle, gateEntry) {
   // PASSED + confirmed + proposed canary is reachable only one way: confirmed-clean but the
   // deep-audited fraction fell short of the examined-floor (#127, ADR-0035).
   const belowExaminedFloor = audit?.result === 'PASSED' && audit?.label === 'confirmed' && audit?.proposed === 'canary';
+  // Execution-completeness (#157): a PASSED suite capped at canary because it executed only a
+  // sliver of what was discovered (skipped/pending dominate) — pre-#157, PASSED always proposed
+  // `ship`, so this combination is otherwise unreachable and needs no dedicated field to detect,
+  // same treatment `belowExaminedFloor` above already gets. Independent of the audit-test
+  // credibility caveats above, so it prints alongside them rather than instead of them.
+  const incompleteStages = gateEntry.predicate.inputs
+    .filter((i) => EXECUTION_STAGES.has(i.stage) && i.result === 'PASSED' && i.proposed === 'canary')
+    .map((i) => i.stage);
+  if (incompleteStages.length) {
+    L.push(`> execution incomplete: ${incompleteStages.join(' + ')} executed only a small fraction of the tests it discovered — skipped/pending dominate the report, so a green result here is not evidence the rest of the suite ran (see rationale above; #157).`);
+  }
   if (d === 'ship') {
     const execStages = gateEntry.predicate.inputs.filter((i) => EXECUTION_STAGES.has(i.stage)).map((i) => i.stage);
     const suites = execStages.join(' + ') || 'the E2E suite';
@@ -730,6 +802,7 @@ function main(argv) {
     console.log('usage: gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>)  # ≥1 required, both allowed');
     console.log('                   [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
     console.log(`                   [--examined-floor=<pct>]  # default ${EXAMINED_FLOOR_DEFAULT}, clamped to a ${EXAMINED_FLOOR_MIN} minimum`);
+    console.log(`                   [--executed-floor=<pct>]  # default ${EXECUTED_FLOOR_DEFAULT}, clamped to a ${EXECUTED_FLOOR_MIN} minimum (#157)`);
     console.log('                   [--sign-key=<private-key.pem>]  # opt-in DSSE signing (ed25519) — unsigned by default');
     console.log('       gate.mjs --gen-key=<path-prefix>              # writes <prefix>.pem + <prefix>.pub.pem');
     console.log('       gate.mjs --verify --bundle=<bundle.json> --pubkey=<public-key.pem>');
@@ -779,8 +852,14 @@ function main(argv) {
   if (opts['examined-floor'] !== undefined && Number(opts['examined-floor']) !== examinedFloor)
     console.error(`⚠ --examined-floor=${opts['examined-floor']} is invalid or below the ${EXAMINED_FLOOR_MIN}% minimum — using ${examinedFloor}%.`);
 
+  // Execution-completeness floor (#157) — same "never silently trust it" clamp treatment as
+  // --examined-floor above.
+  const executedFloor = resolveExecutedFloor(opts['executed-floor']);
+  if (opts['executed-floor'] !== undefined && Number(opts['executed-floor']) !== executedFloor)
+    console.error(`⚠ --executed-floor=${opts['executed-floor']} is invalid or below the ${EXECUTED_FLOOR_MIN}% minimum — using ${executedFloor}%.`);
+
   const bundle = assembleBundle({ commit: opts.commit, entries, inputs });
-  const { gateEntry } = gate(bundle, { examinedFloor });
+  const { gateEntry } = gate(bundle, { examinedFloor, executedFloor });
   bundle.entries.push(gateEntry);
 
   const errors = validateBundle(bundle);
@@ -931,6 +1010,67 @@ function runSelfTest() {
   const belowFloorReport = renderReport(belowFloorBundle, belowFloorGate.gateEntry);
   check('below-floor report names the examined-floor and #127 in its rationale', /examined-floor/.test(belowFloorReport) && /#127/.test(belowFloorReport));
   check('below-floor report carries no manufactured number outside prose', !/\bconfidence\b\s*[:=]\s*\d/i.test(belowFloorReport));
+
+  // ---- execution-completeness floor (#157): a PASSED suite that executed only a sliver of what
+  // it discovered must not launder into `ship` — the disclosed exploit (`expected:1, skipped:999`)
+  // and its Cypress analog (`totalPending`/`totalSkipped`), plus disclosure + the override/clamp.
+  check('resolveExecutedFloor: default when unset', resolveExecutedFloor(undefined) === EXECUTED_FLOOR_DEFAULT);
+  check('resolveExecutedFloor: clamps below the 25% minimum', resolveExecutedFloor(10) === EXECUTED_FLOOR_MIN);
+  check('resolveExecutedFloor: clamps above 100', resolveExecutedFloor(150) === 100);
+  check('resolveExecutedFloor: passes a valid override through', resolveExecutedFloor(30) === 30);
+  check('resolveExecutedFloor: invalid input falls back to default', resolveExecutedFloor('not-a-number') === EXECUTED_FLOOR_DEFAULT);
+
+  const nearAllSkippedPw = playwrightEntry({ stats: { expected: 1, unexpected: 0, flaky: 0, skipped: 999 } });
+  const nearAllSkippedBundle = assembleBundle({ commit: 'x', entries: [nearAllSkippedPw, auditTestParsedEntry(T.confirmedClean)] });
+  const nearAllSkippedGate = gate(nearAllSkippedBundle);
+  nearAllSkippedBundle.entries.push(nearAllSkippedGate.gateEntry);
+  check("#157 THE FIX: playwright expected:1,skipped:999 + confirmed-clean audit → canary, not ship (the issue's own exploit)",
+    nearAllSkippedGate.decision === 'canary');
+  check('#157: the capped-at-canary gate entry still validates against the unchanged schema (no new field needed, honesty guard #3 intact)',
+    validateGateEntry(nearAllSkippedGate.gateEntry).length === 0);
+  const nearAllSkippedReport = renderReport(nearAllSkippedBundle, nearAllSkippedGate.gateEntry);
+  check('#157: rationale surfaces executed-vs-skipped counts (not just buried in metrics)',
+    /1 of 1000 discovered tests/.test(nearAllSkippedReport) && /999 skipped/.test(nearAllSkippedReport));
+  check('#157: report names execution incomplete + the issue number', /execution incomplete/.test(nearAllSkippedReport) && /#157/.test(nearAllSkippedReport));
+
+  // Disclosure applies to EVERY execution suite, not only one that gets capped — a clean 0%-skipped
+  // PASSED run still states its executed/discovered scope, and a WARNED (flaky) run does too.
+  const cleanPwGate = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] }));
+  check('#157: a fully-executed PASSED suite still states its executed/discovered scope (disclosure, not just the exploit case)',
+    cleanPwGate.gateEntry.predicate.rationale.some((r) => /12 of 12 discovered tests executed/.test(r)));
+  const warnedWithSkipsGate = gate(assembleBundle({ commit: 'x', entries: [playwrightEntry({ stats: { expected: 10, unexpected: 0, flaky: 1, skipped: 5 } })] }));
+  check('#157: a WARNED suite also states executed/discovered scope (surfaced for every execution suite, per the AC)',
+    warnedWithSkipsGate.gateEntry.predicate.rationale.some((r) => /discovered tests executed/.test(r)));
+
+  // --executed-floor override + clamp — same "never silently trust it" treatment as --examined-floor.
+  const mostlySkippedPw = playwrightEntry({ stats: { expected: 4, unexpected: 0, flaky: 0, skipped: 6 } }); // 4-of-10 = 40%
+  const mostlySkippedBundle = assembleBundle({ commit: 'x', entries: [mostlySkippedPw, auditTestParsedEntry(T.confirmedClean)] });
+  check('executed-floor: a 40%-executed run is capped at canary under the default 50% floor',
+    gate(mostlySkippedBundle).decision === 'canary');
+  check('executed-floor override: lowering to 25% lets the 40%-executed run ship (a conscious, disclosed choice)',
+    gate(mostlySkippedBundle, { executedFloor: 25 }).decision === 'ship');
+
+  const veryLowExecPw = playwrightEntry({ stats: { expected: 1, unexpected: 0, flaky: 0, skipped: 99 } }); // 1-of-100 = 1%
+  const veryLowExecBundle = assembleBundle({ commit: 'x', entries: [veryLowExecPw, auditTestParsedEntry(T.confirmedClean)] });
+  check('executed-floor: requesting a 10% floor is clamped to the 25% minimum — a 1%-executed run still cannot ship',
+    gate(veryLowExecBundle, { executedFloor: 10 }).decision === 'canary');
+
+  const exactHalfPw = playwrightEntry({ stats: { expected: 5, unexpected: 0, flaky: 0, skipped: 5 } }); // exactly 50%
+  const exactHalfBundle = assembleBundle({ commit: 'x', entries: [exactHalfPw, auditTestParsedEntry(T.confirmedClean)] });
+  check('executed-floor: a run at exactly the floor (50%) ships — inclusive boundary',
+    gate(exactHalfBundle).decision === 'ship');
+
+  // Cypress analog — `totalPending`/`totalSkipped` dominate the same way `skipped` does for Playwright.
+  const nearAllSkippedCy = cypressEntry({ totalTests: 1000, totalPassed: 1, totalFailed: 0, totalPending: 999, totalSkipped: 0, runs: [] });
+  check('#157 exploit (Cypress totalPending): totalPassed:1,totalPending:999 + confirmed-clean audit → canary, not ship',
+    gate(assembleBundle({ commit: 'x', entries: [nearAllSkippedCy, auditTestParsedEntry(T.confirmedClean)] })).decision === 'canary');
+  const nearAllSkippedCy2 = cypressEntry({ totalTests: 1000, totalPassed: 1, totalFailed: 0, totalPending: 0, totalSkipped: 999, runs: [] });
+  check('#157 exploit (Cypress totalSkipped): totalPassed:1,totalSkipped:999 + confirmed-clean audit → canary, not ship',
+    gate(assembleBundle({ commit: 'x', entries: [nearAllSkippedCy2, auditTestParsedEntry(T.confirmedClean)] })).decision === 'canary');
+
+  // Regression guard: the existing fixture-backed ship path (0 skipped) is unaffected by #157.
+  check('executed-floor: a fully-executed suite (0 skipped) still ships — no regression on the existing ship path',
+    gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] })).decision === 'ship');
 
   // #111 — empty/impossible evidence can never ship (the two disclosed exploits, defeated)
   const emptyPw = playwrightEntry({}); // `{}` → EMPTY
