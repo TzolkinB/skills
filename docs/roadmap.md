@@ -44,14 +44,25 @@ the floor it proposes `canary` — no new categorical rung, same shape as
 ## Tier 2 — real capability, larger lift
 
 ### 3. Real evidence integrity — DSSE signing, bind emissions to execution artifacts
-[#128](https://github.com/TzolkinB/skills/issues/128) (open). Reserved-not-built since [ADR-0028](adr/0028-witness-gate-skill-mvp1.md). This is what would
-*earn back* "attestation" language if it's ever wanted: cryptographically sign bundle entries
-and bind an `audit-test` emission to the actual execution run that produced it (today a model
-writes the tally; nothing checks it against a real run). Depends on
-[ADR-0010](adr/0010-execution-out-temporal-deferred-behind-a-seam.md)'s execution seam landing
-first — you can't bind emissions to executions the Gate never runs.
-**Third** — real engineering, no shortcut, and lower-urgency than 1–2 since nothing currently
-*claims* signing exists.
+[#128](https://github.com/TzolkinB/skills/issues/128) (closed, 2026-07-22 via [ADR-0037](adr/0037-gate-evidence-integrity.md)) — reserved-not-built
+since [ADR-0028](adr/0028-witness-gate-skill-mvp1.md), now built as a smaller, honest set of integrity
+properties. Three capabilities landed: **A** — opt-in self-signed ed25519 DSSE signing of the gate
+Statement ([#141](https://github.com/TzolkinB/skills/issues/141)); a signed bundle proves *integrity*
+(unaltered since Gate produced it), **not** third-party identity — self-signed, never Sigstore, unsigned
+by default. **B1** — content-address the ingested inputs as sha256 `subject[]` digests
+([#139](https://github.com/TzolkinB/skills/issues/139)), so a report swapped from under the verdict no
+longer goes unnoticed. **B2** — `audit-test` emits an optional per-test `runs[]` trace and Gate
+cross-checks the tally against it ([#140](https://github.com/TzolkinB/skills/issues/140)/[#142](https://github.com/TzolkinB/skills/issues/142)),
+raising the credibility input from "trust a summary number" to "trust a summary the run trace
+corroborates." Schema went `v0.3 → v0.5` additively. **ADR-0037 corrected #128's stated dependency:**
+it does **not** depend on [ADR-0010](adr/0010-execution-out-temporal-deferred-behind-a-seam.md)'s
+execution seam — ADR-0010 ruled the Execution Gap out of scope *permanently*, so no seam is coming;
+B2 binds to the run `audit-test` already performs, not one Gate runs. Honest scope: B2 hardens the
+self-report, it does **not** make it trustless — Gate still never re-runs the mutation, and the
+`ship`-eligibility rule is unchanged.
+**Third** — real engineering, no shortcut; the maturity pass that earned back "attestation"/"signed"
+language for the v1, replacing the "aggregator of self-reports" caveat `references/critique-synthesis.md`
+said could not be honestly fixed for the scrapped v0 launch.
 
 ### 4. Calibration loop — numeric `confidence`
 [#129](https://github.com/TzolkinB/skills/issues/129) (open). The big one. Folded into [#49](https://github.com/TzolkinB/skills/issues/49) (epic) from the
