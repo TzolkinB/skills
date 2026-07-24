@@ -47,7 +47,7 @@ Reuses `/sentinel`'s three states, scoped to a single test, plus one suspicion f
 
 - 🔴 **Confirmed false-confidence** — mutation ran, test stayed green, **and the reachability check confirmed the harness is source-live**. Factual, execution-confirmed.
 - 🟡 **Likely false-confidence** — reasoned only; code wasn't runnable *or* the mutation didn't reach the running app (stale/remote harness), so this is short of proof.
-- 🟢 **Killed the proposed mutation** — the mutation ran and the test failed as it should (or no plausible green-surviving change exists). Confirmed-solid *against that mutation*; not a blanket "this test is fine." A test that never advanced past triage is **Unexamined**, not 🟢.
+- 🟢 **Killed the proposed mutation** — a mutation actually ran and the test failed as it should. Confirmed-solid *against that mutation*; not a blanket "this test is fine." Reasoning alone never earns 🟢 — an inability to devise a breaking mutation is **🟡 Likely** (if reasoned about) or **Unexamined** (if it never advanced past triage), never confirmed-solid ([ADR-0039](../../docs/adr/0039-audit-test-green-requires-execution.md)).
 - ⚠️ **Baseline-lock suspected** — the assertion is *live* (it kills mutations) but appears pinned to a value the code was **changed to produce**, not its intended behavior. Neither a clean 🟢 nor a hollow 🔴: a distinct suspicion that needs the reviewer (or an intent source) to confirm the intended value. A caller reads it as **caution, never a pass**. (See [ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md).)
 
 ## Failure taxonomy ("How it fails")
@@ -73,7 +73,7 @@ Single-test / flagged-test entry:
 **A real test would:** assert the 2nd booking is rejected with 409, not that save() ran
 ```
 
-For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code couldn't be run. For a 🟢, state briefly what made it fail (or why no green-surviving change exists). For **⚠️ Baseline-lock suspected**, show the intent signal — the co-changed assertion (`old → new` expected value) or the in-code source of truth it contradicts — and the remedy:
+For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code couldn't be run (or, if no plausible breaking mutation was found, say so — that's a 🟡, not a 🟢). For a 🟢, state briefly what mutation you ran and how it made the test fail. For **⚠️ Baseline-lock suspected**, show the intent signal — the co-changed assertion (`old → new` expected value) or the in-code source of truth it contradicts — and the remedy:
 
 ```
 ## audit-test: "renders the initial deck"
