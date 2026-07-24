@@ -247,7 +247,12 @@ Bundle written to gate-bundle.json
   input digests above) and the gate decision in a [DSSE](https://github.com/secure-systems-lab/dsse) envelope:
   an ed25519 signature (`node:crypto`, no new dependency) over the DSSE pre-authentication encoding, with
   `keyid` = sha256 of the public key. `--verify --bundle=<path> --pubkey=<path>` then confirms a signed bundle
-  wasn't altered after Gate produced it — a tampered payload or the wrong key both fail closed. This is
+  wasn't altered after Gate produced it — a tampered payload or the wrong key both fail closed, and a
+  structurally-malformed bundle is rejected before the signature is even trusted. The signature covers **only
+  the gate Statement** (the decision + the content-addressed input digests) — `producedOn`, `schemaVersion`,
+  and the ingested Playwright/Cypress/`audit-test` evidence entries ride *inside* the bundle but *outside* the
+  signature, so `--verify` reports exactly the decision and subjects it vouches for rather than the whole file.
+  This is
   **self-signed**: it proves **integrity** (unaltered since signing) and **continuity** (same key across runs),
   never third-party **identity** — it is **not Sigstore**, and the skill must not say "Sigstore," "verified
   identity," or "trusted publisher." Only a bundle that *is* signed earns "signed" / "tamper-evident" /

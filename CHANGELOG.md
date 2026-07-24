@@ -19,6 +19,19 @@ release heading.
 
 ### Fixed
 
+- **`gate.mjs --verify` now shape-validates the bundle before trusting the signature, and reports the
+  narrow scope it actually vouches for** (post-#141 signature-verification hardening). Two gaps in the DSSE
+  verify path, both fail-*closed* (neither could forge a decision): (1) `--verify` called `verifyGateBundle`
+  without first running `validateBundle`, and `verifyGateBundle` binds to the *first* gate entry it finds —
+  so a structurally-invalid bundle (e.g. a duplicate gate entry) could print "✓ signature valid" despite
+  violating the contract. `--verify` now runs `validateBundle` first and refuses to vouch for a malformed
+  bundle. (2) The signature deliberately covers only the gate Statement (the decision + the content-addressed
+  input digests), never `producedOn`/`schemaVersion`/the ingested evidence entries ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md)
+  §1) — but a bare "✓ valid" invited reading it as "the whole file is authentic." `verifyGateBundle` now
+  returns an `attested` object (the decision + subject names), the `--verify` message states that scope
+  explicitly, and `skills/gate/SKILL.md` spells out what is inside vs. outside the signature. Self-test gains
+  rows for the attested-scope report and the duplicate-gate shape guard.
+
 - **`evals/changed.mjs`: `REPO_ROOT` resolved one directory too high, so the change-detection gate ran
   every git call outside the repo and always silently reported zero affected skills** (closes #148, found
   while implementing #140). `REPO_ROOT` was a hand-rolled `resolve(EVALS_ROOT, '../..')` — one `..` too
