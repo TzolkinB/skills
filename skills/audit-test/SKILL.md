@@ -109,15 +109,18 @@ prose scrape and never a confidence number; Gate derives the category itself
   "unexamined": 42,
   "runs": [
     {
-      "test": "booking.spec.js::rejects overlapping bookings",
-      "mutation": "removed the clashes.length > 0 guard in booking.js",
-      "command": "npx vitest run -t 'rejects overlapping bookings' booking.spec.js",
-      "outcome": "survived",
-      "exitCode": 0
+      "test": "<file>::<test name>",
+      "mutation": "one-line description of the change applied",
+      "command": "the exact single-test command run (framework-specific — reference/run-one-test.md)",
+      "outcome": "killed",
+      "exitCode": 1
     }
   ]
 }
 ```
+
+(`runs[]` trimmed to one representative entry above — a real emission carries one record per
+confirmed-solid/confirmed-hollow test, so `confirmedSolid: 2, confirmedHollow: 1` here would carry three.)
 
 The counts map 1:1 to the batch tally's verdict classes: `confirmedSolid` = 🟢, `confirmedHollow` = 🔴,
 `likelyHollow` = 🟡, `baselineLock` = ⚠️, `unexamined` = triaged-but-never-mutated; `deepAudited` = how many

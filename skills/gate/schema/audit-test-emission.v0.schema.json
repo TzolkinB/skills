@@ -27,7 +27,7 @@
           "mutation": { "type": "string", "description": "what was mutated, e.g. \"removed the clashes.length > 0 guard\"" },
           "command": { "type": "string", "description": "the exact single-test command run (reference/run-one-test.md)" },
           "outcome": { "enum": ["killed", "survived"], "description": "killed = confirmedSolid (test failed as it should); survived = confirmedHollow (test stayed green)" },
-          "exitCode": { "type": "integer", "description": "the single-test run's process exit code" }
+          "exitCode": { "type": "integer", "minimum": 0, "description": "the single-test run's process exit code" }
         },
         "additionalProperties": true
       }
