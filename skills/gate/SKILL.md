@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the bundle with a self-signed ed25519 key so a reader can verify it was not altered after Gate produced it — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a content-addressed, shape-checked self-report, cross-checked against its own per-test run trace when one is carried, not an independent re-verification (Gate never re-runs the mutation); caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the bundle with a self-signed ed25519 key so a reader can verify it was not altered after Gate produced it — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -215,6 +215,17 @@ Bundle written to gate-bundle.json
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
   is structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; an opaque, absent, or examined-nothing
   audit all cap at `canary`, so there is no "run less, grade better" incentive.
+- **Run-trace cross-check** ([#142](https://github.com/TzolkinB/skills/issues/142),
+  [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §3). A parsed emission may also carry an optional
+  `runs[]` — one record per test a mutation was actually **executed** against, with its outcome (`killed` |
+  `survived`) and exit code. When present, the Gate cross-checks it against the tally it rides alongside:
+  `confirmedSolid` must equal the killed-record count, `confirmedHollow` the survived-record count, and
+  `runs.length` must never exceed `deepAudited`. A tally that disagrees with its own trace is rejected the same
+  way an arithmetically-impossible tally is — it degrades to the opaque report or absence, never a silent
+  upgrade. This hardens the *evidence behind* a `confirmed` label into a granular, per-test, internally-consistent
+  record instead of a bare number; it does **not** make the verdict independently verified — the trace is still
+  `audit-test`'s own account of its run (Gate cannot re-execute it, [ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)),
+  and it opens no new path to `ship`. An emission with no `runs[]` is unaffected — this is purely additive.
 - **Coverage-aware ship gate — the examined-floor** ([#127](https://github.com/TzolkinB/skills/issues/127),
   [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)). A confirmed-clean verdict alone used to be enough to
   ship, even if `deepAudited` was a small minority of `audited` (the shipped fixture used to be `4 of 12` — 33%).
