@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a content-addressed, shape-checked self-report, cross-checked against its own per-test run trace when one is carried, not an independent re-verification (Gate never re-runs the mutation); caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the gate decision + its content-addressed input digests with a self-signed ed25519 key so a reader can verify those weren't altered after Gate produced it (the ingested report bodies ride alongside, outside the signature) — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND ran to completion — the executed fraction of what the suite discovered clears the executed-floor (default 50%, overridable down to a 25% minimum; a near-all-skipped run caps at canary instead) — AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a content-addressed, shape-checked self-report, cross-checked against its own per-test run trace when one is carried, not an independent re-verification (Gate never re-runs the mutation); caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the gate decision + its content-addressed input digests with a self-signed ed25519 key so a reader can verify those weren't altered after Gate produced it (the ingested report bodies ride alongside, outside the signature) — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -58,6 +58,10 @@ If there is no E2E result at all, tell the user to run their suite first — the
 not run the suite. An **empty or zero-test report** (nothing executed to a pass/fail verdict — e.g. a suite
 that never ran, or a wrong `--playwright` path) is treated as **no execution evidence → `hold`**, never as a
 pass: a green-looking `{}` is exactly the false confidence the Gate exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
+A report that DID execute something but only a sliver of what the framework discovered — a discovery/filter/
+config mistake that runs 1 of 1000 tests and skips the rest — is a related but distinct false confidence: it
+reads `PASSED` and is capped at `canary` by the **executed-floor**, not treated as green
+([#157](https://github.com/TzolkinB/skills/issues/157); see Step 3).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
   - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.3` tally written by `/audit-test --emit-json=<path>`.
@@ -79,11 +83,15 @@ Run the bundled script from **this skill's base directory** (shown to you when t
 ```
 node "<skill base dir>/gate.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
      [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--examined-floor=<pct>] \
-     [--sign-key=<private-key.pem>] --commit=<sha> --out=gate-bundle.json
+     [--executed-floor=<pct>] [--sign-key=<private-key.pem>] --commit=<sha> --out=gate-bundle.json
 ```
 (Pass `--playwright`, `--cypress`, or both — at least one is required. `--examined-floor` defaults to
 `50`; a requested value below the `25` minimum is clamped, with a warning, never silently accepted —
 only pass it when you consciously want to accept a narrower deep-audited scope than the default.
+`--executed-floor` works the same way, but on the **execution** axis instead of the credibility axis —
+default `50`, clamped to a `25` minimum — and gates how much of what the suite *discovered* actually
+ran ([#157](https://github.com/TzolkinB/skills/issues/157)); only pass it when you consciously accept
+a narrower executed scope (e.g. a deliberately tag-filtered run) than the default.
 `--sign-key` is optional — omit it and the bundle is unsigned, exactly as before this option existed.)
 
 The script ([`gate.mjs`](./gate.mjs)) ingests, assembles the bundle, runs the worst-wins gate, appends a
@@ -133,14 +141,24 @@ Tell the user where the bundle was written. Then interpret it honestly:
     [ADR-0038](../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)). Run audit-test's
     certification mode (forthcoming) for a representative-breadth verdict, or re-gate with a consciously lower
     `--examined-floor` (never below 25%) to accept this narrower certified scope.
-- **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green **and** a *parsed*
-  `audit-test` verdict is `PASSED` + `confirmed` **and** the deep-audited fraction clears the examined-floor
-  (`deepAudited`/`audited` ≥ 50% by default): the deep audits ran, killed their mutations, found no hollow
-  tests **among the deep-audited subset**, and that subset was big enough to call the result honest. This
-  proves that subset, not the whole suite — `unexamined` tests are *not* evidence of health, and the report
-  states the examined/unexamined split so the scope is never oversold. This is the one path to `ship`, and it
-  is deliberately hard to reach — a single red suite, an **empty/zero-test** report, an opaque, absent, or
-  vacuous audit, or a confirmed-clean audit that examined too little of the suite, never gets here.
+  - **execution incomplete (below the executed-floor)**: an execution suite reported `PASSED` (or `WARNED`),
+    but the tests it actually ran are a small fraction of what the framework discovered — skipped/pending
+    dominate (e.g. `expected:1, skipped:999`). The rationale always states the executed-vs-discovered split for
+    every execution suite, whether or not it trips the floor; a PASSED suite whose executed fraction falls
+    short of the executed-floor (default 50%) is capped at `canary` instead of proposing `ship`
+    ([#157](https://github.com/TzolkinB/skills/issues/157)) — a green result over a sliver of the suite is not
+    evidence the rest of it ran. Fix the discovery/filter/config that's skipping most of the suite, or re-gate
+    with a consciously lower `--executed-floor` (never below 25%) if the narrower scope was intentional.
+- **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green, **ran to completion**
+  (its executed fraction clears the executed-floor — `executed`/`discovered` ≥ 50% by default, [#157](https://github.com/TzolkinB/skills/issues/157)),
+  **and** a *parsed* `audit-test` verdict is `PASSED` + `confirmed` **and** the deep-audited fraction clears the
+  examined-floor (`deepAudited`/`audited` ≥ 50% by default): the deep audits ran, killed their mutations, found
+  no hollow tests **among the deep-audited subset**, and that subset was big enough to call the result honest.
+  This proves that subset, not the whole suite — `unexamined` tests are *not* evidence of health, and the
+  report states the examined/unexamined split so the scope is never oversold. This is the one path to `ship`,
+  and it is deliberately hard to reach — a single red suite, an **empty/zero-test** report, a suite that mostly
+  skipped, an opaque, absent, or vacuous audit, or a confirmed-clean audit that examined too little of the
+  suite, never gets here.
 
 The decision is **advisory only** — the Gate does not abort the build, and a `hold` or `canary` does not by
 itself stop a deployment; nothing here enforces anything, so treat the report as input to a human or CI decision,
@@ -167,7 +185,7 @@ signed: ✗ unsigned — in-toto-shaped, not a signed attestation (pass --sign-k
 - `audit-test` — present but opaque (unread) → proposes **canary**
 
 ### Rationale
-- playwright PASSED → ship-baseline
+- playwright PASSED (12 of 12 discovered tests executed — 100%; 0 skipped) → ship-baseline
 - audit-test present but opaque → floor at canary (human must read the report)
 - worst-wins over {ship, canary} → canary
 
@@ -191,7 +209,7 @@ signed: ✓ DSSE (ed25519, self-signed) — keyid `2801ebd3ab3cb4fd6944202388352
 - `audit-test` — PASSED · confirmed → proposes **ship**
 
 ### Rationale
-- playwright PASSED → ship-baseline
+- playwright PASSED (12 of 12 discovered tests executed — 100%; 0 skipped) → ship-baseline
 - audit-test PASSED + confirmed → ship-eligible — no hollow tests among the deep-audited subset (6 of 12 triaged tests mutation-audited; 6 unexamined — not evidence of health) (50% examined, clears the 50% examined-floor)
 - worst-wins over {ship} → ship
 
@@ -237,6 +255,16 @@ Bundle written to gate-bundle.json
   `--examined-floor` but never below a **25%** minimum, clamped (with a warning) rather than silently honored.
   Like everything else in the gate, the floor's numbers live only in rationale *prose*, never as a field on the
   gate predicate (honesty guard #3 still holds).
+- **Execution-completeness gate — the executed-floor** ([#157](https://github.com/TzolkinB/skills/issues/157)).
+  The same coverage-aware shape, applied to the **execution** axis instead of the credibility axis: `PASSED`
+  used to be enough to propose `ship-baseline` regardless of how much of the discovered suite actually ran —
+  `expected:1, skipped:999` reads `PASSED` exactly like a fully-run suite. The gate now surfaces the
+  executed-vs-discovered split in the rationale for **every** execution suite (Playwright's `expected`+
+  `unexpected`+`flaky` vs `skipped`; Cypress's `totalPassed`+`totalFailed` vs `totalPending`+`totalSkipped`),
+  and requires `executed`/`discovered` to clear a floor — default **50%**, overridable via `--executed-floor`
+  but never below a **25%** minimum, clamped (with a warning) rather than silently honored — before a `PASSED`
+  suite proposes `ship-baseline`; short of it, it proposes `canary`. Same honesty-guard #3 treatment: the
+  floor's numbers live only in rationale prose, never as a field on the gate predicate.
 - **Content-addressed inputs** ([#139](https://github.com/TzolkinB/skills/issues/139),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2). Every ingested file (the Playwright JSON,
   the Cypress JSON, the `audit-test` emission and/or report) is sha256-digested and recorded as a subject of
