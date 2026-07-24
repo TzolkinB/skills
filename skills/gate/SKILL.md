@@ -127,9 +127,12 @@ Tell the user where the bundle was written. Then interpret it honestly:
   - examined-nothing / reasoning-only: the audit ran but proved nothing (deep-audited 0, or the env wasn't
     runnable) — nothing was execution-verified, so credibility is unconfirmed.
   - **below the examined-floor**: `PASSED` + `confirmed`, but the deep-audited fraction fell short of the
-    floor (default 50%) — a real confirmed-clean result over too small a slice to call the whole suite honest
-    ([#127](https://github.com/TzolkinB/skills/issues/127)). Deep-audit more of the suite and re-gate, or
-    re-run with a consciously lower `--examined-floor` (never below 25%) if the narrower scope is acceptable.
+    floor (default 50%) — this was a **diagnostic** run (it examined the suspects a triage flagged, and found no
+    problems among them), not a **certification** of the whole suite
+    ([#127](https://github.com/TzolkinB/skills/issues/127),
+    [ADR-0038](../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)). Run audit-test's
+    certification mode (forthcoming) for a representative-breadth verdict, or re-gate with a consciously lower
+    `--examined-floor` (never below 25%) to accept this narrower certified scope.
 - **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green **and** a *parsed*
   `audit-test` verdict is `PASSED` + `confirmed` **and** the deep-audited fraction clears the examined-floor
   (`deepAudited`/`audited` ≥ 50% by default): the deep audits ran, killed their mutations, found no hollow
