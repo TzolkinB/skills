@@ -372,6 +372,15 @@ export function signGateBundle(bundle, gateEntry, privateKey) {
 // decision, inputs, or rationale) AFTER signing, while leaving the old envelope in place, is
 // caught here even though the envelope's own signature still checks out against its embedded
 // (stale) payload.
+//
+// A valid result reports `attested` — the decision and the subject names the signature actually
+// covers — because the envelope wraps ONLY the gate Statement (subject[] + gate predicate). The
+// surrounding bundle fields — `producedOn`, `schemaVersion`, and the ingested Playwright/Cypress/
+// audit-test evidence entries — are deliberately outside the signature (ADR-0037 §1: "Gate signs
+// only what Gate produced"), so a caller must not read `valid` as "the whole file is authentic."
+// NOTE: this checks the SIGNATURE, not the bundle's SHAPE — it binds to the first gate entry it
+// finds, so callers verifying an untrusted bundle should `validateBundle` it first (the `--verify`
+// CLI path does) to reject a structurally-malformed bundle (e.g. a duplicate gate entry).
 export function verifyGateBundle(bundle, publicKey) {
   const envelope = bundle?.dsseEnvelope;
   if (!envelope) return { valid: false, reason: 'bundle is unsigned (no dsseEnvelope)' };
@@ -387,7 +396,11 @@ export function verifyGateBundle(bundle, publicKey) {
   const expected = gateStatementPayload(bundle, gateEntry);
   if (JSON.stringify(signedPayload) !== JSON.stringify(expected))
     return { valid: false, reason: 'signed payload no longer matches the bundle (tampered after signing)' };
-  return { valid: true, keyid: keyidFromPublicKey(publicKey) };
+  return {
+    valid: true,
+    keyid: keyidFromPublicKey(publicKey),
+    attested: { decision: gateEntry.predicate?.decision, subjects: (bundle.subject ?? []).map((s) => s.name) },
+  };
 }
 
 // ---- assemble --------------------------------------------------------------
@@ -677,9 +690,22 @@ function main(argv) {
       process.exit(2);
     }
     const bundle = JSON.parse(readFileSync(abs(opts.bundle), 'utf8'));
+    // Shape-validate before trusting the crypto result: verifyGateBundle binds to the FIRST gate
+    // entry it finds, so a structurally-invalid bundle (e.g. a duplicate gate entry) could otherwise
+    // report "✓ signature valid" despite failing the contract. Fail closed on a malformed bundle.
+    const shapeErrors = validateBundle(bundle);
+    if (shapeErrors.length) {
+      console.error('✗ not a well-formed gate bundle (cannot vouch for a malformed bundle):\n' + shapeErrors.map((e) => '  - ' + e).join('\n'));
+      process.exit(1);
+    }
     const publicKey = createPublicKey(readFileSync(abs(opts.pubkey), 'utf8'));
     const result = verifyGateBundle(bundle, publicKey);
-    console.log(result.valid ? `✓ signature valid — bundle unaltered since signing (keyid ${result.keyid})` : `✗ verification failed: ${result.reason}`);
+    if (result.valid) {
+      console.log(`✓ signature valid — the gate decision \`${result.attested.decision}\` and its ${result.attested.subjects.length} content-addressed subject(s) are unaltered since signing (keyid ${result.keyid}).`);
+      console.log('  scope: the signature covers the gate Statement only — producedOn, schemaVersion, and the ingested evidence entries are outside it (ADR-0037 §1).');
+    } else {
+      console.log(`✗ verification failed: ${result.reason}`);
+    }
     process.exit(result.valid ? 0 : 1);
   }
 
@@ -702,12 +728,12 @@ function main(argv) {
   const entries = [];
   const inputs = [];
   if (opts.playwright) {
-    const { raw, parsed } = readJsonInput(opts.playwright);
+    const { raw, parsed } = readJsonInputForCli(opts.playwright);
     entries.push(playwrightEntry(parsed, { uri: opts.playwright }));
     inputs.push({ name: 'playwright-json', bytes: raw });
   }
   if (opts.cypress) {
-    const { raw, parsed } = readJsonInput(opts.cypress);
+    const { raw, parsed } = readJsonInputForCli(opts.cypress);
     entries.push(cypressEntry(parsed, { uri: opts.cypress }));
     inputs.push({ name: 'cypress-json', bytes: raw });
   }
@@ -753,7 +779,9 @@ function main(argv) {
   if (opts['sign-key']) {
     const privateKey = createPrivateKey(readFileSync(abs(opts['sign-key']), 'utf8'));
     bundle.dsseEnvelope = signGateBundle(bundle, gateEntry, privateKey);
-    console.log(`✓ signed (keyid ${keyidFromPublicKey(createPublicKey(privateKey))})`);
+    // keyid already lives on the envelope signGateBundle just produced — read it back rather than
+    // re-deriving it from the public key a second time.
+    console.log(`✓ signed (keyid ${bundle.dsseEnvelope.signatures[0].keyid})`);
   }
 
   const out = opts.out ?? 'gate-bundle.json';
@@ -768,8 +796,10 @@ function abs(p) {
 }
 
 // Reads a JSON input file once, keeping the raw bytes alongside the parsed form — the raw
-// bytes are what gets content-addressed (#139), the parsed form is what gets ingested.
-function readJsonInput(path) {
+// bytes are what gets content-addressed (#139), the parsed form is what gets ingested. The
+// `ForCli` suffix marks this as the CLI wrapper's own I/O helper: the file-read invariant
+// (all filesystem access stays with `main()`, never in the pure core) holds by name here.
+function readJsonInputForCli(path) {
   const raw = readFileSync(abs(path), 'utf8');
   return { raw, parsed: JSON.parse(raw) };
 }
@@ -1015,6 +1045,20 @@ function runSelfTest() {
   check('signGateBundle: the signed bundle still validates (shape)', validateBundle(signBundle).length === 0);
   check('verifyGateBundle: valid signature + unaltered bundle → valid', verifyGateBundle(signBundle, pkA).valid === true);
   check('verifyGateBundle: the WRONG key → invalid', verifyGateBundle(signBundle, pkB).valid === false);
+
+  // A valid result reports the NARROW scope it attests — the decision + subject names it covers —
+  // so a caller (and the --verify CLI message) can state the scope precisely instead of implying the
+  // whole file is signed (producedOn / schemaVersion / ingested entries stay outside the signature).
+  const attested = verifyGateBundle(signBundle, pkA).attested;
+  check('verifyGateBundle: a valid result reports the attested decision + subject names (narrow scope)',
+    attested.decision === 'ship' && attested.subjects.includes('pr-head') && attested.subjects.includes('playwright-json'));
+
+  // Shape guard the --verify CLI path leans on: verifyGateBundle binds to the FIRST gate entry, so a
+  // duplicate-gate bundle can still crypto-verify — validateBundle is what rejects it (fail closed).
+  const twoGateBundle = JSON.parse(JSON.stringify(signBundle));
+  twoGateBundle.entries.unshift(JSON.parse(JSON.stringify(signGateEntry)));
+  check('validateBundle: a duplicate gate entry is rejected (the --verify shape guard)',
+    validateBundle(twoGateBundle).some((e) => /exactly one gate entry/.test(e)));
 
   const decisionTampered = JSON.parse(JSON.stringify(signBundle));
   decisionTampered.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision = 'hold';
