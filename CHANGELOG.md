@@ -64,6 +64,22 @@ release heading.
 
 ### Added
 
+- **`audit-test`: optional per-test run trace (`runs[]`) in `--emit-json`**
+  ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §3, capability B2 prefactor, closes #140). The
+  `--emit-json` emission gains an optional `runs[]` array — one record per test a mutation was actually
+  **executed** against: `test` (identifier), `mutation` (what changed), `command` (the exact single-test
+  command run), `outcome` (`"killed"` | `"survived"`), and `exitCode`. Only the execution-confirmed subset
+  gets a record — every 🟢 confirmed-solid and 🔴 confirmed-hollow verdict; 🟡 Likely (env not runnable) and
+  ⚠️ Baseline-lock tests stay reasoned-only and carry no record, and Unexamined tests never had a mutation
+  proposed at all. Docs-only/schema-only change: `audit-test` is model-driven prose with no execution code of
+  its own, so this is `skills/audit-test/SKILL.md` instructing the run trace and
+  `skills/gate/schema/audit-test-emission.v0.schema.json` shaping it — nothing here validates or cross-checks
+  the trace yet (that's Gate's job, #142, the T5 follow-up). The emission schema takes an additive minor bump,
+  `gate-audit-test/v0.2` → `v0.3` (`runs[]` optional; an emission with no `runs[]` is unchanged from v0.2 and
+  still behaves exactly as today). Verified: the `audit-test` eval gains a case grading honest trace
+  reporting — a faithful sample whose `runs[]` matches what the transcript says happened, and a negative
+  sample that fabricates a record for a test that was never executed, which the eval must fail.
+
 - **Gate: DSSE-sign the gate Statement — opt-in, self-signed ed25519**
   ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §1, capability A, closes #141). With a signing key,
   `gate.mjs` now emits a [DSSE](https://github.com/secure-systems-lab/dsse) envelope over the gate Statement —

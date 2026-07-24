@@ -38,6 +38,46 @@
           "anchors": { "any": ["add a new test", "new tests to add", "propose new tests", "additional test cases"] }
         }
       ]
+    },
+    {
+      "id": "emit-json-honest-trace",
+      "invoke": "/audit-test fixtures/audit-test/booking.spec.js fixtures/audit-test/booking.js --emit-json=/tmp/audit-test-emission.json",
+      "workspace": "isolated",
+      "fixture_files": [
+        "fixtures/audit-test/booking.spec.js",
+        "fixtures/audit-test/booking.js"
+      ],
+      "dry_run_sample": "samples/audit-test.emit-json-honest-trace.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.emit-json-honest-trace.fail.md",
+      "expect_verdict": "🔴",
+      "must_surface": [
+        {
+          "claim": "Writes a gate-audit-test/v0.3 structured emission alongside the human report.",
+          "anchors": { "any": ["gate-audit-test/v0.3"] }
+        },
+        {
+          "claim": "The runs[] record's outcome is \"survived\", consistent with the 🔴 Confirmed false-confidence verdict above (the mutation did NOT get killed).",
+          "anchors": { "any": ["\"outcome\": \"survived\""] }
+        },
+        {
+          "claim": "The runs[] record names the same mutation as the Proof section — the removed/commented-out clashes.length overlap guard, not a different or generic description.",
+          "anchors": { "any": ["clashes.length > 0", "overlap guard in `booking.js`", "overlap guard in booking.js"] }
+        },
+        {
+          "claim": "Exactly one runs[] record is written, matching deepAudited: 1 — this fixture has exactly one test, so the trace covers only what was actually executed.",
+          "anchors": { "any": ["\"deepaudited\": 1", "\"audited\": 1"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT report a runs[] outcome of \"killed\" for this fixture — the mutation survived (🔴), so recording \"killed\" contradicts the report's own verdict.",
+          "anchors": { "any": ["\"outcome\": \"killed\""] }
+        },
+        {
+          "claim": "Must NOT fabricate a second runs[] record for a test that was never triaged — the fixture has exactly one test (\"rejects overlapping bookings\"), so audited/deepAudited must never be reported as 2.",
+          "anchors": { "any": ["\"audited\": 2", "\"deepaudited\": 2", "allows non-overlapping bookings"] }
+        }
+      ]
     }
   ]
 }

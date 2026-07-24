@@ -88,7 +88,7 @@ Single-test mode always shows its verdict, including 🟢. **Batch mode** report
 ## Structured emission (`--emit-json=<path>`) — for the Gate skill
 
 When `--emit-json=<path>` is present in $ARGUMENTS, **also** write the run's provenance tally as a small
-`gate-audit-test/v0.2` JSON file at that path — *in addition to* the human report, which is unchanged. This is
+`gate-audit-test/v0.3` JSON file at that path — *in addition to* the human report, which is unchanged. This is
 the **parsed** credibility input the Gate skill (`/gate`) ingests: a *parsed* confirmed-clean verdict is
 the only thing that lets Gate lift a release decision to `ship` (the B→A graduation,
 [ADR-0029](../../docs/adr/0029-witness-parsed-audit-test-graduation.md)). Emit **only the counts** — never a
@@ -97,7 +97,7 @@ prose scrape and never a confidence number; Gate derives the category itself
 
 ```json
 {
-  "schema": "gate-audit-test/v0.2",
+  "schema": "gate-audit-test/v0.3",
   "producer": "audit-test",
   "scope": "--changed",
   "audited": 47,
@@ -106,9 +106,21 @@ prose scrape and never a confidence number; Gate derives the category itself
   "confirmedHollow": 1,
   "likelyHollow": 1,
   "baselineLock": 1,
-  "unexamined": 42
+  "unexamined": 42,
+  "runs": [
+    {
+      "test": "<file>::<test name>",
+      "mutation": "one-line description of the change applied",
+      "command": "the exact single-test command run (framework-specific — reference/run-one-test.md)",
+      "outcome": "killed",
+      "exitCode": 1
+    }
+  ]
 }
 ```
+
+(`runs[]` trimmed to one representative entry above — a real emission carries one record per
+confirmed-solid/confirmed-hollow test, so `confirmedSolid: 2, confirmedHollow: 1` here would carry three.)
 
 The counts map 1:1 to the batch tally's verdict classes: `confirmedSolid` = 🟢, `confirmedHollow` = 🔴,
 `likelyHollow` = 🟡, `baselineLock` = ⚠️, `unexamined` = triaged-but-never-mutated; `deepAudited` = how many
@@ -117,6 +129,30 @@ particular, if you deep-audited nothing, `deepAudited` is `0` (Gate derives `une
 never reach `ship`). For an **INCONCLUSIVE** run (no recognized test files), emit all-zero counts. Emission is
 mechanical bookkeeping of the verdicts you already assigned — it introduces **no** new judgment, so it works in
 single-test mode too (the tally is just that one test's class).
+
+### Run trace (`runs[]`) — optional, execution-confirmed subset only
+
+Alongside the counts, add one `runs[]` record for **every test a mutation was actually run against** — i.e.
+every 🟢 confirmed-solid and 🔴 confirmed-hollow verdict from Step 4, exactly as you observed it, before you
+revert:
+
+- `test` — the identifier you targeted (`<file>::<test name>`).
+- `mutation` — the one-line change you applied (what you'd write in **Proof**).
+- `command` — the exact single-test command you ran ([reference/run-one-test.md](reference/run-one-test.md)),
+  copy-pasteable, not paraphrased.
+- `outcome` — `"killed"` for 🟢 (the test failed as it should), `"survived"` for 🔴 (the test stayed green).
+- `exitCode` — the single-test run's actual process exit code.
+
+**Never fabricate a record.** `runs[]` is bookkeeping of a run you already performed, not a new claim —
+add a record only for a test you actually mutated and ran this session, with the mutation, command, and
+exit code you actually observed. A 🟡 Likely verdict (env not runnable, or the mutation never reached a
+running app) and a ⚠️ Baseline-lock verdict get **no** record — they were never execution-confirmed, and a
+record would misrepresent reasoning-only work as proof. Unexamined tests never had a mutation proposed at
+all, so they never get one either. `runs.length` must never exceed `deepAudited`, and the record count for
+each outcome must match its count (`killed` records = `confirmedSolid`, `survived` records = `confirmedHollow`)
+— Gate cross-checks this and degrades an inconsistent tally to opaque rather than trusting it
+([ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §3). `runs[]` is entirely optional: omitting it
+leaves the emission exactly as it behaves today.
 
 ## Explain Mode (`--explain`)
 

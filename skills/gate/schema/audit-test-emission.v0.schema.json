@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gate.local/schema/audit-test-emission/v0.2",
-  "title": "audit-test structured emission (v0.2)",
+  "$id": "https://gate.local/schema/audit-test-emission/v0.3",
+  "title": "audit-test structured emission (v0.3)",
   "description": "The machine-readable batch provenance tally `/audit-test --emit-json` writes for Gate to ingest (the B→A graduation, TzolkinB/skills#49). It carries only the per-class COUNTS — the model's per-test judgment (which test is hollow) crystallised into numbers. Gate DERIVES the category (verdict.result + label) from these counts mechanically, exactly as it restates Playwright's `stats`; the gate downstream reads only the derived category, never these counts (honesty guard #1). Deriving the label at ingest is what makes the theater guard structural: deepAudited=0 derives `unexamined`, which can never reach `ship`.",
   "type": "object",
   "required": ["schema", "audited", "deepAudited", "confirmedSolid", "confirmedHollow", "likelyHollow", "baselineLock", "unexamined"],
   "properties": {
-    "schema": { "const": "gate-audit-test/v0.2" },
+    "schema": { "const": "gate-audit-test/v0.3" },
     "producer": { "type": "string", "description": "informational — e.g. \"audit-test\"" },
     "scope": { "type": "string", "description": "informational — what was audited, e.g. \"--changed\", a glob, or a file path" },
     "audited": { "type": "integer", "minimum": 0, "description": "tests triaged in total" },
@@ -15,8 +15,24 @@
     "confirmedHollow": { "type": "integer", "minimum": 0, "description": "🔴 confirmed false-confidence (execution-confirmed; mutation survived, reachability confirmed)" },
     "likelyHollow": { "type": "integer", "minimum": 0, "description": "🟡 likely false-confidence (reasoned only — env not runnable / stale harness)" },
     "baselineLock": { "type": "integer", "minimum": 0, "description": "⚠️ baseline-lock suspected (live assertion pinned to a regressed value)" },
-    "unexamined": { "type": "integer", "minimum": 0, "description": "triaged clean, never mutated — NOT evidence of health" }
+    "unexamined": { "type": "integer", "minimum": 0, "description": "triaged clean, never mutated — NOT evidence of health" },
+    "runs": {
+      "type": "array",
+      "description": "OPTIONAL (#140, ADR-0037 B2) — a per-test run trace, one record per test a mutation was actually EXECUTED against. Only the execution-confirmed subset (confirmedSolid + confirmedHollow) gets a record; likelyHollow (env not runnable) and baselineLock tests carry no record and keep their reasoned-only standing — B2 covers only the executed subset, never implies coverage of tests it didn't run. Absent entirely, the emission is unchanged from v0.2. Gate cross-checks this trace against the counts (TzolkinB/skills#142); this schema only shapes it.",
+      "items": {
+        "type": "object",
+        "required": ["test", "mutation", "command", "outcome", "exitCode"],
+        "properties": {
+          "test": { "type": "string", "description": "test identifier, e.g. \"booking.spec.js::rejects overlapping bookings\"" },
+          "mutation": { "type": "string", "description": "what was mutated, e.g. \"removed the clashes.length > 0 guard\"" },
+          "command": { "type": "string", "description": "the exact single-test command run (reference/run-one-test.md)" },
+          "outcome": { "enum": ["killed", "survived"], "description": "killed = confirmedSolid (test failed as it should); survived = confirmedHollow (test stayed green)" },
+          "exitCode": { "type": "integer", "minimum": 0, "description": "the single-test run's process exit code" }
+        },
+        "additionalProperties": true
+      }
+    }
   },
   "additionalProperties": true,
-  "$comment": "Gate derives: result = confirmedHollow>0 ? FAILED : (likelyHollow>0 || baselineLock>0) ? WARNED : PASSED. label = (confirmedSolid>0 || confirmedHollow>0) ? confirmed : deepAudited>0 ? likely : unexamined. ship-eligible ⟺ result=PASSED AND label=confirmed. NO confidence/score field — its arrival is the signal calibration has landed (schemaVersion bump). INGEST GUARDS (#111): `schema` is matched EXACTLY (a model produced this — a bogus `gate-audit-test/v999` is rejected, not accepted by prefix), and the counts must be internally consistent or the whole emission is rejected (degrades to opaque/absent, never a silent upgrade): audited === deepAudited + unexamined, and confirmedSolid+confirmedHollow+likelyHollow+baselineLock ≤ deepAudited. So `{confirmedSolid:1, deepAudited:0}` can never derive `confirmed`. v0.2 = proven -> confirmed taxonomy rename only, no data-model change (#126, ADR-0034)."
+  "$comment": "Gate derives: result = confirmedHollow>0 ? FAILED : (likelyHollow>0 || baselineLock>0) ? WARNED : PASSED. label = (confirmedSolid>0 || confirmedHollow>0) ? confirmed : deepAudited>0 ? likely : unexamined. ship-eligible ⟺ result=PASSED AND label=confirmed. NO confidence/score field — its arrival is the signal calibration has landed (schemaVersion bump). INGEST GUARDS (#111): `schema` is matched EXACTLY (a model produced this — a bogus `gate-audit-test/v999` is rejected, not accepted by prefix), and the counts must be internally consistent or the whole emission is rejected (degrades to opaque/absent, never a silent upgrade): audited === deepAudited + unexamined, and confirmedSolid+confirmedHollow+likelyHollow+baselineLock ≤ deepAudited. So `{confirmedSolid:1, deepAudited:0}` can never derive `confirmed`. v0.2 = proven -> confirmed taxonomy rename only, no data-model change (#126, ADR-0034). v0.3 = ADDITIVE optional `runs[]` trace (#140, ADR-0037 B2) — an emission with no `runs[]` remains valid and behaves exactly as v0.2."
 }
