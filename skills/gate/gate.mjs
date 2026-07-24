@@ -168,7 +168,7 @@ export function auditTestEntry(markdown) {
 // the label HERE (not trusting a skill-supplied label) is what makes the theater
 // guard structural: a run that deep-audited nothing derives `unexamined` → the gate
 // floors it at canary, so a parsed-but-vacuous audit still cannot reach `ship`.
-const AUDIT_EMISSION_SCHEMA = 'gate-audit-test/v0.2'; // exact match — the published schema pins `schema` to this const
+const AUDIT_EMISSION_SCHEMA = 'gate-audit-test/v0.3'; // exact match — the published schema pins `schema` to this const; v0.3 = ADDITIVE optional `runs[]` trace (#140/#142, ADR-0037 §3)
 const AUDIT_COUNTS = ['audited', 'deepAudited', 'confirmedSolid', 'confirmedHollow', 'likelyHollow', 'baselineLock', 'unexamined'];
 
 // Any confirmed-hollow test is a confirmed credibility FAILURE; a likely-hollow or a
@@ -217,11 +217,40 @@ export function parseAuditEmission(raw) {
   const outcomes = tally.confirmedSolid + tally.confirmedHollow + tally.likelyHollow + tally.baselineLock;
   if (tally.deepAudited + tally.unexamined !== tally.audited) return null;
   if (outcomes > tally.deepAudited) return null;
+
+  // Run trace (#142, B2, ADR-0037 §3) — OPTIONAL, additive: an emission with no `runs` is
+  // unaffected (behaves exactly as v0.2). When present, it's a per-test record of an
+  // EXECUTED mutation (killed|survived) and must agree with the tally it rides alongside —
+  // a model wrote both, so a disagreement is treated exactly like an arithmetically-impossible
+  // tally: the whole emission is rejected (never a silent upgrade; the caller degrades to the
+  // opaque report or absence). `runs.length` must never exceed `deepAudited`, and each outcome's
+  // record count must equal its matching count (killed→confirmedSolid, survived→confirmedHollow).
+  if (obj.runs !== undefined) {
+    if (!Array.isArray(obj.runs)) return null;
+    const runs = [];
+    for (const r of obj.runs) {
+      if (!r || typeof r !== 'object') return null;
+      if (typeof r.test !== 'string' || typeof r.mutation !== 'string' || typeof r.command !== 'string') return null;
+      if (r.outcome !== 'killed' && r.outcome !== 'survived') return null;
+      const exitCode = Number(r.exitCode);
+      if (!Number.isFinite(exitCode) || !Number.isInteger(exitCode) || exitCode < 0) return null;
+      runs.push({ test: r.test, mutation: r.mutation, command: r.command, outcome: r.outcome, exitCode });
+    }
+    if (runs.length > tally.deepAudited) return null;
+    const killed = runs.filter((r) => r.outcome === 'killed').length;
+    const survived = runs.filter((r) => r.outcome === 'survived').length;
+    if (killed !== tally.confirmedSolid || survived !== tally.confirmedHollow) return null;
+    tally.runs = runs;
+  }
   return tally;
 }
 
 export function auditTestParsedEntry(tally, { markdown } = {}) {
   const metrics = AUDIT_COUNTS.map((n) => ({ name: n, value: Number(tally[n] ?? 0) }));
+  // Run-trace count (#142, B2, ADR-0037 §3) — lives HERE, on the audit-test evidence entry's own
+  // metrics, exactly where the counts it cross-checks against already live. Only added when a
+  // trace rode along; the gate predicate never sees it (honesty guard #3 stays untouched).
+  if (tally.runs) metrics.push({ name: 'runsVerified', value: tally.runs.length });
   const byproducts = markdown ? [{ name: 'audit-test-report', mediaType: 'text/markdown', text: markdown }] : [];
   return statement(EVIDENCE_PREDICATE, {
     stage: 'audit-test',
@@ -1010,13 +1039,68 @@ function runSelfTest() {
   // emission robustness — a model produced it, so never trust it blind
   check('parseAuditEmission: rejects non-JSON', parseAuditEmission('not json {') === null);
   check('parseAuditEmission: rejects missing/foreign schema', parseAuditEmission(JSON.stringify({ confirmedSolid: 1 })) === null);
-  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', confirmedSolid: -1 })) === null);
-  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', confirmedSolid: 1.5 })) === null);
-  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', ...T.confirmedClean })) !== null);
+  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', confirmedSolid: -1 })) === null);
+  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', confirmedSolid: 1.5 })) === null);
+  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })) !== null);
   // #111 — exact schema version (not a prefix) + cross-field consistency
   check('parseAuditEmission: rejects a bogus version (v999 — exact match, not prefix)', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v999', ...T.confirmedClean })) === null);
-  check('parseAuditEmission: rejects impossible confirmedSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
-  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects impossible confirmedSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: the old v0.2 string is no longer accepted (exact-match, not backward-compatible aliasing)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', ...T.confirmedClean })) === null);
+
+  // ---- run trace (`runs[]`) cross-check (#142, B2, ADR-0037 §3) — optional, additive; a tally
+  // that disagrees with its own trace is rejected the SAME way an arithmetically-impossible
+  // tally is (never a silent upgrade), so the caller's existing null-fallback handles it for free.
+  const mkRun = (test, outcome, exitCode = outcome === 'killed' ? 1 : 0) =>
+    ({ test, mutation: `mutated ${test}`, command: `npx playwright test ${test}`, outcome, exitCode });
+  const killedRuns = (n) => Array.from({ length: n }, (_, i) => mkRun(`t${i}`, 'killed'));
+
+  check('parseAuditEmission: consistent tally + trace is accepted (THE UNLOCK)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(4) })) !== null);
+  check('parseAuditEmission: absent `runs[]` remains valid — unaffected (additive, behaves exactly as v0.2)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })) !== null);
+  check('parseAuditEmission: confirmedSolid ≠ killed-record count → rejected (degrades to opaque)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(3) })) === null);
+  check('parseAuditEmission: confirmedHollow ≠ survived-record count → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: killedRuns(3) })) === null);
+  check('parseAuditEmission: runs.length > deepAudited → rejected (over-count)',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(5) })) === null);
+  check('parseAuditEmission: a malformed run record (bad outcome) → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [{ test: 't0', mutation: 'm', command: 'c', outcome: 'ambiguous', exitCode: 1 }] })) === null);
+  check('parseAuditEmission: `runs` present but not an array → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: 'nope' })) === null);
+
+  const consistentHollowTally = parseAuditEmission(JSON.stringify({
+    schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived')],
+  }));
+  check('parseAuditEmission: killed+survived trace matching confirmedSolid+confirmedHollow is accepted',
+    consistentHollowTally !== null && consistentHollowTally.runs.length === 4);
+
+  // Run-trace numbers live in the audit-test EVIDENCE entry, not the gate predicate (honesty
+  // guard #3 stays scoped to the `gate` stage only) — `runsVerified` is a metric on the
+  // audit-test entry, exactly alongside the counts it was cross-checked against.
+  const withRunsEntry = auditTestParsedEntry(parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(4) })));
+  check('auditTestParsedEntry: a verified trace surfaces as `runsVerified` on the audit-test entry',
+    withRunsEntry.predicate.verdict.metrics.some((m) => m.name === 'runsVerified' && m.value === 4));
+  const noRunsEntry = auditTestParsedEntry(parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })));
+  check('auditTestParsedEntry: no `runs[]` → no `runsVerified` metric (additive-only)',
+    !noRunsEntry.predicate.verdict.metrics.some((m) => m.name === 'runsVerified'));
+  const runsGateEntry = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), withRunsEntry] })).gateEntry;
+  check('gate predicate stays number-free even when the audit-test entry carries `runsVerified` (honesty guard #3 intact)',
+    validateGateEntry(runsGateEntry).length === 0);
+
+  // A trace-verified confirmed-clean tally still ships exactly like an untraced one — B2 hardens
+  // the evidence behind the label, it does not open a new path to `ship` (issue #142's own AC).
+  const shipWithRuns = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), withRunsEntry] })).decision;
+  check('ship-eligibility is unchanged by a verified run trace — same PASSED+confirmed+floor rule', shipWithRuns === 'ship');
+
+  // end-to-end from the emission-with-runs[] fixture (#142)
+  const confirmedWithRuns = JSON.parse(readFileSync(resolve(HERE, 'fixtures/audit-test.confirmed-with-runs.json'), 'utf8'));
+  const withRunsFixtureTally = parseAuditEmission(JSON.stringify(confirmedWithRuns));
+  check('fixture: audit-test.confirmed-with-runs.json parses and cross-checks cleanly', withRunsFixtureTally !== null && withRunsFixtureTally.runs.length === 6);
+  check('fixture: audit-test.confirmed-with-runs.json — a hollow finding among the traced runs → FAILED (fix the test, not a red build)',
+    deriveAuditResult(withRunsFixtureTally) === 'FAILED');
 
   // honesty guard #3 — clean validates; a smuggled number is rejected. Holds for the
   // PARSED path too: the audit label/result are string categories, so the raw counts

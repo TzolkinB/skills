@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a shape-checked self-report, not an independent re-verification; caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the bundle with a self-signed ed25519 key so a reader can verify it was not altered after Gate produced it — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a content-addressed, shape-checked self-report, cross-checked against its own per-test run trace when one is carried, not an independent re-verification (Gate never re-runs the mutation); caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the bundle with a self-signed ed25519 key so a reader can verify it was not altered after Gate produced it — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -60,7 +60,7 @@ that never ran, or a wrong `--playwright` path) is treated as **no execution evi
 pass: a green-looking `{}` is exactly the false confidence the Gate exists to refuse ([#111](https://github.com/TzolkinB/skills/issues/111)).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
-  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.2` tally written by `/audit-test --emit-json=<path>`.
+  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.3` tally written by `/audit-test --emit-json=<path>`.
     This is the **graduated** input — a *parsed* confirmed-clean verdict that also clears the **examined-floor**
     (`deepAudited`/`audited` ≥ 50% by default) is the only thing that can lift the ceiling to `ship`
     ([#127](https://github.com/TzolkinB/skills/issues/127), [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)).
@@ -209,12 +209,23 @@ Bundle written to gate-bundle.json
   the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
   labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
 - **`audit-test` rides in two grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
-  batch tally as `gate-audit-test/v0.2` structured data — the per-class **counts**, not prose. the Gate derives
+  batch tally as `gate-audit-test/v0.3` structured data — the per-class **counts**, not prose. the Gate derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and
   the gate reads only the derived category, never the counts (honesty guard #1). *Opaque* (`--audit-test`): the
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
   is structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; an opaque, absent, or examined-nothing
   audit all cap at `canary`, so there is no "run less, grade better" incentive.
+- **Run-trace cross-check** ([#142](https://github.com/TzolkinB/skills/issues/142),
+  [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §3). A parsed emission may also carry an optional
+  `runs[]` — one record per test a mutation was actually **executed** against, with its outcome (`killed` |
+  `survived`) and exit code. When present, the Gate cross-checks it against the tally it rides alongside:
+  `confirmedSolid` must equal the killed-record count, `confirmedHollow` the survived-record count, and
+  `runs.length` must never exceed `deepAudited`. A tally that disagrees with its own trace is rejected the same
+  way an arithmetically-impossible tally is — it degrades to the opaque report or absence, never a silent
+  upgrade. This hardens the *evidence behind* a `confirmed` label into a granular, per-test, internally-consistent
+  record instead of a bare number; it does **not** make the verdict independently verified — the trace is still
+  `audit-test`'s own account of its run (Gate cannot re-execute it, [ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)),
+  and it opens no new path to `ship`. An emission with no `runs[]` is unaffected — this is purely additive.
 - **Coverage-aware ship gate — the examined-floor** ([#127](https://github.com/TzolkinB/skills/issues/127),
   [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)). A confirmed-clean verdict alone used to be enough to
   ship, even if `deepAudited` was a small minority of `audited` (the shipped fixture used to be `4 of 12` — 33%).

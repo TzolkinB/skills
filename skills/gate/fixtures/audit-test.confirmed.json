@@ -1,5 +1,5 @@
 {
-  "schema": "gate-audit-test/v0.2",
+  "schema": "gate-audit-test/v0.3",
   "producer": "audit-test",
   "scope": "--changed",
   "audited": 12,

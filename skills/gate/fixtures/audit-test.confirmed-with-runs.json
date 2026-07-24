@@ -1,0 +1,56 @@
+{
+  "schema": "gate-audit-test/v0.3",
+  "producer": "audit-test",
+  "scope": "--changed",
+  "audited": 12,
+  "deepAudited": 6,
+  "confirmedSolid": 5,
+  "confirmedHollow": 1,
+  "likelyHollow": 0,
+  "baselineLock": 0,
+  "unexamined": 6,
+  "runs": [
+    {
+      "test": "booking.spec.ts::rejects overlapping bookings",
+      "mutation": "removed the clashes.length > 0 guard",
+      "command": "npx playwright test booking.spec.ts -g \"rejects overlapping bookings\"",
+      "outcome": "killed",
+      "exitCode": 1
+    },
+    {
+      "test": "booking.spec.ts::confirms a valid booking",
+      "mutation": "flipped the confirmation status default from false to true",
+      "command": "npx playwright test booking.spec.ts -g \"confirms a valid booking\"",
+      "outcome": "killed",
+      "exitCode": 1
+    },
+    {
+      "test": "booking.spec.ts::shows the cancellation fee",
+      "mutation": "hardcoded the fee to 0",
+      "command": "npx playwright test booking.spec.ts -g \"shows the cancellation fee\"",
+      "outcome": "killed",
+      "exitCode": 1
+    },
+    {
+      "test": "booking.spec.ts::renders the room list",
+      "mutation": "sliced the room list to an empty array",
+      "command": "npx playwright test booking.spec.ts -g \"renders the room list\"",
+      "outcome": "killed",
+      "exitCode": 1
+    },
+    {
+      "test": "booking.spec.ts::disables submit while pending",
+      "mutation": "removed the disabled={pending} prop",
+      "command": "npx playwright test booking.spec.ts -g \"disables submit while pending\"",
+      "outcome": "killed",
+      "exitCode": 1
+    },
+    {
+      "test": "booking.spec.ts::logs a booking error",
+      "mutation": "removed the console.error call in the catch block",
+      "command": "npx playwright test booking.spec.ts -g \"logs a booking error\"",
+      "outcome": "survived",
+      "exitCode": 0
+    }
+  ]
+}
