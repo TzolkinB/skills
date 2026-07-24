@@ -146,10 +146,12 @@ only better words) was considered and declined — it leaves the funnel with no 
 - **ADR-0035 stands.** Its floor, default, 25% clamp, and honesty-guard treatment are unchanged. This ADR only
   refines the *caveat wording* and (if B) adds an orthogonal opt-in path; it does not redefine "confirmed" or
   the floor arithmetic.
-- **Downstream issues (filed off this Accepted ADR):** (1a) rationale/caveat reword in `gate.mjs` +
-  `gate/SKILL.md` (claims-safe, agent-ready); and (1b) a spec for `audit-test`'s certification/sample mode
-  (scope, the `sample ∪ suspects` rule, cost-guard interaction, how it clears the floor, fixtures, self-test
-  rows). (1a) ships first; (1b) is the larger build.
+- **Downstream issues (filed off this Accepted ADR):** (1a) [#163](https://github.com/TzolkinB/skills/issues/163)
+  — rationale/caveat reword in `gate.mjs` + `gate/SKILL.md` (claims-safe, agent-ready); and (1b)
+  [#164](https://github.com/TzolkinB/skills/issues/164) — spec + build for `audit-test`'s certification/sample
+  mode (scope, the `sample ∪ suspects` rule, cost-guard interaction, how it clears the floor, fixtures,
+  self-test rows). (1a) ships first; (1b) is the larger build. Integrity axis (Decision 2) continues under
+  [#158](https://github.com/TzolkinB/skills/issues/158).
 - **Gate's identity is documented and defended.** Future critiques that read Gate as an independent verifier
   now have a decision to point to: integrity is the boundary we build (#158), verification is declined by
   design (ADR-0010), calibration is separate. This is the reusable answer, not a per-PR rebuttal.
