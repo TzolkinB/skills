@@ -49,6 +49,14 @@ signed predicate over content-addressed subjects.** We make the gate Statement e
 
 ### 1. Sign the gate Statement with a self-signed DSSE envelope (ed25519, zero-dep) — capability **A**
 
+> **Amended by [#158](https://github.com/TzolkinB/skills/issues/158) ([ADR-0040](0040-widen-gate-signed-scope-to-entries.md)).**
+> The "never the ingested entries" clause below is narrowly reversed: the signed payload now also
+> content-addresses each parsed evidence entry (and folds in `producedOn`/`schemaVersion`), closing the gap
+> where a displayed entry could be edited post-signing without invalidating the signature. The *intent* of
+> this clause — Gate's predicate endorses only Gate's own decision, never a producer's — is unchanged: entry
+> digests are bound as in-toto **subjects** (integrity), never as signed **predicates** (endorsement). See
+> ADR-0040 for the full reasoning.
+
 Gate signs **its own** Statement — the `gate.local/gate/v0` entry carrying the decision — as a
 [DSSE](https://github.com/secure-systems-lab/dsse) envelope over an **ed25519** signature produced by Node's
 built-in `node:crypto` (`sign`/`verify`, `generateKeyPair`). **No new dependency** — the zero-dep moot

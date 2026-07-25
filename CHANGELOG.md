@@ -19,6 +19,24 @@ release heading.
 
 ### Fixed
 
+- **`gate.mjs` widens the DSSE signed scope to evidence entries + `producedOn`/`schemaVersion`** (closes
+  #158, ChatGPT Tier 2.3 critique finding F5, [ADR-0040](docs/adr/0040-widen-gate-signed-scope-to-entries.md),
+  narrowly amends [ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §1). Previously the signature covered
+  only the gate decision and the bundle's content-addressed *input* digests (#139/ADR-0037 §2) — a signed
+  bundle's *displayed* evidence entry (a Playwright/Cypress/`audit-test` verdict, e.g. flipping `PASSED` to
+  `FAILED`), plus `producedOn` and `schemaVersion`, could be edited after signing with `--verify` still
+  exiting 0. `gateStatementPayload` now also digest-binds each parsed evidence entry (`entrySubjects`, one
+  subject per non-gate entry, digest-bind-entries rather than sign-the-whole-bundle so entries ride in as
+  content-addressed *subjects* — integrity, never endorsement — and the DSSE payload stays a valid in-toto
+  Statement) and folds `producedOn`/`schemaVersion` into the signed Statement's header (never into the gate
+  *predicate* — honesty guard #3 stays untouched). Adds a small zero-dep `canonicalize()` (recursive key-sort,
+  not JCS) so signing/verification are stable across formatting. `schemaVersion` bumps `v0.5` → `v0.6`
+  (minor, additive; `validateBundle` already hard-rejects any off-version bundle, so this is
+  regenerate-not-migrate) — binding it into the signed payload also makes the bundle downgrade-resistant. The
+  self-test reproduces the issue's own exploit as a tamper row (now caught), plus `producedOn`/`schemaVersion`
+  tamper cases; the committed signed fixture is regenerated under v0.6. README/`gate/SKILL.md` now say the
+  **whole bundle** — not just the decision and input digests — is tamper-evident when signed.
+
 - **`gate.mjs` guards execution-completeness — a near-all-skipped suite no longer reads `PASSED` → `ship`**
   (closes #157, ChatGPT Tier 2.3 critique finding F9). `deriveResult`/`deriveCypressResult` computed `PASSED`
   from `expected+unexpected+flaky` (Playwright) / `totalPassed+totalFailed` (Cypress) alone, excluding

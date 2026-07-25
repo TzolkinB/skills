@@ -5,10 +5,12 @@
 // JSON report and/or a Cypress Module API result — plus an audit-test verdict, either a
 // PARSED emission or an opaque Markdown report), binds it into one readable evidence
 // bundle (in-toto-shaped Statements — DSSE-signed attestations when a key is supplied,
-// ADR-0032/ADR-0037 §1; unsigned bundles stay "shaped, not signed" — over
-// content-addressed subjects: the PR head commit plus a sha256 digest of each ingested
-// input file, #139/ADR-0037 §2 — so swapping a report out from under the verdict changes
-// its recorded digest), and derives a
+// ADR-0032/ADR-0037 §1, widened to the whole normalized bundle by ADR-0040/#158; unsigned
+// bundles stay "shaped, not signed" — over content-addressed subjects: the PR head commit,
+// a sha256 digest of each ingested input file (#139/ADR-0037 §2), and (when signed) a sha256
+// digest of each parsed evidence entry plus producedOn/schemaVersion (#158/ADR-0040) — so
+// swapping a report OR editing its rendered entry out from under the verdict changes its
+// recorded digest), and derives a
 // categorical, advisory release decision — `ship | canary | hold` — by worst-wins
 // (ordinal min under hold < canary < ship).
 // It appends its reasoning back into the bundle as a `gate.local/gate/v0` entry
@@ -49,7 +51,7 @@ import { createHash, sign as cryptoSign, verify as cryptoVerify, createPrivateKe
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.5'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1)
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.6'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
@@ -310,14 +312,54 @@ export function inputSubjects(inputs = []) {
   return inputs.map(({ name, bytes }) => ({ name, digest: { sha256: sha256Hex(bytes) } }));
 }
 
-// ---- sign the gate Statement with a self-signed DSSE envelope (#141, A, ADR-0037 §1) ----
+// ---- canonicalization (#158, ADR-0040) --------------------------------------
 //
-// Opt-in, additive, zero-dep (node:crypto's ed25519 support, no new package). Gate signs only
-// the Statement IT produced — the bundle's content-addressed `subject[]` (pr-head + one sha256
-// per ingested input, #139) plus its own `gate.local/gate/v0` predicate — never the ingested
-// Playwright/Cypress/audit-test entries (signing those would falsely imply their producer
-// vouched for them). Self-signed ed25519 proves INTEGRITY (not altered after signing) and
-// CONTINUITY (same key across runs), never third-party IDENTITY — this is not Sigstore.
+// A small, hand-rolled, zero-dep canonical form — NOT RFC 8785/JCS — pinned so that hashing and
+// signing are stable across incidental formatting differences (key order, re-serialization).
+// Every field this covers is a shape Gate fully controls (hex digests, enum strings, ISO-8601
+// timestamps, small integer counts), so JCS's hard problems (exact ECMAScript number formatting,
+// full Unicode escaping) never come up; a recursive key-sort is sufficient and keeps the
+// zero-dep moat (ADR-0028). Not claimed to be JCS-interoperable.
+function canonicalSort(value) {
+  if (Array.isArray(value)) return value.map(canonicalSort);
+  if (value && typeof value === 'object') {
+    return Object.keys(value)
+      .sort()
+      .reduce((acc, k) => {
+        acc[k] = canonicalSort(value[k]);
+        return acc;
+      }, {});
+  }
+  return value;
+}
+export function canonicalize(value) {
+  return JSON.stringify(canonicalSort(value));
+}
+
+// One subject per parsed EVIDENCE entry (non-gate) — digest-bind-entries (#158, ADR-0040). Binds
+// the DISPLAYED, normalized entry (not just the raw input bytes `inputSubjects` already covers)
+// into the signed Statement, so editing a rendered verdict (e.g. PASSED -> FAILED) after signing
+// is caught even though the original input file's digest is untouched. A subject is
+// integrity-binding, not endorsement — the gate PREDICATE still asserts only Gate's own decision;
+// these subjects just say "my decision was rendered over exactly these entry bytes" (see
+// CONTEXT.md, "Subject vs. predicate"). The gate entry itself is excluded: its `predicate` is
+// already in the signed payload verbatim, so digesting it again would be redundant.
+export function entrySubjects(entries = []) {
+  return entries
+    .filter((e) => e.predicate?.stage !== 'gate')
+    .map((e) => ({ name: `entry:${e.predicate?.stage ?? 'unknown'}`, digest: { sha256: sha256Hex(canonicalize(e)) } }));
+}
+
+// ---- sign the gate Statement with a self-signed DSSE envelope (#141, A, ADR-0037 §1; widened #158, ADR-0040) ----
+//
+// Opt-in, additive, zero-dep (node:crypto's ed25519 support, no new package). Gate signs the
+// Statement IT produced — the bundle's content-addressed `subject[]` (pr-head + one sha256 per
+// ingested input, #139, PLUS one sha256 per parsed evidence entry, #158) plus `producedOn`/
+// `schemaVersion` plus its own `gate.local/gate/v0` predicate. It never signs an ingested
+// Playwright/Cypress/audit-test entry AS A PREDICATE (that would falsely imply their producer
+// vouched for it) — entries ride in only as content-addressed subjects, integrity not endorsement
+// (ADR-0040). Self-signed ed25519 proves INTEGRITY (not altered after signing) and CONTINUITY
+// (same key across runs), never third-party IDENTITY — this is not Sigstore.
 //
 // Every function here is pure: it takes key material (a node:crypto KeyObject) and bytes/objects
 // as arguments and never touches the filesystem, so the self-test exercises sign, verify, and
@@ -339,11 +381,21 @@ function dssePae(payloadType, payloadBytes) {
 }
 
 // The gate Statement, in the textbook in-toto shape this ADR is built on: a predicate (the
-// decision) asserted over named, content-addressed subjects (the exact bytes it ingested).
+// decision) asserted over named, content-addressed subjects (the exact bytes it ingested AND
+// rendered). Widened by #158/ADR-0040 to also bind each parsed evidence entry (`entrySubjects`)
+// and to fold `producedOn`/`schemaVersion` into the signed Statement as a header — never into
+// `predicate`, so honesty guard #3 (no numeric field in the gate predicate) stays untouched.
 // Reconstructed fresh from a bundle + its gate entry so signing and verification always see
 // the SAME shape — nothing is cached or trusted from an earlier run.
 export function gateStatementPayload(bundle, gateEntry) {
-  return { _type: STATEMENT_TYPE, predicateType: GATE_PREDICATE, subject: bundle.subject, predicate: gateEntry.predicate };
+  return {
+    _type: STATEMENT_TYPE,
+    predicateType: GATE_PREDICATE,
+    subject: [...(bundle.subject ?? []), ...entrySubjects(bundle.entries)],
+    predicate: gateEntry.predicate,
+    producedOn: bundle.producedOn,
+    schemaVersion: bundle.schemaVersion,
+  };
 }
 
 // `keyid` = sha256 of the public key (ADR-0037 §1) — a stable fingerprint independent of PEM
@@ -355,8 +407,10 @@ export function keyidFromPublicKey(publicKey) {
 
 // Sign an arbitrary JSON-serializable payload as a DSSE envelope. `privateKey` is a node:crypto
 // ed25519 KeyObject (or a PEM/DER input `crypto.sign` accepts) — never read from disk here.
+// The payload is always canonicalized (#158, ADR-0040) before signing, so the bytes actually
+// signed never depend on incidental key order in the object the caller built.
 export function dsseSign(payload, privateKey) {
-  const payloadBytes = Buffer.from(JSON.stringify(payload), 'utf8');
+  const payloadBytes = Buffer.from(canonicalize(payload), 'utf8');
   const sig = cryptoSign(null, dssePae(DSSE_PAYLOAD_TYPE, payloadBytes), privateKey); // ed25519: algorithm arg is null
   const publicKey = createPublicKey(privateKey);
   return {
@@ -400,11 +454,11 @@ export function signGateBundle(bundle, gateEntry, privateKey) {
 // caught here even though the envelope's own signature still checks out against its embedded
 // (stale) payload.
 //
-// A valid result reports `attested` — the decision and the subject names the signature actually
-// covers — because the envelope wraps ONLY the gate Statement (subject[] + gate predicate). The
-// surrounding bundle fields — `producedOn`, `schemaVersion`, and the ingested Playwright/Cypress/
-// audit-test evidence entries — are deliberately outside the signature (ADR-0037 §1: "Gate signs
-// only what Gate produced"), so a caller must not read `valid` as "the whole file is authentic."
+// A valid result reports `attested` — the decision and the FULL subject names the signature
+// actually covers (pr-head + #139 input digests + #158 entry digests) — because the envelope
+// wraps the whole widened gate Statement (ADR-0040). `producedOn`/`schemaVersion` are covered too
+// (as the Statement's signed header) but aren't subjects, so they don't appear in `attested.subjects`
+// even though editing either invalidates the signature just the same.
 // NOTE: this checks the SIGNATURE, not the bundle's SHAPE — it binds to the first gate entry it
 // finds, so callers verifying an untrusted bundle should `validateBundle` it first (the `--verify`
 // CLI path does) to reject a structurally-malformed bundle (e.g. a duplicate gate entry).
@@ -421,12 +475,16 @@ export function verifyGateBundle(bundle, publicKey) {
     return { valid: false, reason: 'envelope payload is not valid base64 JSON' };
   }
   const expected = gateStatementPayload(bundle, gateEntry);
-  if (JSON.stringify(signedPayload) !== JSON.stringify(expected))
+  // Canonicalize BOTH sides before comparing (#158, ADR-0040): `signedPayload` came back through
+  // JSON.parse/base64 and `expected` was just built as a fresh object literal, so neither side's
+  // incidental key order can be trusted to match the other's — canonicalizing both is what makes
+  // the comparison formatting-stable in either direction.
+  if (canonicalize(signedPayload) !== canonicalize(expected))
     return { valid: false, reason: 'signed payload no longer matches the bundle (tampered after signing)' };
   return {
     valid: true,
     keyid: keyidFromPublicKey(publicKey),
-    attested: { decision: gateEntry.predicate?.decision, subjects: (bundle.subject ?? []).map((s) => s.name) },
+    attested: { decision: gateEntry.predicate?.decision, subjects: expected.subject.map((s) => s.name) },
   };
 }
 
@@ -789,8 +847,8 @@ function main(argv) {
     const publicKey = createPublicKey(readFileSync(abs(opts.pubkey), 'utf8'));
     const result = verifyGateBundle(bundle, publicKey);
     if (result.valid) {
-      console.log(`✓ signature valid — the gate decision \`${result.attested.decision}\` and its ${result.attested.subjects.length} content-addressed subject(s) are unaltered since signing (keyid ${result.keyid}).`);
-      console.log('  scope: the signature covers the gate Statement only — producedOn, schemaVersion, and the ingested evidence entries are outside it (ADR-0037 §1).');
+      console.log(`✓ signature valid — the gate decision \`${result.attested.decision}\`, its ${result.attested.subjects.length} content-addressed subject(s) (inputs + evidence entries), and producedOn/schemaVersion are all unaltered since signing (keyid ${result.keyid}).`);
+      console.log('  scope: the signature covers the whole normalized bundle — the gate Statement, the content-addressed inputs and evidence entries, and producedOn/schemaVersion (#158, ADR-0040).');
     } else {
       console.log(`✗ verification failed: ${result.reason}`);
     }
@@ -1186,9 +1244,31 @@ function runSelfTest() {
   check('verify: a TAMPERED payload fails (no longer matches the signed PAE)', dsseVerify(tamperedEnvelope, pkA) === false);
   check('verify: a malformed/absent envelope fails closed, never throws', dsseVerify(null, pkA) === false && dsseVerify({}, pkA) === false);
 
-  // Bundle-level signing pairs A with B1 (ADR-0037 sequencing): the signed payload is the
-  // bundle's `subject` (pr-head + the #139 input digests) PLUS the gate predicate, so the
-  // signature covers the input digests too, not just the decision.
+  // Canonicalization (#158, ADR-0040): recursive key-sort is stable across insertion order and
+  // idempotent (canonicalizing an already-sorted structure changes nothing), and a genuinely
+  // different structure canonicalizes differently.
+  check('canonicalize: key order does not affect the result', canonicalize({ a: 1, b: 2 }) === canonicalize({ b: 2, a: 1 }));
+  check('canonicalize: idempotent', canonicalize({ a: 1, b: 2 }) === canonicalize(JSON.parse(canonicalize({ a: 1, b: 2 }))));
+  check('canonicalize: a real content change canonicalizes differently', canonicalize({ a: 1 }) !== canonicalize({ a: 2 }));
+
+  // entrySubjects (#158, ADR-0040): one subject per parsed EVIDENCE entry (never the gate entry
+  // itself), named `entry:<stage>`, digest-bound over the canonicalized entry.
+  const pwEntry = mkPw('PASSED');
+  const auditEntryForSubjects = auditTestParsedEntry(T.confirmedClean);
+  const { gateEntry: subjGateEntry } = gate(assembleBundle({ commit: 'x', entries: [pwEntry, auditEntryForSubjects] }));
+  const subjects = entrySubjects([pwEntry, auditEntryForSubjects, subjGateEntry]);
+  check('entrySubjects: one subject per non-gate entry, named entry:<stage>', subjects.length === 2
+    && subjects[0].name === 'entry:playwright' && subjects[1].name === 'entry:audit-test');
+  check('entrySubjects: the gate entry itself is excluded', !subjects.some((s) => s.name === 'entry:gate'));
+  const mutatedPw = JSON.parse(JSON.stringify(pwEntry));
+  mutatedPw.predicate.verdict.result = 'FAILED';
+  check('entrySubjects: editing an entry changes its digest (same name, different bytes)',
+    entrySubjects([mutatedPw])[0].digest.sha256 !== entrySubjects([pwEntry])[0].digest.sha256);
+
+  // Bundle-level signing pairs A with B1/B2 (ADR-0037 sequencing, widened #158/ADR-0040): the
+  // signed payload is the bundle's `subject` (pr-head + the #139 input digests + the #158 entry
+  // digests) PLUS `producedOn`/`schemaVersion` PLUS the gate predicate — the signature now covers
+  // the whole normalized bundle a reader sees, not just the decision.
   const signBundle = assembleBundle({
     commit: 'deadbeef',
     entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)],
@@ -1202,12 +1282,13 @@ function runSelfTest() {
   check('verifyGateBundle: valid signature + unaltered bundle → valid', verifyGateBundle(signBundle, pkA).valid === true);
   check('verifyGateBundle: the WRONG key → invalid', verifyGateBundle(signBundle, pkB).valid === false);
 
-  // A valid result reports the NARROW scope it attests — the decision + subject names it covers —
-  // so a caller (and the --verify CLI message) can state the scope precisely instead of implying the
-  // whole file is signed (producedOn / schemaVersion / ingested entries stay outside the signature).
+  // A valid result reports the WIDENED scope it attests (#158, ADR-0040) — the decision + every
+  // subject name it covers, now including entry digests alongside the pr-head/input digests — so
+  // a caller (and the --verify CLI message) can state the scope precisely.
   const attested = verifyGateBundle(signBundle, pkA).attested;
-  check('verifyGateBundle: a valid result reports the attested decision + subject names (narrow scope)',
-    attested.decision === 'ship' && attested.subjects.includes('pr-head') && attested.subjects.includes('playwright-json'));
+  check('verifyGateBundle: a valid result reports the attested decision + subject names, including entries',
+    attested.decision === 'ship' && attested.subjects.includes('pr-head') && attested.subjects.includes('playwright-json')
+      && attested.subjects.includes('entry:playwright') && attested.subjects.includes('entry:audit-test'));
 
   // Shape guard the --verify CLI path leans on: verifyGateBundle binds to the FIRST gate entry, so a
   // duplicate-gate bundle can still crypto-verify — validateBundle is what rejects it (fail closed).
@@ -1225,6 +1306,30 @@ function runSelfTest() {
   subjectTampered.subject[1].digest.sha256 = '0'.repeat(64);
   check('verifyGateBundle: an INPUT DIGEST edited after signing → invalid (signature covers the #139 subjects too)',
     verifyGateBundle(subjectTampered, pkA).valid === false);
+
+  // #158/ADR-0040's own exploit, reproduced as self-test rows: the displayed EVIDENCE ENTRY, and
+  // the surrounding producedOn/schemaVersion, are now all in the signed scope, closing exactly the
+  // gap the issue verified (flip a Playwright PASSED entry to FAILED post-signing → old code's
+  // --verify still exited 0; this must now fail).
+  const entryTampered = JSON.parse(JSON.stringify(signBundle));
+  const tamperedPwEntry = entryTampered.entries.find((e) => e.predicate?.stage === 'playwright');
+  tamperedPwEntry.predicate.verdict.result = 'FAILED';
+  tamperedPwEntry.predicate.verdict.metrics.find((m) => m.name === 'unexpected').value = 999;
+  check('verifyGateBundle: an EVIDENCE ENTRY edited after signing (PASSED → FAILED) → invalid (the #158 exploit, closed)',
+    verifyGateBundle(entryTampered, pkA).valid === false);
+
+  const producedOnTampered = JSON.parse(JSON.stringify(signBundle));
+  producedOnTampered.producedOn = '2000-01-01T00:00:00.000Z';
+  check('verifyGateBundle: producedOn edited after signing → invalid (#158)',
+    verifyGateBundle(producedOnTampered, pkA).valid === false);
+
+  const schemaVersionTampered = JSON.parse(JSON.stringify(signBundle));
+  schemaVersionTampered.schemaVersion = 'gate-evidence-bundle/v0.5'; // the downgrade attack
+  check('verifyGateBundle: schemaVersion edited after signing → invalid (downgrade-resistant, #158)',
+    verifyGateBundle(schemaVersionTampered, pkA).valid === false);
+
+  check('verifyGateBundle: the untouched signed bundle still verifies (no false positives from the widened scope)',
+    verifyGateBundle(signBundle, pkA).valid === true);
 
   const unsignedVerify = verifyGateBundle(digestBundle, pkA); // `digestBundle` from the #139 block above — never signed
   check('verifyGateBundle: an unsigned bundle → invalid, reason names it unsigned', unsignedVerify.valid === false && /unsigned/.test(unsignedVerify.reason));
