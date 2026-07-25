@@ -142,7 +142,7 @@ Tell the user where the bundle was written. Then interpret it honestly:
     problems among them), not a **certification** of the whole suite
     ([#127](https://github.com/TzolkinB/skills/issues/127),
     [ADR-0038](../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)). Run audit-test's
-    certification mode (forthcoming) for a representative-breadth verdict, or re-gate with a consciously lower
+    certification mode (`--certify`) for a representative-breadth verdict, or re-gate with a consciously lower
     `--examined-floor` (never below 25%) to accept this narrower certified scope.
   - **execution incomplete (below the executed-floor)**: an execution suite reported `PASSED` (or `WARNED`),
     but the tests it actually ran are a small fraction of what the framework discovered — skipped/pending
@@ -239,6 +239,13 @@ Bundle written to gate-bundle.json
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
   is structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; an opaque, absent, or examined-nothing
   audit all cap at `canary`, so there is no "run less, grade better" incentive.
+- **`scope` disclosure** ([#171](https://github.com/TzolkinB/skills/issues/171),
+  [ADR-0038](../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)). A parsed emission may
+  carry an optional free-text `scope` string — e.g. a certification run naming how much of the whole suite a
+  narrower scope like `--changed` covered. the Gate passes it through unread by the decision (honesty guard #1
+  untouched — `scope` never drives `result`/`label`) and prints it verbatim next to the deep-audited fraction in
+  its own rendered report, so a certified `--changed` `ship` discloses its narrowness to whoever reads the Gate
+  report, not only a reader of the raw emission.
 - **Run-trace cross-check** ([#142](https://github.com/TzolkinB/skills/issues/142),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §3). A parsed emission may also carry an optional
   `runs[]` — one record per test a mutation was actually **executed** against, with its outcome (`killed` |
