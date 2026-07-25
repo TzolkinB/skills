@@ -43,10 +43,12 @@
 //   node gate.mjs --verify --bundle=<bundle.json> --pubkey=<public-key.pem>
 //   node gate.mjs --self-test        # golden truth-table gate (deterministic)
 
-import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve, isAbsolute } from 'node:path';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { dirname, resolve, join, isAbsolute } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createHash, sign as cryptoSign, verify as cryptoVerify, createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -795,7 +797,7 @@ export function renderReport(bundle, gateEntry) {
     L.push(`> \`ship\` earned: ${suites} passed and \`audit-test\` found no hollow tests among ${auditScope(auditEv)}.`);
   } else if (belowExaminedFloor) {
     const auditEv = bundle.entries.find((e) => e.predicate?.stage === 'audit-test');
-    L.push(`> \`ship\` needs a *certification*-scope \`audit-test\` verdict — this run was **diagnostic**: no problems found among the suspects it examined (${auditScope(auditEv)}), which is not evidence about the rest of the suite. Run audit-test's certification mode (forthcoming) for a representative-breadth verdict, or re-gate with a consciously lower (but never below ${EXAMINED_FLOOR_MIN}%) \`--examined-floor\` to accept this narrower certified scope.`);
+    L.push(`> \`ship\` needs a *certification*-scope \`audit-test\` verdict — this run was **diagnostic**: no problems found among the suspects it examined (${auditScope(auditEv)}), which is not evidence about the rest of the suite. Run audit-test's certification mode (\`--certify\`) for a representative-breadth verdict, or re-gate with a consciously lower (but never below ${EXAMINED_FLOOR_MIN}%) \`--examined-floor\` to accept this narrower certified scope.`);
   } else if (auditOpaqueOrAbsent) {
     L.push('> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
@@ -957,6 +959,65 @@ function readJsonInputForCli(path) {
   return { raw, parsed: JSON.parse(raw) };
 }
 
+// ---- certification sample-draw reproducibility (#171, ADR-0041) -----------
+// Runs the EXACT documented shell one-liner from audit-test/reference/batch-mode.md — not a
+// JS re-implementation of the sha256 hash-and-sort, which would risk exactly the drift this
+// project exists to catch — against a checked-in triaged-ids fixture, and asserts the ordered
+// output equals a checked-in golden ordering. This is the cross-machine reproducibility claim
+// (any sha256 tool yields the identical digest) held to the real artifact an agent runs, not a
+// re-derivation of it. Gate has nothing to do with certification's decision logic here — this
+// lives in gate.mjs only because it's the repo's one CI-gated, zero-dep self-test entry point.
+// "Zero external deps" (top of file) means no npm package — this is the one place the self-test
+// shells out, to a POSIX coreutil (`shasum`/`sha256sum`) always present on macOS/Linux, precisely
+// because testing the real shell artifact is the point (see the comment above); everything else
+// in this file stays pure node:crypto/node:fs.
+function extractCertifySampleCommand() {
+  const doc = readFileSync(resolve(HERE, '../audit-test/reference/batch-mode.md'), 'utf8');
+  const m = doc.match(/```bash\n([\s\S]*?)\n\s*```/);
+  return m && m[1].includes('SEED="sentinel-certify-v0"') ? m[1] : null;
+}
+
+function runCertifySampleSelfTest(check) {
+  const script = extractCertifySampleCommand();
+  check('reference/batch-mode.md still contains the documented sha256 draw command (extractable)', script !== null);
+  if (!script) return;
+
+  const hasShasum = spawnSync('sh', ['-c', 'command -v shasum']).status === 0;
+  const hasSha256sum = spawnSync('sh', ['-c', 'command -v sha256sum']).status === 0;
+  if (!hasShasum && !hasSha256sum) {
+    check('certify sample draw: a sha256 tool (shasum or sha256sum) is on PATH to run the reproducibility check', false);
+    return;
+  }
+  // The doc pins `shasum -a 256`, but itself documents any sha256 tool as interchangeable
+  // (macOS `shasum`, Linux `sha256sum`, openssl, python3, perl — batch-mode.md); substitute
+  // only when `shasum` itself isn't on PATH, so a Linux CI runner without it still proves the
+  // reproducibility claim rather than skipping it.
+  const portableScript = hasShasum ? script : script.replace('shasum -a 256', 'sha256sum');
+
+  const tmpDir = mkdtempSync(join(tmpdir(), 'audit-test-certify-'));
+  try {
+    const idsFixture = readFileSync(resolve(HERE, 'fixtures/audit-test.certify-triaged-ids.txt'), 'utf8');
+    writeFileSync(join(tmpDir, 'triaged-ids.txt'), idsFixture);
+    const result = spawnSync('bash', ['-c', portableScript], { cwd: tmpDir, encoding: 'utf8' });
+    check('certify sample draw: the documented command runs cleanly against the fixture', result.status === 0);
+
+    const expected = readFileSync(resolve(HERE, 'fixtures/audit-test.certify-expected-sample.txt'), 'utf8').trim();
+    const actual = (result.stdout ?? '').trim();
+    check('certify sample draw: seeded-order output matches the checked-in golden fixture (cross-machine reproducibility)', actual === expected);
+
+    // `head -n N` where N = ceil(50% × audited) is the documented sample (batch-mode.md) — prove
+    // the sizing formula against the same golden ordering, not just the full-population order.
+    const ids = idsFixture.trim().split('\n').filter(Boolean);
+    const N = Math.ceil(0.5 * ids.length);
+    const sampleLines = actual.split('\n').filter(Boolean).slice(0, N);
+    const expectedSampleLines = expected.split('\n').filter(Boolean).slice(0, N);
+    check(`certify sample draw: head -n ${N} (ceil(50% × ${ids.length} audited)) matches the golden sample`,
+      sampleLines.length === N && JSON.stringify(sampleLines) === JSON.stringify(expectedSampleLines));
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 // ---- golden truth-table self-test (deterministic, offline, zero-dep) -------
 
 function runSelfTest() {
@@ -1061,6 +1122,31 @@ function runSelfTest() {
     decideF('PASSED', T.confirmedVeryLow, { examinedFloor: 10 }) === 'canary');
   check('override: a 30% floor still blocks the same 10%-examined run', decideF('PASSED', T.confirmedVeryLow, { examinedFloor: 30 }) === 'canary');
   check('a run at exactly the floor (50%) ships — inclusive boundary', decideF('PASSED', T.confirmedClean, { examinedFloor: 50 }) === 'ship');
+
+  // ---- certification mode (#171, ADR-0038 1b / ADR-0041) — Gate needs NO new logic: a
+  // certification run is just a bigger deepAudited on the SAME suite. Fixture-backed, per the
+  // issue's own AC #18 ("both in the golden self-test, proven not asserted").
+  const certifyTally = parseAuditEmission(readFileSync(resolve(HERE, 'fixtures/audit-test.certify-floor-clearing.json'), 'utf8'));
+  const diagnosticTally = parseAuditEmission(readFileSync(resolve(HERE, 'fixtures/audit-test.diagnostic-below-floor.json'), 'utf8'));
+  check('fixture: audit-test.certify-floor-clearing.json parses cleanly', certifyTally !== null);
+  check('fixture: audit-test.diagnostic-below-floor.json parses cleanly', diagnosticTally !== null);
+  check('same-suite pair: both fixtures audit the identical population (audited count matches)', certifyTally?.audited === diagnosticTally?.audited);
+  check('#171: a certification tally on a healthy suite clears the floor → ship', decideF('PASSED', certifyTally) === 'ship');
+  check('#171: a diagnostic tally on the SAME suite (suspects-only) stays below the floor → canary — ship-vs-canary proven, not asserted',
+    decideF('PASSED', diagnosticTally) === 'canary');
+
+  // Honesty row (ADR-0041, "the surprising call"): a flagged suspect that's ALSO drawn into the
+  // certification sample keeps its 🟡 — routing is on the triage smell, not the run mode — so
+  // certification can never launder a real suspicion signal into a clean count, even when the
+  // sample ∪ suspects union otherwise clears the floor.
+  const certifyLaundersSuspect = { audited: 12, deepAudited: 6, confirmedSolid: 5, confirmedHollow: 0, likelyHollow: 1, baselineLock: 0, unexamined: 6 };
+  check('#171 honesty row: a floor-clearing certify tally (deepAudited/audited = 50%) carrying one sampled-suspect 🟡 still derives WARNED',
+    deriveAuditResult(certifyLaundersSuspect) === 'WARNED');
+  check('#171 honesty row: WARNED overrides a cleared floor → canary, never ship (a suspect cannot be laundered into a clean count)',
+    decideF('PASSED', certifyLaundersSuspect) === 'canary');
+
+  // Secondary seam — the documented sha256 draw command reproduces the checked-in golden sample.
+  runCertifySampleSelfTest(check);
 
   const belowFloorBundle = assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedBelowFloor)] });
   const belowFloorGate = gate(belowFloorBundle);

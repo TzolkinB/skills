@@ -158,6 +158,26 @@ release heading.
 
 ### Added
 
+- **Gate: prove certification mode's `ship`-vs-`canary` split at the golden self-test seam, and close
+  the Gate-side "(forthcoming)" reference** (closes #171, the build half of
+  [ADR-0038](docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md) Decision 1(b); design +
+  spec landed in #170/ADR-0041). `audit-test`'s new opt-in `--certify` batch mode
+  (`skills/audit-test/reference/batch-mode.md`) needs **no** Gate code change — a certification run just
+  produces a bigger `deepAudited` on the same suite, which the existing examined-floor logic (#127,
+  ADR-0035) already handles. `gate.mjs --self-test` now proves that at the seam instead of asserting it:
+  two new fixtures on the **same** `audited` population —
+  `fixtures/audit-test.certify-floor-clearing.json` (50% deep-audited → `ship`) and
+  `fixtures/audit-test.diagnostic-below-floor.json` (suspects-only, ~17% → `canary`) — plus an honesty row
+  (ADR-0041's "surprising call") proving a floor-clearing certify tally that still carries one sampled
+  suspect's `likelyHollow` derives `WARNED` → `canary`, never `ship` — certification can never launder a
+  real suspicion signal into a clean count. A second self-test seam runs the **actual documented shell
+  one-liner** from `batch-mode.md` (the fixed-seed sha256 hash-and-sort draw) against a checked-in
+  `triaged-ids` fixture and asserts its output equals a checked-in golden ordering — not a JS
+  re-implementation, which would risk exactly the drift this project exists to catch — guarding the
+  cross-machine reproducibility claim against the real artifact an agent runs. Also drops the "(forthcoming)"
+  hedge from the below-examined-floor report line now that `--certify` exists. No schema or Gate decision
+  logic changed; `AUDIT_EMISSION_SCHEMA` stays `gate-audit-test/v0.3`.
+
 - **Gate: cross-check the `audit-test` tally against its run trace**
   ([ADR-0037](docs/adr/0037-gate-evidence-integrity.md) §3, capability B2, closes #142). `gate.mjs` now parses
   the optional `runs[]` per-test run trace a `gate-audit-test/v0.3` emission may carry (added by #140) and
