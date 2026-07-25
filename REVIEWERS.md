@@ -5,8 +5,8 @@ earns its keep on *your* real tests — and whether anything reads as over-claim
 
 ## The one skill to focus on: `/audit-test`
 
-It answers: **would this passing test actually fail if the code it covers broke?** — and proves the
-answer by running one targeted mutation, not by reasoning.
+It answers: **would this passing test actually fail if the code it covers broke?** — by running one
+targeted mutation and reporting what actually happened, not by reasoning alone.
 
 Its differentiator is honesty in both directions on **app-driven (Playwright/Cypress) tests**:
 

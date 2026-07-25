@@ -9,7 +9,7 @@ The best QA-AI tooling is scattered across a dozen Sentinel skills *and* an ecos
 
 **Two ways to ask (the map's two readings).** Name a *single question at a single moment* — *"this passing test smells"* — and you get **one** best tool (à la carte). Describe a *change moving through its lifecycle* — *"I built this feature, walk me through QA before I merge"*, *"what's the full path to ship this safely"* — and you get an **ordered stage path** (orchestrated): the best tool per relevant stage, in the order to run them, with the escalation between them. Same router, same evidence labels; the *shape of your ask* picks the mode — and the path is always a recommendation you can take whole or lift one stage out of, never a mandate.
 
-It **routes; it doesn't analyze.** It may **read your stack manifests** — `package.json`, a `playwright.config.*` / `cypress.config.*`, a published `openapi`/`swagger` doc — to tell whether the best tool at a stage is an external one or a Sentinel gap-filler (e.g. a suspicious *unit* test → external Stryker/Tautest; a suspicious *app-driven* Playwright test → Sentinel's `audit-test`, because the external mutators can't reach it). But it never reads your test or source *logic* to judge it, never runs a test, never emits a verdict, and never runs the tool for you — it hands you the invocation. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other atomic skills run standalone, and each answers exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for the "am I safe to merge" moment.
+It **routes; it doesn't analyze.** It may **read your stack manifests** — `package.json`, a `playwright.config.*` / `cypress.config.*`, a published `openapi`/`swagger` doc — to tell whether the best tool at a stage is an external one or a Sentinel gap-filler (e.g. a suspicious *unit* test → external Stryker/Tautest; a suspicious *app-driven* Playwright test → Sentinel's `audit-test`, because the external mutators can't reach it). But it never reads your test or source *logic* to judge it, never runs a test, never emits a verdict, and never runs the tool for you — it hands you the invocation. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other atomic skills run standalone, and each answers exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for a QA synthesis read across your branch; route to **`/gate`** for the actual ship/canary/hold decision — `/sentinel` does not speak shippability ([#99](https://github.com/TzolkinB/skills/issues/99)); `/gate` is the release gate that ingests your branch's existing evidence (Playwright/Cypress + `audit-test`) and derives it.
 
 **Every recommendation carries its evidence label** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) — this is the map's *"no proof → no recommendation"* rule applied to routing:
 
@@ -24,7 +24,7 @@ It **routes; it doesn't analyze.** It may **read your stack manifests** — `pac
 | `/test-plan` | What *should* be tested, before any code exists? | You're about to build a feature and want the cases + layers up front |
 | `/qa-review` | Is this code testable at all? | Mid code-review — hard-coded deps, `Date.now()`, hidden coupling |
 | `/coverage-review` | Of what's testable, what's actually covered? | AI wrote tests; you need the *missing* cases and loose assertions |
-| `/audit-test` | Would this *passing* test fail if the code it covers broke? | A test is green and you don't trust it — prove it by mutation |
+| `/audit-test` | Would this *passing* test fail if the code it covers broke? | A test is green and you don't trust it — check it by mutation |
 | `/audit-orchestrator` | Which prover can actually verify this passing test, given my stack? | Same distrust, but you want the right tool auto-selected — unit → Stryker/Tautest, app-driven → `audit-test` |
 | `/e2e-impact` | Which E2E specs does this diff plausibly hit? | You have a diff/PR and need to know which Playwright/Cypress specs to run |
 | `/contract-guard` | Did the backend response drift from its published contract? | A frontend E2E went red on a suspected backend/contract change |
@@ -32,7 +32,7 @@ It **routes; it doesn't analyze.** It may **read your stack manifests** — `pac
 | `/threat-model` | If this change is wrong, what breaks in production and would anyone notice? | Before shipping something risky — blast radius, detectability, reversibility |
 | `/debug-test` | A Playwright test is failing — root cause and fix? | A `*.spec.ts` is red and you want it diagnosed and routed |
 | `/bug-report` | How do I hand this off cleanly? | Something broke and you need a structured, repro-able report |
-| `/sentinel` | What's the net verdict across all of the above? | The merge gate — full pass on a branch, one PASS/CAUTION/FAIL |
+| `/sentinel` | What's the net QA read across all of the above? | A full pass on a branch, reduced to one PASS/CAUTION/FAIL — a read to act on, not the release gate; pair with `/gate` for the ship/canary/hold decision |
 
 `/audit-orchestrator` is the **stack-aware Audit entry point**; `/audit-test` is its app-driven leaf. Route to `/audit-orchestrator` when the stack is unit, mixed, or unknown and you want the right prover picked for you; route **direct** to `/audit-test` when the situation already names an app-driven Playwright/Cypress test and wants the mutation itself. `/threat-model` and `/bug-report` are core-but-independent — real skills, deliberately **not** in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability.
 
@@ -53,7 +53,7 @@ Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best*
 | | | *caveat-lead:* self-healers (Healenium, Cypress self-heal) — **heal to green, can mask a regression** | hazard, not advice |
 | **6 · Triage** | Why did it fail? | `/debug-test`, `/diagnosing-bugs`, `/bug-report`; `/e2e-impact` (which specs a diff hits); `/contract-guard` (contract drift). Evidence sources: Playwright **trace viewer / Test Replay**, **cypress-flaky-test-audit** (per-command runtime, diagnosis-only) | advice · Confirmed |
 | | | *caveat-lead:* Playwright **Healer** agent — heals/skips to green | hazard, not advice |
-| **7 · Gate** | Am I safe to ship? | `/sentinel` (net verdict across the chain); **TEA** categorical governance gate (PASS/CONCERNS/FAIL/WAIVED + compliance audit trail) | advice · own + TEA **Confirmed** |
+| **7 · Gate** | Am I safe to ship? | `/gate` (ingests your PR's existing evidence — E2E results + `audit-test` verdict — into an advisory ship/canary/hold decision; the actual release gate); `/sentinel` (a QA synthesis read across the chain, feeds into it); **TEA** categorical governance gate (PASS/CONCERNS/FAIL/WAIVED + compliance audit trail) | advice · own + TEA **Confirmed** |
 
 ## Steps
 
@@ -64,13 +64,13 @@ Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best*
 
 **Point-route (single question):**
 
-5. Match the situation to exactly one primary tool using the routing signals below — a router that returns five options has routed nothing. If two questions are genuinely in play, prefer the one whose *single question* most directly matches what the user asked, name it first, then the secondary as a follow-up. If the situation is the merge/ship decision over a whole branch, route to `/sentinel` and note it will call the atomic shippability skills for you — don't also tell the user to run those by hand.
+5. Match the situation to exactly one primary tool using the routing signals below — a router that returns five options has routed nothing. If two questions are genuinely in play, prefer the one whose *single question* most directly matches what the user asked, name it first, then the secondary as a follow-up. If the situation is a QA read over a whole branch before merge, route to `/sentinel` and note it will call the atomic QA skills for you — don't also tell the user to run those by hand. If the situation is specifically the ship/no-ship decision (they already have E2E results and/or an `audit-test` verdict, or are asking "am I safe to ship"), route to `/gate` — that's the skill that actually derives ship/canary/hold, `/sentinel` does not.
 6. **Attach the evidence label.** Confirmed/Likely → recommend it. Unexamined → surface it as a *lead, not advice*. For an external tool, **point — don't absorb**: name it, give the invocation + a one-line setup note, and never claim to run it. For the Audit stage, prefer routing *into* `/audit-orchestrator` rather than re-deriving the unit-vs-app-driven fork yourself. Output in the point format below.
 
 **Sequence (ordered path):**
 
 7. Emit an **ordered stage path**, using the wider-map table above as the per-stage source:
-   - **Anchor the entry stage** to where the change sits *now* — before code → **Plan**; tests already exist → **Audit / Coverage**; a spec or suite is red → **Triage**; about to merge → **Audit → Gate**. Order **forward to the Gate (`/sentinel`)**, and include **only the stages that matter** for this situation — an untailored seven-stage dump is noise.
+   - **Anchor the entry stage** to where the change sits *now* — before code → **Plan**; tests already exist → **Audit / Coverage**; a spec or suite is red → **Triage**; about to merge → **Audit → Gate**. Order **forward to the ship gate (`/gate`, preceded by `/sentinel`'s QA synthesis)**, and include **only the stages that matter** for this situation — an untailored seven-stage dump is noise.
    - For **each** stage in the path give the **best tool for the stack** with its **evidence label** (the *same* per-stage decision the point-route makes — Unexamined = a lead, self-healers only with their caveat; the Audit stage routes *into* `/audit-orchestrator`), a one-line **why it's here**, and the **escalate-if** condition to the next stage ("Audit flags false-confidence → fix those before spending Coverage").
    - Close with the à-la-carte line: **run as few or as many as you need — each stage stands alone.** The path is a recommendation, not a funnel. Output in the sequence format below.
 8. If nothing fits cleanly, say so plainly and ask one clarifying question — do not force a bad match.
@@ -88,7 +88,8 @@ Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best*
 - "Playwright test is failing / red spec / locator or timing error" → **`/debug-test`**
 - "it's flaky / passes sometimes / non-deterministic" → **`/debug-test --flake`**
 - "need to file this / hand it off / write it up for the team" → **`/bug-report`**
-- "about to merge / am I safe to ship / full pass on my branch" → **`/sentinel`**
+- "about to merge / full pass on my branch / how's my branch's QA shape" → **`/sentinel`**
+- "am I safe to ship / give me the ship decision / I have E2E + audit-test results" → **`/gate`**
 
 ## The intended flow
 
@@ -100,14 +101,19 @@ BEFORE CODE        /test-plan        define the cases + layers before anything e
 WHILE REVIEWING    /qa-review        is the code even testable?
       │
 AFTER TESTS        /coverage-review  what's missing / asserted loosely?
-   EXIST           /audit-test       do the green tests actually guard anything? (proven by mutation)
+   EXIST           /audit-test       do the green tests actually guard anything? (checked by mutation)
       │            /audit-orchestrator  ...and which prover fits your stack?
       │
 SUITE HYGIENE      /prune-tests      cut tests that cost more than they protect
       │
-SHIP GATE          /sentinel   ◄──── orchestrates test-plan + coverage-review + qa-review
+QA SYNTHESIS       /sentinel   ◄──── orchestrates test-plan + coverage-review + qa-review
                                      + debug-test (on failing tests) + audit-test (batch)
-                                     into ONE verdict: PASS / CAUTION / FAIL
+                                     into ONE QA read: PASS / CAUTION / FAIL
+                                     (a read to act on — not the release gate)
+      │
+SHIP GATE          /gate       ◄──── ingests your PR's existing E2E results (Playwright/Cypress)
+                                     + a parsed audit-test verdict into ONE advisory decision:
+                                     ship / canary / hold
 
 INDEPENDENT of the chain (call on their own, any time — /sentinel never runs these):
    /threat-model     what breaks in production if this is wrong, and would anyone notice
@@ -135,7 +141,7 @@ For a matched situation:
 **Run:** `/skill-name <args>`   (external → the invocation + a one-line setup note)
 **Evidence:** [Confirmed | Likely | Unexamined — one line on what backs it; Unexamined = "a lead, not advice"]
 
-**Next in the flow:** [the natural follow-up tool, or "— this is the ship gate" for /sentinel]
+**Next in the flow:** [the natural follow-up tool; for /sentinel, that's "— run `/gate` next for the ship/canary/hold decision"; for /gate, "— this is the ship gate"]
 ```
 
 For a lifecycle / workflow ask (sequence mode):
@@ -149,7 +155,8 @@ For a lifecycle / workflow ask (sequence mode):
    ↳ escalate-if: [what result sends you on to the next stage]
 2. **[Stage] · …** ([label]) — …
    ↳ escalate-if: …
-N. **Gate · `/sentinel`** — one PASS / CAUTION / FAIL over the branch.
+N-1. **QA synthesis · `/sentinel`** — one PASS / CAUTION / FAIL over the branch (a read, not the release gate).
+N. **Ship gate · `/gate`** — ingests the branch's E2E results + audit-test verdict into ship / canary / hold.
 
 **Start at step 1 because:** [why the entry stage is here and the earlier stages don't apply].
 ```

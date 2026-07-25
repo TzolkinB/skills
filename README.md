@@ -59,7 +59,7 @@ The release-decision layer: it never runs a suite, it **ingests the evidence a P
 
 ### User-invoked
 
-- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR: bind your existing Playwright/Cypress results + an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`). The decision step itself is deterministic code, carries no confidence number, and is advisory only — it does not abort the build, and a `hold`/`canary` doesn't by itself stop a deployment; that's on your CI or your team. Recommends `ship` only when every E2E suite is green **and ran to completion** — its executed fraction clears an executed-floor, so a report that only ran a sliver of what it discovered (e.g. `expected:1, skipped:999`) is capped at `canary`, not read as a pass — **and** a parsed `audit-test` verdict reports no hollow tests among the tests it deep-audited (a shape-checked self-report, not an independent re-verification). Optionally, point it at a self-signed ed25519 key (`--sign-key`) and the **whole bundle** becomes tamper-evident — a DSSE-signed in-toto attestation (self-signed, not Sigstore; unsigned by default). The signature covers the decision, the content-addressed digests of the files it ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion` — so `--verify` proves the entire normalized bundle, not just the decision, wasn't altered after Gate produced it.
+- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR: bind your existing Playwright/Cypress results + an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`). The decision step itself is deterministic code, carries no confidence number, and is advisory only — it does not abort the build, and a `hold`/`canary` doesn't by itself stop a deployment; that's on your CI or your team. Recommends `ship` only when every E2E suite is green **and ran to completion** — its executed fraction clears an executed-floor, so a report that only ran a sliver of what it discovered (e.g. `expected:1, skipped:999`) is capped at `canary`, not read as a pass — **and** a parsed `audit-test` verdict reports no hollow tests among the tests it deep-audited, **and** that deep-audited fraction clears an examined-floor (default 50% of everything triaged, overridable down to a 25% minimum) — a confirmed-clean verdict over too narrow a slice is disclosed, not upgraded (a shape-checked self-report, not an independent re-verification). Optionally, point it at a self-signed ed25519 key (`--sign-key`) and the **whole bundle** becomes tamper-evident — a DSSE-signed in-toto attestation (self-signed, not Sigstore; unsigned by default). The signature covers the decision, the content-addressed digests of the files it ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion` — so `--verify` proves the entire normalized bundle, not just the decision, wasn't altered after Gate produced it.
 
 ## Dependencies
 
@@ -84,7 +84,7 @@ These skills add no network calls of their own — none sends your code to a thi
 |-------|-------|-----------------|-------------------|
 | `/test-plan` | A feature description you provide | Nothing | Nothing |
 | `/coverage-review` | Your test file + code file | Nothing | Nothing |
-| `/audit-test` | The passing test + the code it covers | A single targeted mutation + one test run, on a clean git tree (always revertible) | Nothing |
+| `/audit-test` | The passing test(s) + the code they cover | One mutation at a time, reverted before the next, on a clean git tree — single-test mode runs one; batch mode fans this out across every flagged test, and `--certify` can run into the hundreds on a large suite. A crashed session can leave one mutation live; recovering it (`git checkout -- <file>`) is a manual step, not a guarantee the skill makes | Nothing |
 | `/prune-tests` | The test suite | Read-only by default; `--apply` edits/removes flagged tests and reruns the affected ones locally | Nothing |
 | `/qa-review` | The code under review | Nothing | Nothing |
 | `/threat-model` | The change / diff | Nothing | Nothing |
@@ -96,7 +96,7 @@ These skills add no network calls of their own — none sends your code to a thi
 | `/sentinel` | Files in the change | Composes the skills above; runs only what they run | Only whatever `/debug-test` routes to, and only when a failing test is present |
 | `/gate` | A Playwright/Cypress result file + (optional) an `audit-test` emission/report you pass in | Its bundled Node script locally + `git rev-parse HEAD` for the subject | Nothing |
 
-`/debug-test` and `/audit-orchestrator` are the skills that hand work to external tooling; `/contract-guard` may fetch a published OpenAPI spec from a URL you supply, but never sends your code anywhere. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay surgical and gated on a clean git tree.
+`/debug-test` and `/audit-orchestrator` are the skills that hand work to external tooling; `/contract-guard` may fetch a published OpenAPI spec from a URL you supply, but never sends your code anywhere. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay gated on a clean git tree. Both are prose skills, not executables — their verdicts are the agent's own account of what it ran in your session, not an independently verified measurement; watch the tool calls.
 
 ## New to testing? Start here
 
@@ -123,9 +123,9 @@ Bootstrap is intentionally lightweight. You do not need to classify the entire l
 
 `/gate` and `/audit-test` deliberately shipped narrower than they could be — see
 [`docs/roadmap.md`](./docs/roadmap.md) for the full list of what's deferred, why, and the
-order it's getting picked back up in (short version: a taxonomy-wording fix, then
-coverage-aware ship semantics, then real evidence signing, then a calibration loop for a
-real confidence number).
+order it's getting picked back up in. Three of the four items are closed (a taxonomy-wording
+fix, coverage-aware ship semantics, real evidence signing); what's left now: a calibration
+loop for a real confidence number.
 
 Separately, not built yet on the authoring side:
 - [ ] Starter templates for common frameworks (Jest, pytest, Playwright)
