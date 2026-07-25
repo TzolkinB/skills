@@ -1,0 +1,12 @@
+booking.spec.ts::rejects overlapping bookings
+booking.spec.ts::allows non-overlapping bookings
+payment.spec.ts::charges the card
+payment.spec.ts::refunds on cancellation
+email.spec.ts::sends confirmation email
+email.spec.ts::sends reminder email
+seed.spec.ts::renders the initial deck
+seed.spec.ts::renders empty state
+auth.spec.ts::logs in with valid credentials
+auth.spec.ts::rejects invalid credentials
+cart.spec.ts::adds item to cart
+cart.spec.ts::removes item from cart

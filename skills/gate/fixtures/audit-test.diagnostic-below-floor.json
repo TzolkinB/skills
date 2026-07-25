@@ -1,0 +1,12 @@
+{
+  "schema": "gate-audit-test/v0.3",
+  "producer": "audit-test",
+  "scope": "whole-suite",
+  "audited": 12,
+  "deepAudited": 2,
+  "confirmedSolid": 2,
+  "confirmedHollow": 0,
+  "likelyHollow": 0,
+  "baselineLock": 0,
+  "unexamined": 10
+}
