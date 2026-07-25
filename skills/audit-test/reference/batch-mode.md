@@ -25,3 +25,52 @@ Audited 47 · deep-audited 5 (2 🟢 confirmed-solid · 1 🔴 confirmed-hollow 
 ```
 
 In batch mode, `--all` additionally lists the **Unexamined** tests; without it they are summarized by count only — but they are **never** folded into the confirmed-solid greens.
+
+## Diagnostic vs certification mode
+
+Batch mode runs in one of two modes, answering two genuinely different questions ([ADR-0038](../../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)):
+
+- **Diagnostic** (default — everything above): triage every test, deep-audit **only the flagged suspects**. Answers *"are there hollow tests among the ones most likely to be hollow?"* Cheap and targeted. A clean diagnostic run found no problems **where it looked** — it has not certified the suite, so Gate's examined-floor ([ADR-0035](../../../docs/adr/0035-gate-examined-floor.md)) correctly caps it at `canary`. This is not a shortfall; it is the honest scope of a suspect-only pass.
+- **Certification** (`--certify`): deep-audit a **representative random sample sized to the examined-floor ∪ the flagged suspects**, so `deepAudited / audited` can clear the floor *legitimately* and a `ship` recommendation stands on breadth evidence. Answers *"is the suite broadly trustworthy enough to stake a release on?"* — the question `ship` actually asks. Opt-in because breadth costs real mutation runs.
+
+Reach for `--certify` when you want a run that can honestly reach `ship`; stay in the default diagnostic mode for a cheap "anything smell hollow?" check.
+
+### `--certify` — how it works
+
+`--certify` composes with **any** batch population (whole-suite, a dir, a glob, or `--changed`) — it changes *which tests escalate to a mutation*, never the triage step, which still covers the whole resolved population exactly as in diagnostic mode. It is a **batch-only** modifier: on a single named test it is a no-op with a one-line warning (a single test is already fully deep-audited). It is orthogonal to `--examined-floor` — `--certify --examined-floor=25` reads as "certify, but at the cheaper 25% floor."
+
+1. **Triage the whole population** (Step 3), exactly as diagnostic mode does — this enumerates every test identity and flags the suspects.
+2. **Draw the sample** — a **deterministic, seeded** random subset of size `N = ceil(floor% × audited)` (`floor%` = the effective `--examined-floor`, default 50%, clamped ≥ 25%). The draw is a **pinned sha256 hash-and-sort**, not the agent's judgement of "representative" — so it is provably random *and* reproducible **cross-machine** (a fixture drawn on macOS reproduces identically in Linux/Windows CI):
+
+   > Sort the triaged identities by `sha256("<SEED>:<id>")` ascending, where `id` is `<file>::<test name>` and `SEED` is the fixed constant `sentinel-certify-v0` (no `--seed` flag in v0). Take the first `N`.
+
+   ```bash
+   SEED="sentinel-certify-v0"
+   # triaged-ids.txt: one "<file>::<test name>" per line — the full triaged population
+   while IFS= read -r id; do
+     printf '%s\t%s\n' "$(printf '%s' "$SEED:$id" | shasum -a 256 | cut -d' ' -f1)" "$id"
+   done < triaged-ids.txt | LC_ALL=C sort | cut -f2-
+   ```
+
+   This emits the whole population in seeded order; `head -n N` is the sample, and reading further down the **same** ordering is the top-up (below). The tool is free — `shasum -a 256` (macOS), `sha256sum` (Linux), `openssl dgst -sha256`, `python3 -c 'import hashlib,sys;print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'`, or `perl -MDigest::SHA=sha256_hex` all emit the **identical** digest, so the sample is identical everywhere. `LC_ALL=C sort` keeps the ordering byte-stable across locales. A fixed seed means each test keeps its hash position forever — adding a test later inserts it at its own position rather than re-shuffling the existing picks.
+3. **Deep-audit `sample ∪ suspects`.** Union the sample with the flagged suspects and **dedupe** — a test that is both sampled and flagged is audited once. The **union**, not just the sample, is what `deepAudited` counts.
+4. **Verdict semantics for sampled clean tests** — the one place certification differs from diagnostic ([ADR-0041](../../../docs/adr/0041-audit-test-certification-mode-verdict-semantics.md)). The routing key is the **triage smell, not the mode**, so 🟡 keeps its single meaning — *a flagged suspect, reasoned about, not execution-disproven*:
+   - A healthy sampled test yields **🟢** the normal way (propose the breaking mutation, run the one test, it fails).
+   - A **flagged suspect** with no devisable mutation → **🟡** (unchanged), even when it was also sampled — it still carries a real suspicion signal.
+   - A **clean-triaged, sampled** test (drawn for breadth, never flagged), runnable, with **no devisable breaking mutation** → **Unexamined**, *not* 🟡 — triage raised no suspicion to reason about, and routing it to 🟡 would fabricate one and needlessly degrade the run to `WARNED`. **Name it in the report** ("clean-triaged, no breaking mutation found — worth a human look") — a clean test that resists every mutation is itself a mild smell. It gets no `runs[]` record.
+   - **Env not runnable** → **🟡** in both modes, unchanged. You cannot certify what you cannot execute.
+5. **Adaptive top-up — the floor clears iff achievable.** Because step 4 can drop a sampled test to Unexamined (out of `deepAudited`), the floor is not cleared "by construction." If drop-outs leave `deepAudited` short of the floor, **draw the next identities from the same seeded ordering** (skipping ones already in the union) until the floor clears **or the triaged pool is exhausted**. Pool-exhausted-and-still-short → honest `canary`. Counts stay truthful at whatever point the run stops — an interrupted or exhausted run under-reports rather than claiming breadth it never achieved.
+6. **Cost — disclose, don't guard.** The diagnostic `>~15 flagged → narrow scope` guard is **suppressed** in certification (you opted into the expensive path deliberately). Instead, **before running any mutations, print the cost**: how many sampled + suspect tests (K after dedup) will be deep-audited against `audited` total, at the chosen floor — so the user can Ctrl-C or lower `--examined-floor` first. This is [ADR-0035](../../../docs/adr/0035-gate-examined-floor.md)'s "surface the cost" applied at audit time. On a large suite a 50% floor is genuinely many one-at-a-time mutation runs; `--examined-floor=25` or a narrower scope is the documented relief.
+
+### Certification and the emission
+
+Certification needs **no** schema or Gate change ([ADR-0038](../../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)) — it produces a truthful tally Gate ingests exactly as any other run. Two things it does add to the emission (see SKILL.md → Structured emission):
+
+- **`scope` self-labels the run** — e.g. `"certify(floor=50%) · --changed"` rather than a bare `"--changed"`, so a human reading the bundle can tell a floor-clearing tally came from a certification run.
+- **A loud rationale line when the certified scope is narrower than the whole suite** — e.g. `"certified scope: --changed (12 of ~180 suite test files) — ship recommendation is scoped to this changeset"`. Use a cheap `Glob` count of all test files for the "~M" denominator; if that is not cleanly computable, name the scope without the fraction. This keeps a certified `--changed` `ship` from *reading* broader than it is — disclosure, never a suppressed count.
+
+The floor-clearing certification tally looks like the diagnostic tally, but `deep-audited` now reflects the sampled ∪ suspect breadth:
+
+```
+Certify(floor=50%) · whole-suite — Audited 48 · deep-audited 24 (22 🟢 confirmed-solid · 1 🔴 confirmed-hollow · 1 ⚠️ baseline-lock) · 2 unexamined (clean-sampled, no breaking mutation found — worth a look) · 22 not sampled
+```

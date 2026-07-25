@@ -24,6 +24,8 @@ There's a second, subtler failure the mutation alone can't see: a test whose ass
    - **a directory, glob, or `--changed`** → resolve to a set of test files, then run [Batch mode](reference/batch-mode.md). Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns. This is the mode `/sentinel` calls over a branch's changed tests.
    - **nothing** → default to the whole suite (same patterns) and run [Batch mode](reference/batch-mode.md).
 
+   Batch mode runs **diagnostic** (default — deep-audit only the flagged suspects) or **certification** (`--certify` — deep-audit a floor-sized random sample ∪ the suspects, the opt-in path to an honest `ship`); [Batch mode](reference/batch-mode.md) specifies both.
+
    **Test-file discovery patterns** (extensible by convention — not JS-only, per [ADR-0014](../../docs/adr/0014-sacred-path-integrity-discovery-fails-loud.md)):
    - JS/TS: `**/*.{spec,test}.{js,jsx,ts,tsx,mjs,cjs}`
    - pytest: `**/test_*.py`, `**/*_test.py`
@@ -129,6 +131,15 @@ particular, if you deep-audited nothing, `deepAudited` is `0` (Gate derives `une
 never reach `ship`). For an **INCONCLUSIVE** run (no recognized test files), emit all-zero counts. Emission is
 mechanical bookkeeping of the verdicts you already assigned — it introduces **no** new judgment, so it works in
 single-test mode too (the tally is just that one test's class).
+
+A **certification** run (`--certify`, [Batch mode](reference/batch-mode.md)) emits the same shape with **no**
+schema change — a floor-clearing tally Gate ingests exactly as any other. Two `scope`-side additions keep it
+honest ([ADR-0038](../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)): `scope`
+self-labels the run (e.g. `"certify(floor=50%) · --changed"`), and when the certified scope is narrower than
+the whole suite the emission adds a rationale line naming it (`"certified scope: --changed (12 of ~180 suite
+test files) — ship recommendation is scoped to this changeset"`), so a certified `--changed` `ship` never
+*reads* broader than it is. These are free-text `scope` disclosures, not new predicate fields — Gate consumes
+neither.
 
 ### Run trace (`runs[]`) — optional, execution-confirmed subset only
 
