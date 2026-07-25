@@ -41,6 +41,25 @@ hard execution gate is the future evidence pipeline's job.
 _Avoid_: numeric confidence scores (e.g. "87% confident") — reserve those for that pipeline; and
 never let an Unexamined test sit in a "holds up" tally as if it were Confirmed.
 
+**Diagnostic run**:
+`audit-test`'s default batch behaviour: triage every test, deep-audit **only the flagged suspects**. It
+answers "are there hollow tests among the ones most likely to be hollow?" — cheap and targeted. A clean
+diagnostic run has found no problems *where it looked*; it has **not** certified the suite, so it correctly
+caps at `canary` under the examined-floor
+([ADR-0038](docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)).
+_Avoid_: "normal run" / "default audit" (imprecise about the funnel), "suspect-only pass" (describes the
+mechanism, not the question it answers).
+
+**Certification run**:
+An opt-in `audit-test` mode (`--certify`) that deep-audits a **representative random sample sized to the
+examined-floor across all triaged tests ∪ the flagged suspects**, so `deepAudited / audited` can clear the
+floor *legitimately* and a `ship` recommendation stands on breadth evidence. It answers "is the suite broadly
+trustworthy enough to stake a release on?" — the question `ship` actually asks, and the breadth the diagnostic
+funnel deliberately does not spend
+([ADR-0041](docs/adr/0041-audit-test-certification-mode-verdict-semantics.md)).
+_Avoid_: "full audit" / "deep audit" (a certification run still samples — it is not exhaustive), "sample run"
+(names the mechanism, not the purpose; and the union with suspects is not just a sample).
+
 **Sacred path**:
 A path (code or test) the user marks as critical for a `/sentinel` run, via `--sacred=<glob>`, so that
 Sentinel abandons its gradient there and applies binary rigor: a *confirmed* false-confidence finding or an
