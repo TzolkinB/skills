@@ -237,6 +237,16 @@ export function parseAuditEmission(raw) {
   if (tally.deepAudited + tally.unexamined !== tally.audited) return null;
   if (outcomes !== tally.deepAudited) return null;
 
+  // `scope` (#171, ADR-0038) — an OPTIONAL free-text passthrough, e.g. "certify(floor=50%) ·
+  // --changed (12 of ~180 suite test files)". Informational only, per the published schema — it
+  // is never validated for truthfulness and never drives the decision (honesty guard #1 still
+  // reads only the derived category). It exists so a certified run's disclosed narrowness reaches
+  // the human reading GATE's report, not only a reader of audit-test's own raw emission.
+  if (obj.scope !== undefined) {
+    if (typeof obj.scope !== 'string') return null;
+    tally.scope = obj.scope;
+  }
+
   // Run trace (#142, B2, ADR-0037 §3) — OPTIONAL, additive: an emission with no `runs` is
   // unaffected (behaves exactly as v0.2). When present, it's a per-test record of an
   // EXECUTED mutation (killed|survived) and must agree with the tally it rides alongside —
@@ -256,7 +266,9 @@ export function parseAuditEmission(raw) {
     const seen = new Set();
     for (const r of obj.runs) {
       if (!r || typeof r !== 'object') return null;
-      if (typeof r.test !== 'string' || typeof r.mutation !== 'string' || typeof r.command !== 'string') return null;
+      // Non-empty, not just string-typed (#171 review) — a blank `test`/`mutation`/`command`
+      // would still pass a bare `typeof` check and dilute `runsVerified` with content-free rows.
+      if (typeof r.test !== 'string' || !r.test || typeof r.mutation !== 'string' || !r.mutation || typeof r.command !== 'string' || !r.command) return null;
       if (r.outcome !== 'killed' && r.outcome !== 'survived') return null;
       const exitCode = Number(r.exitCode);
       if (!Number.isFinite(exitCode) || !Number.isInteger(exitCode) || exitCode < 0) return null;
@@ -283,10 +295,15 @@ export function auditTestParsedEntry(tally, { markdown } = {}) {
   // trace rode along; the gate predicate never sees it (honesty guard #3 stays untouched).
   if (tally.runs) metrics.push({ name: 'runsVerified', value: tally.runs.length });
   const byproducts = markdown ? [{ name: 'audit-test-report', mediaType: 'text/markdown', text: markdown }] : [];
+  // `scope` rides as a string on the verdict, alongside (never inside) `metrics` — metrics stays
+  // numeric-only (what the derivation reads), scope is disclosure-only prose the gate NEVER reads
+  // for the decision (honesty guard #1 untouched; only `renderReport`/`auditScope` display it).
+  const verdict = { result: deriveAuditResult(tally), label: deriveAuditLabel(tally), metrics };
+  if (tally.scope) verdict.scope = tally.scope;
   return statement(EVIDENCE_PREDICATE, {
     stage: 'audit-test',
     producer: { id: 'gate://audit-test@0.x' },
-    verdict: { result: deriveAuditResult(tally), label: deriveAuditLabel(tally), metrics },
+    verdict,
     byproducts,
     annotations: {},
   });
@@ -516,8 +533,14 @@ function auditMetricsOf(auditEntry) {
 // plain string — the digits live in prose, never as a numeric field in the gate predicate.
 function auditScope(auditEntry) {
   const m = auditMetricsOf(auditEntry);
-  if (m.deepAudited === undefined || m.audited === undefined) return 'the deep-audited subset';
-  return `the deep-audited subset (${m.deepAudited} of ${m.audited} triaged tests mutation-audited; ${m.unexamined ?? 0} unexamined — not evidence of health)`;
+  const base = m.deepAudited === undefined || m.audited === undefined
+    ? 'the deep-audited subset'
+    : `the deep-audited subset (${m.deepAudited} of ${m.audited} triaged tests mutation-audited; ${m.unexamined ?? 0} unexamined — not evidence of health)`;
+  // Reported `scope` (#171, ADR-0038) is the producer's own free-text label (e.g. a certified
+  // run naming how much of the whole suite `--changed` covered) — appended, never substituted,
+  // so the mechanically-derived fraction above always prints regardless of what a producer says.
+  const reported = auditEntry?.predicate?.verdict?.scope;
+  return reported ? `${base} — reported scope: "${reported}"` : base;
 }
 
 // Clamp a requested examined-floor into [EXAMINED_FLOOR_MIN, 100], defaulting when unset/invalid.
@@ -932,11 +955,20 @@ function main(argv) {
   // bundle is byte-for-byte the same unsigned shape as before this capability landed. Only the
   // CLI wrapper reads the key file; signing itself (`signGateBundle`) is pure.
   if (opts['sign-key']) {
-    const privateKey = createPrivateKey(readFileSync(abs(opts['sign-key']), 'utf8'));
-    bundle.dsseEnvelope = signGateBundle(bundle, gateEntry, privateKey);
-    // keyid already lives on the envelope signGateBundle just produced — read it back rather than
-    // re-deriving it from the public key a second time.
-    console.log(`✓ signed (keyid ${bundle.dsseEnvelope.signatures[0].keyid})`);
+    // A signature attests the bundle's subject[] verbatim — `pr-head` included. Signing over an
+    // unresolved commit (`assembleBundle`'s `commit ?? 'unknown'` fallback) would produce a
+    // verifiable-but-meaningless attestation, so refuse and degrade to unsigned rather than sign
+    // a claim about the literal string "unknown" — same "never silently trust it" treatment as
+    // the floor clamps and the malformed-emission fallback above.
+    if (!opts.commit) {
+      console.error('⚠ --sign-key requires --commit (a signed bundle must not attest an unresolved pr-head) — leaving the bundle unsigned.');
+    } else {
+      const privateKey = createPrivateKey(readFileSync(abs(opts['sign-key']), 'utf8'));
+      bundle.dsseEnvelope = signGateBundle(bundle, gateEntry, privateKey);
+      // keyid already lives on the envelope signGateBundle just produced — read it back rather than
+      // re-deriving it from the public key a second time.
+      console.log(`✓ signed (keyid ${bundle.dsseEnvelope.signatures[0].keyid})`);
+    }
   }
 
   const out = opts.out ?? 'gate-bundle.json';
@@ -1224,6 +1256,22 @@ function runSelfTest() {
   check('exploit: impossible {confirmedSolid:1,deepAudited:0} emission is rejected (never derives confirmed)',
     parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
 
+  // ---- `scope` passthrough (#171, ADR-0038) — disclosure-only, never read for the decision ----
+  const scopedEmission = JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, scope: 'certify(floor=50%) · --changed (12 of ~180 suite test files)', ...T.confirmedClean });
+  const scopedTally = parseAuditEmission(scopedEmission);
+  check('scope: a string scope on the emission is passed through to the parsed tally', scopedTally?.scope === 'certify(floor=50%) · --changed (12 of ~180 suite test files)');
+  check('scope: a non-string scope rejects the whole emission (never trust it blind)',
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, scope: 123, ...T.confirmedClean })) === null);
+  check('scope: absent scope leaves the tally unaffected (purely additive)', parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean })).scope === undefined);
+  const scopedGate = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(scopedTally)] }));
+  const scopedReport = renderReport(
+    { ...assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(scopedTally)] }), entries: [mkPw('PASSED'), auditTestParsedEntry(scopedTally), scopedGate.gateEntry] },
+    scopedGate.gateEntry,
+  );
+  check('scope: gate decision is unaffected by scope (disclosure only, honesty guard #1 intact)', scopedGate.decision === 'ship');
+  check('scope: the reported scope string reaches GATE\'s own rendered report (the disclosure gap this closes)',
+    scopedReport.includes('reported scope: "certify(floor=50%) · --changed (12 of ~180 suite test files)"'));
+
   // ---- Cypress ingest — same execution axis as Playwright, but flake is DERIVED --------
   const CY = {
     passed: { totalTests: 12, totalPassed: 12, totalFailed: 0, totalPending: 0, totalSkipped: 0,
@@ -1482,6 +1530,15 @@ function runSelfTest() {
     parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: Array.from({ length: 4 }, () => mkRun('dup', 'killed', 1)) })) === null);
   check('parseAuditEmission #155/F3: distinct killed records with non-zero exits still accepted (regression guard)',
     parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(4) })) !== null);
+
+  // ---- non-empty run-record content (#171 review) — a bare `typeof === 'string'` check let a
+  // blank `test`/`mutation`/`command` through, diluting `runsVerified` with content-free rows.
+  check('parseAuditEmission: a run record with an empty `test` string → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), { test: '', mutation: 'm', command: 'c', outcome: 'killed', exitCode: 1 }] })) === null);
+  check('parseAuditEmission: a run record with an empty `mutation` string → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), { test: 't3', mutation: '', command: 'c', outcome: 'killed', exitCode: 1 }] })) === null);
+  check('parseAuditEmission: a run record with an empty `command` string → rejected',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), { test: 't3', mutation: 'm', command: '', outcome: 'killed', exitCode: 1 }] })) === null);
 
   const consistentHollowTally = parseAuditEmission(JSON.stringify({
     schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived')],

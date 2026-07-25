@@ -3,13 +3,15 @@
 **TL;DR** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
 what it's genuinely good at: risk planning, static test review, traceability, scaffolding, and a
 governance gate with a compliance audit trail. Reach for Sentinel/Gate for what TEA's own docs show
-it **cannot** do — **prove a passing test isn't hollow** (`audit-test`, by mutation; a shipping skill
-today). The second gap — aggregating that proof plus live execution into a **risk-weighted, calibrated**
+it **cannot** do — **run a mutation to check whether a passing test is hollow** (`audit-test`, a
+shipping skill today): a survived mutation is an execution-grounded counterexample that the test is
+hollow; a killed one confirms the test solid *against that specific break*, never a blanket guarantee.
+The second gap — aggregating that evidence plus live execution into a **risk-weighted, calibrated**
 release confidence that **learns from your gate overrides** — is where Gate is *headed*, but read it as
 a **design, not a live feature**: Gate ships today as a categorical advisory ship/canary/hold gate, and
 the calibrated/learning layer is parked until there's a labelled history to calibrate against (see the
-load-bearing caveat below). TEA plans and governs; it doesn't prove. Those gaps slot *into* TEA's gate
-rather than replacing it.
+load-bearing caveat below). TEA plans and governs; it doesn't run a mutation to check. Those gaps slot
+*into* TEA's gate rather than replacing it.
 
 This is a "why ours, not just theirs?" note, held to the same bar as the rest of the repo: **no claim
 here that isn't a verified TEA absence.** Every "TEA can't" below was confirmed against TEA's own
@@ -39,7 +41,7 @@ NFR/compliance audit trail — reach for TEA. This note is not a takedown; it's 
 
 ## The two things TEA's own docs show it can't do
 
-### 1. Prove a passing test isn't hollow — the strongest, uncontested differentiator
+### 1. Run a mutation to check a passing test — the strongest, uncontested differentiator
 
 A test can score **100/100** on TEA's static `test-review` and still be **hollow**: a pinned
 assertion, an unreached branch, an expected value quietly edited to match a regression (the trap a
@@ -47,9 +49,11 @@ self-healer leaves behind). Static review — TEA's or anyone's — reads the te
 whether the test would *fail if the code broke*, because it never breaks the code.
 
 `audit-test` does exactly that: it proposes the single most-likely-breaking change, runs that one
-targeted mutation, and checks whether the test goes red — **execution-grounded, not reasoning**. TEA has no
-mutation step of any kind. This is the cleanest, least-contested ground in the whole comparison:
-mutation proof is a capability TEA's docs simply don't contain.
+targeted mutation, and checks whether the test goes red — **execution-grounded, not reasoning**. A
+survived mutation is a counterexample that proves the test hollow; a killed one confirms it solid
+*against that mutation*, not a blanket guarantee the test is fine. TEA has no mutation step of any
+kind. This is the cleanest, least-contested ground in the whole comparison: mutation-grounded evidence
+is a capability TEA's docs simply don't contain.
 
 > **How to check:** search TEA's workflow docs for mutation / "would this test fail" / kill-score.
 > `test-review` scores *test quality* statically; nothing runs a mutation. (Verified 2026-07-17.)
@@ -102,9 +106,9 @@ workflows. Two concrete seams, both feeding TEA's gate rather than competing wit
   human-override record (evidence → decision → reason) — exactly the labeled data Gate's calibration
   loop needs. TEA is stateless; Gate becomes the memory, fed by TEA's own audit trail.
 
-Net: **TEA plans and governs; Sentinel proves; Gate (eventually) weighs and remembers.** You can
-run TEA for its governance gate and slot `audit-test` in as the mutation proof its `test-review`
-structurally lacks — today, without adopting anything else.
+Net: **TEA plans and governs; Sentinel checks by execution; Gate (eventually) weighs and remembers.**
+You can run TEA for its governance gate and slot `audit-test` in as the mutation check its
+`test-review` structurally lacks — today, without adopting anything else.
 
 ## Caveats worth stating plainly
 

@@ -1,6 +1,6 @@
 ---
 name: audit-test
-description: Audit a passing test for false confidence — would it still pass if the code it covers broke? — and prove the answer by running a targeted mutation, not by reasoning alone
+description: Audit a passing test for false confidence — would it still pass if the code it covers broke? — by running a targeted mutation and reporting what actually happened, not by reasoning alone
 argument-hint: "[test name, test file, test + its code, or a directory/glob/--changed for batch]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -14,6 +14,8 @@ A green test is not proof. This skill asks the sharpest question about the tests
 The trap: an AI can *reason* a test is fine and be exactly as wrong as the test it's judging. So don't stop at reasoning. For a suspect test, reason out the single most-likely-breaking change to the code, **apply that mutation, run just that one test, and report what actually happened** — never the whole suite. The strongest honest claim is factual: "I broke the code like this and the test still passed." Whether the mutation was behaviorally meaningful stays a visible human judgment — this skill is a **challenger, not an oracle**. (See [ADR-0001](../../docs/adr/0001-audit-test-proves-by-execution.md).)
 
 There's a second, subtler failure the mutation alone can't see: a test whose assertion is *live* but **pinned to the wrong value** — edited to bless a regression (the fingerprint an AI self-healer leaves when it "fixes" a red test by rewriting the expected value). It kills mutations, so it reads 🟢 — yet it *enforces* the broken behavior and would reject the real fix. Catching it needs an intent signal, not just a mutation (see [ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md)).
+
+Every verdict below is this skill's own account of a mutation it actually ran in your session, not an independently verified measurement — there's no executable behind it checking its work, only the Safety rule below and you watching the tool calls go by.
 
 ## Steps
 
@@ -138,8 +140,10 @@ honest ([ADR-0038](../../docs/adr/0038-gate-trust-boundary-and-examined-floor-po
 self-labels the run (e.g. `"certify(floor=50%) · --changed"`), and when the certified scope is narrower than
 the whole suite the emission adds a rationale line naming it (`"certified scope: --changed (12 of ~180 suite
 test files) — ship recommendation is scoped to this changeset"`), so a certified `--changed` `ship` never
-*reads* broader than it is. These are free-text `scope` disclosures, not new predicate fields — Gate consumes
-neither.
+*reads* broader than it is. `scope` is a free-text disclosure, not a new predicate field the decision reads —
+but Gate *does* parse it as an optional passthrough and prints it verbatim in its own rendered report, next
+to the deep-audited fraction, so the disclosure reaches whoever reads Gate's report, not only a reader of
+this raw emission.
 
 ### Run trace (`runs[]`) — optional, execution-confirmed subset only
 
