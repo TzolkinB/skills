@@ -53,7 +53,7 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.7'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump; v0.7 = ADDITIVE `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25) — a rejected audit-test-json emission now renders/persists as its own state, distinct from `absent`
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.7'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump; v0.7 = ADDITIVE `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25, ADR-0042) — a rejected audit-test-json emission now renders/persists as its own state, distinct from `absent`
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
@@ -309,7 +309,7 @@ export function auditTestParsedEntry(tally, { markdown } = {}) {
   });
 }
 
-// ---- ingest: audit-test (REJECTED — a distinct state from `absent`, hostile-review finding #2, 2026-07-25) --
+// ---- ingest: audit-test (REJECTED — a distinct state from `absent`, hostile-review finding #2, 2026-07-25, ADR-0042) --
 //
 // `parseAuditEmission` returning null means the JSON was PROVIDED but is malformed or
 // arithmetically inconsistent — the single strongest signal Gate can produce about a broken or
@@ -606,7 +606,7 @@ function executionCounts(entry) {
   return { executed, skipped, discovered: executed + skipped };
 }
 
-// Report freshness (hostile-review finding #3, 2026-07-25) — OPT-IN via `--max-age`: unlike the
+// Report freshness (hostile-review finding #3, 2026-07-25, ADR-0042) — OPT-IN via `--max-age`: unlike the
 // examined/executed floors, there is no universally-safe default staleness threshold (a slow but
 // legitimate CI run and a genuinely stale leftover `results.json` are indistinguishable without a
 // user-supplied number), so this is null (no check) unless requested. Compares an execution
@@ -674,7 +674,7 @@ export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {
       const executedFloorMet = counts.discovered > 0 && counts.executed * 100 >= execFloor * counts.discovered;
       if (proposed === 'ship' && !executedFloorMet) proposed = 'canary';
 
-      // Freshness (#3, opt-in via --max-age; hostile-review finding #3, 2026-07-25) — checked
+      // Freshness (#3, opt-in via --max-age; hostile-review finding #3, 2026-07-25, ADR-0042) — checked
       // independently of the executed-floor above. Only actually changes the outcome when the
       // suite would otherwise have proposed `ship`; if the executed-floor already capped it at
       // `canary`, staleness is redundant to disclose here (the cap already happened).
@@ -734,7 +734,7 @@ export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {
                 : 'audit-test PASSED but reasoning-only (env not runnable) → canary (short of execution proof)',
     );
   } else if (audit && audit.predicate?.verdict?.rejected) {
-    // Rejected, not absent (#2, hostile-review finding #2, 2026-07-25): the emission was received
+    // Rejected, not absent (#2, hostile-review finding #2, 2026-07-25, ADR-0042): the emission was received
     // and failed a shape/consistency check — a distinct, disclosed state from `absent` (nothing
     // ever sent) or `opaque` (unparsed prose). Same `canary` ceiling as both — the decision is
     // unchanged (honesty guard #1); only the rationale/report now say WHY.
@@ -993,21 +993,19 @@ function main(argv) {
   // understood "unrun report is not a pass" path #111 built) rather than crashing — worst-wins
   // then caps the whole decision at `hold`, the conservative default for evidence Gate couldn't
   // read. A warning names which flag and why; bytes are content-addressed only when the file was
-  // actually readable (nothing to hash when the path itself didn't resolve).
+  // actually readable (nothing to hash when the path itself didn't resolve). Playwright and
+  // Cypress ingestion are structurally identical apart from which flag/entryFn/subject-name they
+  // use, so both route through this one helper rather than repeating the read/warn/degrade shape.
+  const ingestExecutionInput = (flagName, path, entryFn, subjectName) => {
+    const { raw, parsed, readError } = readJsonInputForCli(path);
+    if (readError) console.error(`⚠ ${flagName}=${path}: ${readError} — treating as no execution evidence (EMPTY → hold) rather than crashing.`);
+    entries.push(entryFn(parsed ?? {}, { uri: path }));
+    if (raw !== null) inputs.push({ name: subjectName, bytes: raw });
+  };
   const entries = [];
   const inputs = [];
-  if (opts.playwright) {
-    const { raw, parsed, readError } = readJsonInputForCli(opts.playwright);
-    if (readError) console.error(`⚠ --playwright=${opts.playwright}: ${readError} — treating as no execution evidence (EMPTY → hold) rather than crashing.`);
-    entries.push(playwrightEntry(parsed ?? {}, { uri: opts.playwright }));
-    if (raw !== null) inputs.push({ name: 'playwright-json', bytes: raw });
-  }
-  if (opts.cypress) {
-    const { raw, parsed, readError } = readJsonInputForCli(opts.cypress);
-    if (readError) console.error(`⚠ --cypress=${opts.cypress}: ${readError} — treating as no execution evidence (EMPTY → hold) rather than crashing.`);
-    entries.push(cypressEntry(parsed ?? {}, { uri: opts.cypress }));
-    if (raw !== null) inputs.push({ name: 'cypress-json', bytes: raw });
-  }
+  if (opts.playwright) ingestExecutionInput('--playwright', opts.playwright, playwrightEntry, 'playwright-json');
+  if (opts.cypress) ingestExecutionInput('--cypress', opts.cypress, cypressEntry, 'cypress-json');
 
   // Credibility evidence: prefer a PARSED audit-test emission (can unlock `ship`);
   // fall back to the OPAQUE Markdown report (floors at canary). A malformed emission
@@ -1051,7 +1049,7 @@ function main(argv) {
   if (opts['executed-floor'] !== undefined && Number(opts['executed-floor']) !== executedFloor)
     console.error(`⚠ --executed-floor=${opts['executed-floor']} is invalid or below the ${EXECUTED_FLOOR_MIN}% minimum — using ${executedFloor}%.`);
 
-  // Report freshness (#3) — opt-in, no default (see `staleMinutes`'s comment for why). An
+  // Report freshness (#3, ADR-0042) — opt-in, no default (see `staleMinutes`'s comment for why). An
   // invalid value disables the check rather than guessing, same disclosure treatment as an
   // invalid floor.
   const maxAgeMinutes = resolveMaxAgeMinutes(opts['max-age']);
@@ -1478,7 +1476,7 @@ function runSelfTest() {
   check('executed-floor: a fully-executed suite (0 skipped) still ships — no regression on the existing ship path',
     gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] })).decision === 'ship');
 
-  // ---- report freshness — opt-in via --max-age (#3, hostile-review finding #3, 2026-07-25).
+  // ---- report freshness — opt-in via --max-age (#3, hostile-review finding #3, 2026-07-25, ADR-0042).
   // Compares an execution entry's own `producer.startedOn` against the BUNDLE's `producedOn` —
   // both already-captured fields, so this stays a pure function of the bundle (no wall-clock
   // read inside `gate()` itself).
@@ -1496,6 +1494,14 @@ function runSelfTest() {
     gate(staleBundleAt('2026-07-20T12:30:00.000Z'), { maxAgeMinutes: 60 }).decision === 'ship');
   check('--max-age: an entry with no recorded startedOn is unaffected either way (nothing to check, not flagged stale)',
     gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] }), { maxAgeMinutes: 1 }).decision === 'ship');
+  // A malformed timestamp string (either side) can't be compared — same "nothing to check" treatment as a
+  // missing startedOn, not a crash and not a false-positive staleness flag.
+  const malformedStartPw = playwrightEntry({ stats: { expected: 12, unexpected: 0, flaky: 0, skipped: 0, startTime: 'not-a-timestamp' } });
+  check('--max-age: a malformed startedOn string is unaffected (unparseable, not flagged stale)',
+    gate(assembleBundle({ commit: 'x', entries: [malformedStartPw, auditTestParsedEntry(T.confirmedClean)] }), { maxAgeMinutes: 1 }).decision === 'ship');
+  const malformedProducedBundle = staleBundleAt('also-not-a-timestamp');
+  check('--max-age: a malformed bundle.producedOn is unaffected (unparseable, not flagged stale)',
+    gate(malformedProducedBundle, { maxAgeMinutes: 1 }).decision === 'ship');
   check('resolveMaxAgeMinutes: unset → null (no check)', resolveMaxAgeMinutes(undefined) === null);
   check('resolveMaxAgeMinutes: invalid input → null (disables rather than guesses)', resolveMaxAgeMinutes('not-a-number') === null);
   check('resolveMaxAgeMinutes: a valid override passes through', resolveMaxAgeMinutes('60') === 60);

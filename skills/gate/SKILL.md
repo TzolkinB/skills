@@ -75,7 +75,7 @@ reads `PASSED` and is capped at `canary` by the **executed-floor**, not treated 
     can never launder into `ship`.
   - If **both** a `.json` emission and a `.md` report are given, the parsed emission decides and the Markdown rides
     along inline for the human. A malformed or arithmetically-inconsistent emission is **rejected, not silently
-    dropped** (hostile-review finding #2, 2026-07-25): it persists as its own distinct `rejected` entry —
+    dropped** (hostile-review finding #2, 2026-07-25, [ADR-0042](../../docs/adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)): it persists as its own distinct `rejected` entry —
     content-addressed into the bundle's subjects, visibly marked `rejected` (not `absent`) in the rendered report —
     floors at the same `canary` ceiling absence already got, but is never silently identical to "nothing was ever
     sent." A warning still prints; the difference is that the rejection now also survives into the one artifact
@@ -249,7 +249,7 @@ Bundle written to gate-bundle.json
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. *Rejected*: a `.json`
   emission was given but failed `parseAuditEmission`'s shape/consistency check — a distinct state from *opaque*
   (unparsed prose) and *absent* (nothing given), persisted as its own entry rather than silently rendering
-  identically to absence (hostile-review finding #2, 2026-07-25; see Step 1 above). The **theater guard is
+  identically to absence (hostile-review finding #2, 2026-07-25, ADR-0042; see Step 1 above). The **theater guard is
   structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; opaque, rejected, absent, or
   examined-nothing all cap at `canary`, so there is no "run less, grade better" incentive.
 - **`scope` disclosure** ([#171](https://github.com/TzolkinB/skills/issues/171),
@@ -310,7 +310,7 @@ Bundle written to gate-bundle.json
   produced and its recorded digest no longer matches: the decision is bound to the exact bytes it ingested, not
   to a typed commit string. On its own this is **not** a signature — it detects a swapped input, it does not
   prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that.
-- **Report freshness — `--max-age`** (hostile-review finding #3, 2026-07-25). **Opt-in, no default**: unlike the
+- **Report freshness — `--max-age`** (hostile-review finding #3, 2026-07-25, [ADR-0042](../../docs/adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)). **Opt-in, no default**: unlike the
   examined/executed floors there is no universally-safe staleness threshold (a slow-but-legitimate CI run and a
   genuinely stale leftover `results.json` are indistinguishable without a number only you can supply), so this is
   off unless requested. Pass `--max-age=<minutes>` and the gate compares each execution entry's own recorded

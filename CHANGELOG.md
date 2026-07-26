@@ -20,7 +20,7 @@ release heading.
 ### Added
 
 - **`gate.mjs --max-age=<minutes>` — opt-in report-freshness check** (hostile-review finding #3,
-  2026-07-25). Compares an execution entry's own recorded `producer.startedOn` (Playwright's
+  2026-07-25, [ADR-0042](docs/adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)). Compares an execution entry's own recorded `producer.startedOn` (Playwright's
   `stats.startTime` / Cypress's `startedTestsAt` — already captured, never previously read) against the
   bundle's own `producedOn`; a suite whose report claims to have started longer ago than the window caps at
   `canary` instead of `ship-baseline`, with the staleness named in the rationale. **No default** — unlike the
@@ -33,7 +33,7 @@ release heading.
 ### Fixed
 
 - **`gate.mjs` persists a rejected `audit-test-json` emission as its own distinct state, not identically to
-  `absent`** (closes hostile-review finding #2, 2026-07-25). A malformed or arithmetically-inconsistent
+  `absent`** (closes hostile-review finding #2, 2026-07-25, [ADR-0042](docs/adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)). A malformed or arithmetically-inconsistent
   emission — the single strongest signal Gate can produce about a broken or dishonest producer — previously
   only reached a stderr warning; the bundle and rendered report then read exactly as if nothing had been sent
   at all. `auditTestRejectedEntry()` now persists a `{ rejected: true, reason }` evidence entry,

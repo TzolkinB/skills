@@ -63,7 +63,7 @@ self-report, it does **not** make it trustless — Gate still never re-runs the 
 **Third** — real engineering, no shortcut; the maturity pass that earned back "attestation"/"signed"
 language for the v1, replacing the "aggregator of self-reports" caveat `references/critique-synthesis.md`
 said could not be honestly fixed for the scrapped v0 launch. **Partially closed (hostile-review finding #3,
-2026-07-25):** an opt-in `--max-age=<minutes>` now caps a suite at `canary` when its report claims to have
+2026-07-25, [ADR-0042](adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)):** an opt-in `--max-age=<minutes>` now caps a suite at `canary` when its report claims to have
 started longer ago than that, relative to when the bundle was assembled — closing the "stale leftover
 `results.json`" case. **Still open:** nothing binds a report to the specific `--commit` Gate was told to gate —
 a fresh-looking report regenerated moments before a *different* commit's gate run still passes (see
