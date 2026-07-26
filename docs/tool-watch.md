@@ -8,17 +8,22 @@ diff against whatever this file last said, not against their own memory.
 Format per tool: check method, current baseline, last-checked date. `last-checked` moves forward
 each time Job 1 runs, whether or not anything changed.
 
+Every known-tool check reaches only `registry.npmjs.org` and `raw.githubusercontent.com` — never
+`api.github.com` or `github.com`. The cloud session's outbound GitHub access is proxy-scoped to
+`TzolkinB/skills` only, so any request to another repo's GitHub-API/HTML endpoint 403s; npm and
+raw-content are not scoped and work for any public repo. See the Notes section.
+
 ## Known tools (Job 1 — weekly deterministic check)
 
 | Tool | Check | Baseline | Last checked |
 |---|---|---|---|
-| StrykerJS | npm `@stryker-mutator/core` dist-tags.latest | 9.6.1 (113 versions, modified 2026-05-13) | 2026-07-23 |
-| Tautest | npm `tautest` dist-tags.latest | 1.10.1 (10 versions, modified 2026-06-04) | 2026-07-23 |
-| Exspec | GitHub `mnapoli/exspec` releases API, latest tag | 0.1.7 (11 releases, published 2026-04-13) | 2026-07-23 (blocked this pass — see note) |
-| TEA (BMAD Test Architect) | GitHub `bmad-code-org/bmad-method-test-architecture-enterprise` releases API, latest tag | v1.19.1 (30 releases, published 2026-07-17) | 2026-07-23 (blocked this pass — see note) |
-| Playwright test agents | GitHub `microsoft/playwright` releases API, latest tag + grep release body for `planner`/`generator`/`healer`/`agent` | v1.61.1 (published 2026-06-23; agents feature landed 1.56; latest release body has no agent-keyword hits) | 2026-07-23 (blocked this pass — see note) |
-| Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 15.19.1 at top of changelog | 2026-07-23 |
-| Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; GitHub `LambdaTest/evidence-cli` HTTP status; `evidence-cli.dev` DNS | kane-cli 0.6.4; evidence-cli 0.1.7 (6 versions); repo status not re-checked this pass (GitHub scope restricted — see note); DNS NXDOMAIN | 2026-07-23 (npm + DNS legs only) |
+| StrykerJS | npm `@stryker-mutator/core` dist-tags.latest | 9.6.1 (113 versions, modified 2026-05-13) | 2026-07-25 |
+| Tautest | npm `tautest` dist-tags.latest | 1.10.1 (10 versions, modified 2026-06-04) | 2026-07-25 |
+| Exspec | npm `@mnapoli/exspec` dist-tags.latest | 0.1.7 (11 versions) | 2026-07-25 |
+| TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.19.1 | 2026-07-25 |
+| Playwright test agents | raw `microsoft/playwright` `main/docs/src/release-notes-js.md`, top `## Version` block + grep it for `planner`/`generator`/`healer`/`agent`; npm `@playwright/test` dist-tags.latest for the version number | v1.62 (published 2026-07-24; agents feature landed 1.56; 1.62 block has no agent-keyword hit) | 2026-07-25 |
+| Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 15.19.1 at top of changelog | 2026-07-25 |
+| Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; raw `LambdaTest/evidence-cli` `HEAD/package.json` HTTP status (404 = repo still private/absent, 200 = went public); `evidence-cli.dev` DNS | kane-cli 0.6.6; evidence-cli 0.1.7 (6 versions); repo raw-status 404 (still private); DNS NXDOMAIN | 2026-07-25 |
 
 Notes:
 - Playwright and Cypress checks are proxies (whole-product version, not an "agents-only" or
@@ -28,14 +33,17 @@ Notes:
 - A WebSearch sanity pass during setup (2026-07-22) claimed Cypress was at v16.0.0. The raw
   changelog said 15.19.1. The raw source wins — this is why Job 1 is curl-only, no LLM-search
   step, for every known-tool check.
-- 2026-07-23: this session's outbound GitHub access is proxy-scoped to `TzolkinB/skills` only —
-  every `api.github.com` and `github.com` request for a repo outside that scope (Exspec, TEA,
-  Playwright, and the Kane/LambdaTest `evidence-cli` repo-status leg) returned HTTP 403 "GitHub
-  access to this repository is not enabled for this session," regardless of `$GITHUB_TOKEN`. That
-  is a session-level restriction, not a signal about the tools themselves, so those four checks'
-  `Last checked` dates were left as-is rather than bumped without real data. The npm-registry and
-  DNS legs (unaffected by the GitHub scope) ran normally. If this restriction persists on future
-  runs, those checks need either a differently-scoped session or a non-GitHub-API check method.
+- GitHub-API scope: the cloud session's outbound GitHub access (`api.github.com` and `github.com`)
+  is proxy-scoped to `TzolkinB/skills` only — any other repo's GitHub endpoints 403 regardless of
+  `$GITHUB_TOKEN`. This is a standing session-level restriction, not a signal about the tools. All
+  external-repo checks therefore route around it entirely: `registry.npmjs.org` and
+  `raw.githubusercontent.com` are not scoped and serve any public repo. That is why Exspec/Kane use
+  npm, and TEA/Playwright/Cypress read `raw.githubusercontent.com`. The two previously-blocked legs
+  now covered this way: Playwright's release-body grep (2026-07-23 it hit the 403 via the releases
+  API; now reads `release-notes-js.md` raw) and Kane's repo-public check (was `github.com` HTTP
+  status; now `raw.githubusercontent.com` HTTP status on a repo file). The routine still writes to
+  `docs/tool-watch.md` and issue #144 via the GitHub Contents/Issues API — those are in-scope
+  (`TzolkinB/skills`) and unaffected.
 
 ## Discovery log (Job 2 — monthly, advisory only)
 
