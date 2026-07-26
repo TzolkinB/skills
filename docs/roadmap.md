@@ -43,7 +43,7 @@ the floor it proposes `canary` — no new categorical rung, same shape as
 
 ## Tier 2 — real capability, larger lift
 
-### 3. Real evidence integrity — DSSE signing, bind emissions to execution artifacts
+### 3. Real evidence integrity — DSSE signing, content-addressed inputs
 [#128](https://github.com/TzolkinB/skills/issues/128) (closed, 2026-07-22 via [ADR-0037](adr/0037-gate-evidence-integrity.md)) — reserved-not-built
 since [ADR-0028](adr/0028-witness-gate-skill-mvp1.md), now built as a smaller, honest set of integrity
 properties. Three capabilities landed: **A** — opt-in self-signed ed25519 DSSE signing of the gate
@@ -62,7 +62,10 @@ self-report, it does **not** make it trustless — Gate still never re-runs the 
 `ship`-eligibility rule is unchanged.
 **Third** — real engineering, no shortcut; the maturity pass that earned back "attestation"/"signed"
 language for the v1, replacing the "aggregator of self-reports" caveat `references/critique-synthesis.md`
-said could not be honestly fixed for the scrapped v0 launch.
+said could not be honestly fixed for the scrapped v0 launch. **Known gap, still open:** none of A/B1/B2
+bind an ingested report to *when* it was produced or to the commit Gate was told to gate — a stale
+`results.json` from an earlier run gates cleanly today (see `gate/SKILL.md`'s "Known limit" note under
+Content-addressed inputs). Closing that is a distinct, not-yet-scoped follow-up, not covered by this item.
 
 ### 4. Calibration loop — numeric `confidence`
 [#129](https://github.com/TzolkinB/skills/issues/129) (open). The big one. Folded into [#49](https://github.com/TzolkinB/skills/issues/49) (epic) from the

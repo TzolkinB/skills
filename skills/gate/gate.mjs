@@ -878,8 +878,9 @@ function main(argv) {
     const publicKey = createPublicKey(readFileSync(abs(opts.pubkey), 'utf8'));
     const result = verifyGateBundle(bundle, publicKey);
     if (result.valid) {
-      console.log(`✓ signature valid — the gate decision \`${result.attested.decision}\`, its ${result.attested.subjects.length} content-addressed subject(s) (inputs + evidence entries), and producedOn/schemaVersion are all unaltered since signing (keyid ${result.keyid}).`);
+      console.log(`✓ signature valid (ed25519, self-signed) — the gate decision \`${result.attested.decision}\`, its ${result.attested.subjects.length} content-addressed subject(s) (inputs + evidence entries), and producedOn/schemaVersion are all unaltered since signing (keyid ${result.keyid}).`);
       console.log('  scope: the signature covers the whole normalized bundle — the gate Statement, the content-addressed inputs and evidence entries, and producedOn/schemaVersion (#158, ADR-0040).');
+      console.log('  self-signed: proves integrity (unaltered) and continuity (same key) — not third-party identity, not Sigstore.');
     } else {
       console.log(`✗ verification failed: ${result.reason}`);
     }

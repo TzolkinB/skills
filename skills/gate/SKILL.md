@@ -295,7 +295,12 @@ Bundle written to gate-bundle.json
   field on the gate **predicate** (honesty guard #3 untouched). Swap or edit an input file after the bundle is
   produced and its recorded digest no longer matches: the decision is bound to the exact bytes it ingested, not
   to a typed commit string. On its own this is **not** a signature — it detects a swapped input, it does not
-  prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that.
+  prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that. **Known
+  limit:** nothing binds an ingested report to *when* it ran or to the named `--commit`. Playwright/Cypress's
+  own start-time is captured on the evidence entry but never compared against anything, and there is no
+  `--max-age` or freshness check — a stale `results.json` left over from a previous run (or one produced from a
+  different commit than the `--commit` passed in) gates cleanly against today's decision as long as its bytes
+  match what's on disk.
 - **Optional DSSE signing** ([#141](https://github.com/TzolkinB/skills/issues/141),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §1, widened by
   [#158](https://github.com/TzolkinB/skills/issues/158)/[ADR-0040](../../docs/adr/0040-widen-gate-signed-scope-to-entries.md))
@@ -313,6 +318,11 @@ Bundle written to gate-bundle.json
   never third-party **identity** — it is **not Sigstore**, and the skill must not say "Sigstore," "verified
   identity," or "trusted publisher." Only a bundle that *is* signed earns "signed" / "tamper-evident" /
   "attestation"; an unsigned bundle (the default) keeps saying "in-toto-shaped, not a signed attestation."
+  **Known limit:** `--verify` rejects any `schemaVersion` mismatch as a shape error before it even checks the
+  signature, with the same "cannot vouch for a malformed bundle" message tampering would produce — so a bundle
+  signed under an older schema version fails `--verify` with a tamper-shaped error, not a version-shaped one,
+  once `SCHEMA_VERSION` moves on. There is no version allow-list; a signed bundle must be re-generated (and
+  re-signed) after a schema bump to keep verifying.
 - **No manufactured number.** There is no `confidence`/score anywhere; the gate reasons over categories, not
   magnitudes. The schema forbids a numeric field in the gate entry — re-adding one requires a schema-version
   bump, which is the signal a real calibration loop has landed.
