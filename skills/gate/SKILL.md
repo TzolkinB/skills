@@ -1,6 +1,6 @@
 ---
 name: gate
-description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND ran to completion — the executed fraction of what the suite discovered clears the executed-floor (default 50%, overridable down to a 25% minimum; a near-all-skipped run caps at canary instead) — AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a content-addressed, shape-checked self-report, cross-checked against its own per-test run trace when one is carried, not an independent re-verification (Gate never re-runs the mutation); caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the whole normalized bundle — the gate decision, its content-addressed input digests, its parsed evidence entries, and producedOn/schemaVersion — with a self-signed ed25519 key so a reader can verify none of it was altered after Gate produced it — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
+description: "The Gate stage (stage 7). Ingest a PR's existing E2E results (Playwright JSON and/or a Cypress Module API result) + an audit-test verdict (parsed emission or opaque report) into one readable evidence bundle, then derive an advisory ship/canary/hold release decision by worst-wins. Recommends ship only when the PR's own E2E results are green AND clear an executed-floor against the tests the report itself says it discovered (default 50%, overridable down to a 25% minimum; a near-all-skipped run caps at canary instead — note the discovered count is self-reported, so a discovery/filter/config change that narrows the suite before the report is written isn't caught) — AND a parsed audit-test verdict reports no hollow tests among the tests it deep-audited AND that deep-audited fraction clears the examined-floor (default 50%, overridable down to a 25% minimum) — a content-addressed, shape-checked self-report, cross-checked against its own per-test run trace when one is carried, not an independent re-verification (Gate never re-runs the mutation); caps at canary while credibility is unread, unparsed, or under-examined; carries no confidence number; advisory only — does not abort the build, and a hold/canary does not by itself stop a deployment. Optionally DSSE-signs the whole normalized bundle — the gate decision, its content-addressed input digests, its parsed evidence entries, and producedOn/schemaVersion — with a self-signed ed25519 key so a reader can verify none of it was altered after Gate produced it — self-signed, not Sigstore; unsigned by default. Use at the end of a PR to turn scattered test signals into one honest, human-readable release recommendation."
 argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -19,10 +19,11 @@ the Gate reads what a PR already produced — an E2E result (a Playwright JSON r
 bundle** (in-toto-*shaped* Statement entries — [ADR-0032](../../docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md)
 — one structured JSON record per stage, over **content-addressed subjects**: the PR head commit plus a sha256
 digest of every ingested input file ([#139](https://github.com/TzolkinB/skills/issues/139),
-[ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2) — **DSSE-signed in-toto attestations when a
-signing key is supplied** ([#141](https://github.com/TzolkinB/skills/issues/141), ADR-0037 §1); **unsigned by
-default**, in which case a bundle stays exactly what it always was — in-toto-*shaped*, not a signed
-attestation), and derives one **categorical, advisory** release decision by taking the **most conservative**
+[ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2) — a **DSSE envelope over that in-toto-*shaped*
+Statement when a signing key is supplied** ([#141](https://github.com/TzolkinB/skills/issues/141), ADR-0037 §1;
+no standard in-toto tooling consumes this bundle as-is); **unsigned by default**, in which case a bundle stays
+exactly what it always was — in-toto-*shaped*, not a signed attestation), and derives one **categorical,
+advisory** release decision by taking the **most conservative**
 category any input proposes — **worst-wins, spelled out**: if any input proposes `hold` → `hold`; else if any
 input proposes `canary` → `canary`; else `ship`. The decision rule is **deterministic code** (`gate.mjs`), not a
 judgment call: given the same bundle, it always yields the same decision. That determinism is scoped to this one
@@ -152,8 +153,10 @@ Tell the user where the bundle was written. Then interpret it honestly:
     ([#157](https://github.com/TzolkinB/skills/issues/157)) — a green result over a sliver of the suite is not
     evidence the rest of it ran. Fix the discovery/filter/config that's skipping most of the suite, or re-gate
     with a consciously lower `--executed-floor` (never below 25%) if the narrower scope was intentional.
-- **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green, **ran to completion**
-  (its executed fraction clears the executed-floor — `executed`/`discovered` ≥ 50% by default, [#157](https://github.com/TzolkinB/skills/issues/157)),
+- **`ship`** — *every* E2E suite you passed in (Playwright and/or Cypress) is green and **clears an
+  executed-floor against what the report itself says it discovered** (`executed`/`discovered` ≥ 50% by default,
+  [#157](https://github.com/TzolkinB/skills/issues/157) — the discovered count is self-reported, so a
+  discovery/filter/config change that quietly narrows the suite before the report is written isn't caught),
   **and** a *parsed* `audit-test` verdict is `PASSED` + `confirmed` **and** the deep-audited fraction clears the
   examined-floor (`deepAudited`/`audited` ≥ 50% by default): the deep audits ran, killed their mutations, found
   no hollow tests **among the deep-audited subset**, and that subset was big enough to call the result honest.
@@ -245,7 +248,11 @@ Bundle written to gate-bundle.json
   narrower scope like `--changed` covered. the Gate passes it through unread by the decision (honesty guard #1
   untouched — `scope` never drives `result`/`label`) and prints it verbatim next to the deep-audited fraction in
   its own rendered report, so a certified `--changed` `ship` discloses its narrowness to whoever reads the Gate
-  report, not only a reader of the raw emission.
+  report, not only a reader of the raw emission. When `scope` is absent, the report says so explicitly
+  ("reported scope: none declared") rather than just omitting the clause. **Known limit:** there is no minimum
+  on `audited` itself — the examined-floor is a pure ratio, so `audited: 2, deepAudited: 1` clears the default
+  50% floor on a two-test triage exactly as it would on a two-thousand-test one; the mechanically-derived
+  fraction the report prints is the only anchor a reader gets against the suite's real size.
 - **Run-trace cross-check** ([#142](https://github.com/TzolkinB/skills/issues/142),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §3). A parsed emission may also carry an optional
   `runs[]` — one record per test a mutation was actually **executed** against, with its outcome (`killed` |
@@ -273,7 +280,13 @@ Bundle written to gate-bundle.json
   `unexpected`+`flaky` vs `skipped`; Cypress's `totalPassed`+`totalFailed` vs `totalPending`+`totalSkipped`),
   and requires `executed`/`discovered` to clear a floor — default **50%**, overridable via `--executed-floor`
   but never below a **25%** minimum, clamped (with a warning) rather than silently honored — before a `PASSED`
-  suite proposes `ship-baseline`; short of it, it proposes `canary`. Same honesty-guard #3 treatment: the
+  suite proposes `ship-baseline`; short of it, it proposes `canary`. **Known limit:** `discovered` is read
+  straight from the report's own counts (`executed`+`skipped` for Playwright, `totalTests` for Cypress) — the
+  Gate has no independent count of how many tests *should* exist, so a discovery/filter/config change that
+  narrows the suite *before* the report is written (a `testDir`/`testMatch` change, a title filter, a shard) can
+  still produce a report that honestly says `skipped: 0` and clears the floor at 100%. This floor catches a
+  suite that reports its own skips; it does not catch one that was quietly filtered before it got the chance.
+  Same honesty-guard #3 treatment: the
   floor's numbers live only in rationale prose, never as a field on the gate predicate.
 - **Content-addressed inputs** ([#139](https://github.com/TzolkinB/skills/issues/139),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §2). Every ingested file (the Playwright JSON,
@@ -282,7 +295,12 @@ Bundle written to gate-bundle.json
   field on the gate **predicate** (honesty guard #3 untouched). Swap or edit an input file after the bundle is
   produced and its recorded digest no longer matches: the decision is bound to the exact bytes it ingested, not
   to a typed commit string. On its own this is **not** a signature — it detects a swapped input, it does not
-  prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that.
+  prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that. **Known
+  limit:** nothing binds an ingested report to *when* it ran or to the named `--commit`. Playwright/Cypress's
+  own start-time is captured on the evidence entry but never compared against anything, and there is no
+  `--max-age` or freshness check — a stale `results.json` left over from a previous run (or one produced from a
+  different commit than the `--commit` passed in) gates cleanly against today's decision as long as its bytes
+  match what's on disk.
 - **Optional DSSE signing** ([#141](https://github.com/TzolkinB/skills/issues/141),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §1, widened by
   [#158](https://github.com/TzolkinB/skills/issues/158)/[ADR-0040](../../docs/adr/0040-widen-gate-signed-scope-to-entries.md))
@@ -300,6 +318,11 @@ Bundle written to gate-bundle.json
   never third-party **identity** — it is **not Sigstore**, and the skill must not say "Sigstore," "verified
   identity," or "trusted publisher." Only a bundle that *is* signed earns "signed" / "tamper-evident" /
   "attestation"; an unsigned bundle (the default) keeps saying "in-toto-shaped, not a signed attestation."
+  **Known limit:** `--verify` rejects any `schemaVersion` mismatch as a shape error before it even checks the
+  signature, with the same "cannot vouch for a malformed bundle" message tampering would produce — so a bundle
+  signed under an older schema version fails `--verify` with a tamper-shaped error, not a version-shaped one,
+  once `SCHEMA_VERSION` moves on. There is no version allow-list; a signed bundle must be re-generated (and
+  re-signed) after a schema bump to keep verifying.
 - **No manufactured number.** There is no `confidence`/score anywhere; the gate reasons over categories, not
   magnitudes. The schema forbids a numeric field in the gate entry — re-adding one requires a schema-version
   bump, which is the signal a real calibration loop has landed.
