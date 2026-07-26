@@ -17,7 +17,52 @@ release heading.
 
 ## [Unreleased]
 
+### Added
+
+- **`gate.mjs --max-age=<minutes>` — opt-in report-freshness check** (hostile-review finding #3,
+  2026-07-25, [ADR-0042](docs/adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)). Compares an execution entry's own recorded `producer.startedOn` (Playwright's
+  `stats.startTime` / Cypress's `startedTestsAt` — already captured, never previously read) against the
+  bundle's own `producedOn`; a suite whose report claims to have started longer ago than the window caps at
+  `canary` instead of `ship-baseline`, with the staleness named in the rationale. **No default** — unlike the
+  examined/executed floors there is no universally-safe staleness threshold, so the check is off unless
+  requested. An entry with no recorded start time is silently unaffected (nothing to check). Closes the "a
+  stale leftover `results.json` from an earlier run gates cleanly" gap for the common case; does not (yet)
+  bind a report to the specific `--commit` named on the bundle — that remains open (see `gate/SKILL.md`'s
+  "Report freshness" note, and `docs/roadmap.md` item 3).
+
 ### Fixed
+
+- **`gate.mjs` persists a rejected `audit-test-json` emission as its own distinct state, not identically to
+  `absent`** (closes hostile-review finding #2, 2026-07-25, [ADR-0042](docs/adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)). A malformed or arithmetically-inconsistent
+  emission — the single strongest signal Gate can produce about a broken or dishonest producer — previously
+  only reached a stderr warning; the bundle and rendered report then read exactly as if nothing had been sent
+  at all. `auditTestRejectedEntry()` now persists a `{ rejected: true, reason }` evidence entry,
+  content-addressed into the bundle's subjects like any other ingested input; `gate()` gives it its own
+  rationale line and a `rejected: true` flag on the gate predicate's input (still floors at `canary` — the
+  decision is unchanged, honesty guard #1 intact); `renderReport()` shows `rejected`, not `absent`, in the
+  Inputs list. `schemaVersion` bumps `v0.6` → `v0.7` (additive — a bundle that never uses `rejected` validates
+  identically); the committed signed fixture is regenerated under v0.7. Proven via a real CLI subprocess (not
+  just the underlying pure functions), matching the existing `--certify` self-test's shell-out pattern.
+
+- **`gate.mjs` no longer crashes on a malformed execution report or a missing credibility-evidence path**
+  (closes hostile-review finding #4, 2026-07-25 — the one flagged as shouldn't wait). A truncated/unparseable
+  Playwright or Cypress JSON threw an uncaught `SyntaxError`; a missing `--audit-test`/`--audit-test-json`
+  path threw `ENOENT` — both exited 1 with a raw stack trace despite the file's own "advisory — NEVER fails
+  the build" claim. `readJsonInputForCli` now returns a `readError` instead of throwing; an unreadable
+  execution report degrades to an `EMPTY` entry (the same, already-understood "unrun report is not a
+  pass" path, #111), capping the decision at `hold` rather than crashing. A missing audit-test path warns and
+  falls back to whatever else is available (or absent). Exit code stays 0 in both cases — `--verify` and
+  internal bundle-shape-validation failures remain the only paths that exit non-zero. Proven via a real CLI
+  subprocess spawn against a truncated fixture and a nonexistent path, not just a unit test of the parser.
+
+- **`gate.mjs`'s rendered report now surfaces whether a `ship` verdict's run trace was actually cross-checked**
+  (closes hostile-review finding #5, 2026-07-25). `runsVerified` was computed at ingest
+  (`auditTestParsedEntry`, #142/ADR-0037 §3) but never read by `renderReport` — two `ship` verdicts of
+  materially different evidential weight (a per-test run trace cross-checked vs a bare tally) printed
+  identically apart from an input digest. The `audit-test` line in "Inputs — worst-wins" now states either
+  `(N run records cross-checked)` or `(no run trace carried — tally unverified against per-test records)`.
+  Pure rendering change — reads the audit-test evidence entry's own metrics; the gate predicate and the
+  decision itself are untouched (honesty guard #3 intact).
 
 - **`gate.mjs` widens the DSSE signed scope to evidence entries + `producedOn`/`schemaVersion`** (closes
   #158, ChatGPT Tier 2.3 critique finding F5, [ADR-0040](docs/adr/0040-widen-gate-signed-scope-to-entries.md),
