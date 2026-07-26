@@ -1,4 +1,4 @@
-# The AI-Test Tooling Orchestration Map (draft v0.1)
+# The AI-Test Tooling Orchestration Map
 
 **Thesis:** This repo is an *opinionated orchestration layer* over the ecosystem of free AI-test
 tools — a curated map of **which tool is best for which stage of the QA workflow, and in what
@@ -44,6 +44,20 @@ doesn't earn a spot.** See the Evidence Ledger below.
 
 ---
 
+## Head-to-head comparisons — "why ours, not just theirs?"
+
+Per-competitor notes, each held to the no-unverified-claim bar and stated in the other tool's favor
+where it wins. Read these when you're deciding between a specific external tool and ours:
+
+- **[`comparisons/mutation-tools.md`](comparisons/mutation-tools.md)** — Stryker / Tautest / Exspec /
+  Pitest·Arcmutate. The layered false-confidence answer: **run the mutation tool at the unit layer
+  (they win there); reach for `audit-test` at the app-driven E2E layer they structurally can't enter;
+  Gate composes, it doesn't verify.**
+- **[`comparisons/tea.md`](comparisons/tea.md)** — BMAD TEA. Use it for risk planning + governance
+  gate; reach for Sentinel for the mutation check and calibration TEA's docs show it can't do.
+
+---
+
 ## The spine: seven QA workflow stages
 
 ```
@@ -71,7 +85,7 @@ app-driven ecosystem — Playwright's planner/generator/healer, Cypress AI, Heal
 Kim's lane is not "build Playwright/Cypress author/heal tools" (first-party already owns that) — it
 is the **trust/credibility counterweight** to a green-pushing ecosystem: **Audit** (prove green),
 **honest Flake** (detect + quarantine, don't heal-to-hide), and **Gate** (aggregate + calibrate).
-That is a sharper, more defensible gap than v0.1 stated.
+That is the sharpest, most defensible statement of the gap.
 
 ## Flake-diagnosis evidence: the Cypress ↔ Playwright symmetry (in-lane, feeds stage 5–6)
 
