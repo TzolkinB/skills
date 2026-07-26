@@ -29,7 +29,7 @@ Don't write up feedback that hasn't happened yet. An empty issue tracker is more
 
 ## Changelog: append to `## [Unreleased]` in your PR
 
-Sentinel keeps a per-plugin changelog at [`CHANGELOG.md`](./CHANGELOG.md) in
+This plugin keeps a changelog at [`CHANGELOG.md`](./CHANGELOG.md) in
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. Any PR that changes
 user-facing behavior must add a bullet under the `## [Unreleased]` section, using the
 appropriate `Added` / `Changed` / `Deprecated` / `Removed` / `Fixed` / `Security`

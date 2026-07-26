@@ -5,13 +5,13 @@ behavior — not whether the suite is merely green. Aimed first at developers *w
 background who are accumulating AI-written tests faster than anyone can review them.
 
 _User-facing concept definitions shipped with the plugin live in `GLOSSARY.md`. This file is
-the canonical design vocabulary for building Sentinel — the words we commit to when we design._
+the canonical design vocabulary for building this plugin — the words we commit to when we design._
 
 ## Language
 
 **False-confidence test**:
 A test that passes but would keep passing even if the behavior it appears to protect were
-broken — it runs the code without verifying it. The single failure mode Sentinel exists to
+broken — it runs the code without verifying it. The single failure mode this plugin exists to
 expose. Its strongest form is a *pseudo-tested* path: one where the production code could be
 deleted and no test would fail.
 _Avoid_: green theater, green-light theater, suspicious passing test (informal color only, not the canonical term)
@@ -31,12 +31,12 @@ coverage) and `debug-test` (requires an existing *failure*).
 _Avoid_: test-assert (the retired predecessor)
 
 **Categorical confidence**:
-Sentinel reports confidence as named levels tied to concrete evidence, never as invented numbers.
+This plugin reports confidence as named levels tied to concrete evidence, never as invented numbers.
 Every verdict input carries its **provenance** — how it is known
 ([ADR-0013](docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)):
 **Confirmed** (a mutation was run and observed), **Likely** (reasoned only — the code could not be
 run), or **Unexamined** (read and triaged but never advanced past the funnel, so nothing executed
-or committed vouches for it). Sentinel *labels* provenance; it does not gate on execution — the
+or committed vouches for it). This plugin *labels* provenance; it does not gate on execution — the
 hard execution gate is the future evidence pipeline's job.
 _Avoid_: numeric confidence scores (e.g. "87% confident") — reserve those for that pipeline; and
 never let an Unexamined test sit in a "holds up" tally as if it were Confirmed.
@@ -62,8 +62,8 @@ _Avoid_: "full audit" / "deep audit" (a certification run still samples — it i
 
 **Sacred path**:
 A path (code or test) the user marks as critical for a `/sentinel` run, via `--sacred=<glob>`, so that
-Sentinel abandons its gradient there and applies binary rigor: a *confirmed* false-confidence finding or an
-unhandled boundary on that path forces an **un-overridable FAIL**. It's the one place Sentinel refuses
+`/sentinel` abandons its gradient there and applies binary rigor: a *confirmed* false-confidence finding or an
+unhandled boundary on that path forces an **un-overridable FAIL**. It's the one place `/sentinel` refuses
 CAUTION — and only ever on confirmed evidence, never a reasoned-only (Likely) finding. Off sacred paths the
 gradient stands.
 _Avoid_: sacred regression (J-Rig's term for the release-blocking test case — related idea, different
