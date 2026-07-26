@@ -74,8 +74,12 @@ reads `PASSED` and is capped at `canary` by the **executed-floor**, not treated 
   - **Neither**: fine — *absence* also floors at `canary` (`no-credibility-evidence`), so a bare green Playwright run
     can never launder into `ship`.
   - If **both** a `.json` emission and a `.md` report are given, the parsed emission decides and the Markdown rides
-    along inline for the human. A malformed emission is **ignored with a warning** and degrades to the opaque report
-    (or absent) — never a silent upgrade.
+    along inline for the human. A malformed or arithmetically-inconsistent emission is **rejected, not silently
+    dropped** (hostile-review finding #2, 2026-07-25): it persists as its own distinct `rejected` entry —
+    content-addressed into the bundle's subjects, visibly marked `rejected` (not `absent`) in the rendered report —
+    floors at the same `canary` ceiling absence already got, but is never silently identical to "nothing was ever
+    sent." A warning still prints; the difference is that the rejection now also survives into the one artifact
+    you sign and keep.
 - **PR head commit**: `git rev-parse HEAD` — the bundle's subject.
 
 ### 2. Run the deterministic gate
@@ -84,7 +88,7 @@ Run the bundled script from **this skill's base directory** (shown to you when t
 ```
 node "<skill base dir>/gate.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
      [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--examined-floor=<pct>] \
-     [--executed-floor=<pct>] [--sign-key=<private-key.pem>] --commit=<sha> --out=gate-bundle.json
+     [--executed-floor=<pct>] [--max-age=<minutes>] [--sign-key=<private-key.pem>] --commit=<sha> --out=gate-bundle.json
 ```
 (Pass `--playwright`, `--cypress`, or both — at least one is required. `--examined-floor` defaults to
 `50`; a requested value below the `25` minimum is clamped, with a warning, never silently accepted —
@@ -93,6 +97,9 @@ only pass it when you consciously want to accept a narrower deep-audited scope t
 default `50`, clamped to a `25` minimum — and gates how much of what the suite *discovered* actually
 ran ([#157](https://github.com/TzolkinB/skills/issues/157)); only pass it when you consciously accept
 a narrower executed scope (e.g. a deliberately tag-filtered run) than the default.
+`--max-age` is opt-in with **no default** — pass a number of minutes to cap a suite at `canary` when its
+report claims to have started longer ago than that, relative to when this bundle is assembled (a stale
+leftover `results.json` from an earlier run); omit it and no freshness check runs at all.
 `--sign-key` is optional — omit it and the bundle is unsigned, exactly as before this option existed.)
 
 The script ([`gate.mjs`](./gate.mjs)) ingests, assembles the bundle, runs the worst-wins gate, appends a
@@ -235,13 +242,16 @@ Bundle written to gate-bundle.json
   not hidden:** Playwright reports `stats.flaky` directly; Cypress has no such count, so the Gate *derives*
   the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
   labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
-- **`audit-test` rides in two grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
+- **`audit-test` rides in three grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
   batch tally as `gate-audit-test/v0.3` structured data — the per-class **counts**, not prose. the Gate derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and
   the gate reads only the derived category, never the counts (honesty guard #1). *Opaque* (`--audit-test`): the
-  Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. The **theater guard
-  is structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; an opaque, absent, or examined-nothing
-  audit all cap at `canary`, so there is no "run less, grade better" incentive.
+  Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. *Rejected*: a `.json`
+  emission was given but failed `parseAuditEmission`'s shape/consistency check — a distinct state from *opaque*
+  (unparsed prose) and *absent* (nothing given), persisted as its own entry rather than silently rendering
+  identically to absence (hostile-review finding #2, 2026-07-25; see Step 1 above). The **theater guard is
+  structural**: only a parsed `PASSED`+`confirmed` verdict reaches `ship`; opaque, rejected, absent, or
+  examined-nothing all cap at `canary`, so there is no "run less, grade better" incentive.
 - **`scope` disclosure** ([#171](https://github.com/TzolkinB/skills/issues/171),
   [ADR-0038](../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md)). A parsed emission may
   carry an optional free-text `scope` string — e.g. a certification run naming how much of the whole suite a
@@ -259,12 +269,16 @@ Bundle written to gate-bundle.json
   `survived`) and exit code. When present, the Gate cross-checks it against the tally it rides alongside:
   `confirmedSolid` must equal the killed-record count, `confirmedHollow` the survived-record count, and
   `runs.length` must never exceed `deepAudited`. A tally that disagrees with its own trace is rejected the same
-  way an arithmetically-impossible tally is — it degrades to the opaque report or absence, never a silent
-  upgrade. At ingest this cross-checks the *evidence behind* a `confirmed` label against a granular, per-test,
-  internally-consistent trace instead of trusting a bare number (the bundle then records the verified
-  record **count**, `runsVerified`, not the per-test trace itself); it does **not** make the verdict independently verified — the trace is still
-  `audit-test`'s own account of its run (Gate cannot re-execute it, [ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)),
+  way an arithmetically-impossible tally is (see the *rejected* grade above). At ingest this cross-checks the
+  *evidence behind* a `confirmed` label against a granular, per-test, internally-consistent trace instead of
+  trusting a bare number (the bundle then records the verified record **count**, `runsVerified`, not the per-test
+  trace itself); it does **not** make the verdict independently verified — the trace is still `audit-test`'s own
+  account of its run (Gate cannot re-execute it, [ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)),
   and it opens no new path to `ship`. An emission with no `runs[]` is unaffected — this is purely additive.
+  `runsVerified` is now surfaced in the rendered report too (hostile-review finding #5, 2026-07-25): the
+  `audit-test` line in "Inputs — worst-wins" states either `(N run records cross-checked)` or `(no run trace
+  carried — tally unverified against per-test records)`, so two `ship` verdicts of different evidential weight no
+  longer read identically apart from an input digest.
 - **Coverage-aware ship gate — the examined-floor** ([#127](https://github.com/TzolkinB/skills/issues/127),
   [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)). A confirmed-clean verdict alone used to be enough to
   ship, even if `deepAudited` was a small minority of `audited` (the shipped fixture used to be `4 of 12` — 33%).
@@ -295,12 +309,19 @@ Bundle written to gate-bundle.json
   field on the gate **predicate** (honesty guard #3 untouched). Swap or edit an input file after the bundle is
   produced and its recorded digest no longer matches: the decision is bound to the exact bytes it ingested, not
   to a typed commit string. On its own this is **not** a signature — it detects a swapped input, it does not
-  prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that. **Known
-  limit:** nothing binds an ingested report to *when* it ran or to the named `--commit`. Playwright/Cypress's
-  own start-time is captured on the evidence entry but never compared against anything, and there is no
-  `--max-age` or freshness check — a stale `results.json` left over from a previous run (or one produced from a
-  different commit than the `--commit` passed in) gates cleanly against today's decision as long as its bytes
-  match what's on disk.
+  prove the bundle itself wasn't edited after the fact; pair it with `--sign-key` (below) for that.
+- **Report freshness — `--max-age`** (hostile-review finding #3, 2026-07-25). **Opt-in, no default**: unlike the
+  examined/executed floors there is no universally-safe staleness threshold (a slow-but-legitimate CI run and a
+  genuinely stale leftover `results.json` are indistinguishable without a number only you can supply), so this is
+  off unless requested. Pass `--max-age=<minutes>` and the gate compares each execution entry's own recorded
+  `producer.startedOn` (Playwright's `stats.startTime` / Cypress's `startedTestsAt` — already captured, previously
+  never read) against the bundle's own `producedOn`; a suite whose report claims to have started longer ago than
+  the window caps at `canary` even if it would otherwise ship, with the staleness named in the rationale. An entry
+  with no recorded start time can't be checked and is silently unaffected — no evidence either way, not flagged
+  stale. **Known limit:** this only catches a report that's old *relative to when this bundle was assembled* — it
+  does not (yet) bind a report to the specific `--commit` named on the bundle, so a stale report regenerated
+  moments before a DIFFERENT commit's gate run would still pass. Closing that fully needs a git-timestamp
+  cross-check, a distinct, not-yet-built follow-up.
 - **Optional DSSE signing** ([#141](https://github.com/TzolkinB/skills/issues/141),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §1, widened by
   [#158](https://github.com/TzolkinB/skills/issues/158)/[ADR-0040](../../docs/adr/0040-widen-gate-signed-scope-to-entries.md))
@@ -328,7 +349,14 @@ Bundle written to gate-bundle.json
   bump, which is the signal a real calibration loop has landed.
 - **Advisory / report-first** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) —
   it recommends, it never blocks a merge in v0. A `hold` or `canary` is a recommendation for a human or a CI
-  pipeline to act on; the Gate has no mechanism of its own to stop a build or a deployment.
+  pipeline to act on; the Gate has no mechanism of its own to stop a build or a deployment. This now holds for a
+  malformed *input* too (hostile-review finding #4, 2026-07-25): a truncated/unparseable Playwright or Cypress
+  report used to crash with an uncaught `SyntaxError`, and a missing `--audit-test`/`--audit-test-json` path used
+  to throw `ENOENT` — both exited 1 despite the "never fails the build" claim. Both now degrade instead: an
+  unreadable execution report becomes an `EMPTY` entry (the same, already-understood "unrun report is not a pass"
+  path, #111) capping the decision at `hold`; a missing credibility-evidence path warns and falls back to
+  whatever else is available (or absent). Exit code stays 0 either way — `--verify` and internal
+  bundle-shape-validation failures remain the only paths that exit non-zero.
 - **Housing & extraction:** everything lives under this one directory with a `gate://` namespace, so
   lifting the Gate to a standalone plugin is a folder move ([#99](https://github.com/TzolkinB/skills/issues/99),
   [#102](https://github.com/TzolkinB/skills/issues/102)).

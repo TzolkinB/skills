@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://gate.local/schema/evidence-bundle/v0.6",
-  "title": "Gate evidence bundle (v0.6)",
-  "description": "One readable JSON document binding per-stage in-toto-shaped Statement entries to content-addressed subjects at the bundle top level: the PR head commit plus one sha256 digest per ingested input file, optionally wrapped in a self-signed DSSE envelope. Contract v0.6 — v0 (LOCKED — resolution of TzolkinB/skills#102) plus an additive `EMPTY` execution result (TzolkinB/skills#111, v0.1, ADR-0031) plus the internal witness:// -> gate:// identifier rename (TzolkinB/skills#113, v0.2, ADR-0033) plus the proven -> confirmed taxonomy rename (TzolkinB/skills#126, v0.3, ADR-0034) plus per-input sha256 subjects binding the decision to the exact ingested bytes (TzolkinB/skills#139, v0.4, ADR-0037 §2) plus an OPTIONAL top-level `dsseEnvelope` — a self-signed ed25519 DSSE envelope over the bundle's `subject` + the gate entry's `predicate` (TzolkinB/skills#141, v0.5, ADR-0037 §1) plus, when signed, the DSSE payload ALSO digest-binds each parsed evidence entry and folds in `producedOn`/`schemaVersion` (TzolkinB/skills#158, v0.6, ADR-0040 — digest-bind-entries, not sign-all: entries ride in as content-addressed subjects, integrity not endorsement) — additive only, no shape change to `resourceDescriptor` or existing entries. Backward-compatible with v0.5 in SHAPE (a bundle with no `dsseEnvelope` still validates; one with only the `pr-head` subject still validates), but NOT in signature meaning: `validateBundle` hard-rejects any off-version `schemaVersion`, so a v0.5 bundle (signed or not) must be regenerated under v0.6, and a v0.6 signature is a strictly stronger claim than a v0.5 one (it additionally covers entries + producedOn/schemaVersion). Execution evidence = Playwright JSON and/or a Cypress Module API result (added additively per contract Q1: `stage` is a free string, so a new framework needs no schema change or version bump); no numeric confidence. audit-test rides either OPAQUE (Markdown inline, caps at canary) or PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+confirmed unlocks ship). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
+  "$id": "https://gate.local/schema/evidence-bundle/v0.7",
+  "title": "Gate evidence bundle (v0.7)",
+  "description": "One readable JSON document binding per-stage in-toto-shaped Statement entries to content-addressed subjects at the bundle top level: the PR head commit plus one sha256 digest per ingested input file, optionally wrapped in a self-signed DSSE envelope. Contract v0.7 — v0 (LOCKED — resolution of TzolkinB/skills#102) plus an additive `EMPTY` execution result (TzolkinB/skills#111, v0.1, ADR-0031) plus the internal witness:// -> gate:// identifier rename (TzolkinB/skills#113, v0.2, ADR-0033) plus the proven -> confirmed taxonomy rename (TzolkinB/skills#126, v0.3, ADR-0034) plus per-input sha256 subjects binding the decision to the exact ingested bytes (TzolkinB/skills#139, v0.4, ADR-0037 §2) plus an OPTIONAL top-level `dsseEnvelope` — a self-signed ed25519 DSSE envelope over the bundle's `subject` + the gate entry's `predicate` (TzolkinB/skills#141, v0.5, ADR-0037 §1) plus, when signed, the DSSE payload ALSO digest-binds each parsed evidence entry and folds in `producedOn`/`schemaVersion` (TzolkinB/skills#158, v0.6, ADR-0040 — digest-bind-entries, not sign-all: entries ride in as content-addressed subjects, integrity not endorsement) plus an additive `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25 — a malformed/inconsistent audit-test-json emission now persists as its own distinct state instead of rendering identically to `absent`) — additive only, no shape change to `resourceDescriptor` or existing entries. Backward-compatible with v0.6 in SHAPE (a bundle that never uses `rejected` still validates identically), but NOT in schemaVersion: `validateBundle` hard-rejects any off-version `schemaVersion`, so a v0.6 bundle (signed or not) must be regenerated under v0.7. Execution evidence = Playwright JSON and/or a Cypress Module API result (added additively per contract Q1: `stage` is a free string, so a new framework needs no schema change or version bump); no numeric confidence. audit-test rides OPAQUE (Markdown inline, caps at canary), PARSED (verdict.result+label — the B→A graduation, TzolkinB/skills#49; PASSED+confirmed unlocks ship), or REJECTED (verdict.rejected+reason — a malformed/inconsistent emission, distinct from absent). Extensibility = versioned predicateType URIs + ignore-unrecognized + per-entry annotations.",
   "type": "object",
   "required": ["schemaVersion", "subject", "producedOn", "entries"],
   "properties": {
-    "schemaVersion": { "const": "gate-evidence-bundle/v0.6" },
+    "schemaVersion": { "const": "gate-evidence-bundle/v0.7" },
     "subject": {
       "description": "The bundle's content-addressed subjects (contract Q4): always the `pr-head` git-commit subject, plus one sha256-digest subject per ingested input file (TzolkinB/skills#139) — swap an input's bytes and its digest, and so its subject, changes. Digests are lowercase hex strings living here, never in the gate predicate (honesty guard #3 is unaffected). Per-ENTRY subjects (named `entry:<stage>`) appear only inside a signed bundle's `dsseEnvelope` payload, not here at the bundle's own top-level `subject` — they are computed at sign/verify time from `bundle.entries` (TzolkinB/skills#158, ADR-0040), never stored redundantly on the bundle itself.",
       "type": "array",
@@ -92,6 +92,9 @@
           "properties": {
             "result": { "enum": ["PASSED", "WARNED", "FAILED", "EMPTY"] },
             "label": { "enum": ["confirmed", "likely", "unexamined"] },
+            "rejected": { "type": "boolean", "description": "audit-test only (v0.7): a malformed/internally-inconsistent audit-test-json emission was received and discarded — distinct from an opaque or absent audit-test. Carries no result/label/metrics." },
+            "reason": { "type": "string", "description": "A short, fixed diagnostic string alongside `rejected` — never producer-controlled prose (honesty guard #1)." },
+            "scope": { "type": "string" },
             "metrics": {
               "type": "array",
               "items": {
@@ -129,6 +132,7 @@
               "result": { "enum": ["PASSED", "WARNED", "FAILED", "EMPTY"] },
               "label": { "enum": ["confirmed", "likely", "unexamined"] },
               "opaque": { "type": "boolean" },
+              "rejected": { "type": "boolean" },
               "ignored": { "type": "boolean" },
               "proposed": { "enum": ["ship", "canary", "hold", null] }
             },

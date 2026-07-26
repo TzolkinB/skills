@@ -37,7 +37,7 @@
 // Usage:
 //   node gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
 //                    [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
-//                    [--examined-floor=<pct>] [--executed-floor=<pct>] [--commit=<sha>] \
+//                    [--examined-floor=<pct>] [--executed-floor=<pct>] [--max-age=<minutes>] [--commit=<sha>] \
 //                    [--out=<bundle.json>] [--sign-key=<private-key.pem>]   # ≥1 execution report; both allowed
 //   node gate.mjs --gen-key=<path-prefix>              # writes <prefix>.pem + <prefix>.pub.pem
 //   node gate.mjs --verify --bundle=<bundle.json> --pubkey=<public-key.pem>
@@ -53,7 +53,7 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.6'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.7'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump; v0.7 = ADDITIVE `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25) — a rejected audit-test-json emission now renders/persists as its own state, distinct from `absent`
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
@@ -305,6 +305,26 @@ export function auditTestParsedEntry(tally, { markdown } = {}) {
     producer: { id: 'gate://audit-test@0.x' },
     verdict,
     byproducts,
+    annotations: {},
+  });
+}
+
+// ---- ingest: audit-test (REJECTED — a distinct state from `absent`, hostile-review finding #2, 2026-07-25) --
+//
+// `parseAuditEmission` returning null means the JSON was PROVIDED but is malformed or
+// arithmetically inconsistent — the single strongest signal Gate can produce about a broken or
+// dishonest producer. Previously that signal only reached a stderr warning and the bundle/report
+// then read identically to `absent` (nothing was ever sent). This entry persists the rejection
+// itself: no result/label/metrics (there is nothing trustworthy to derive them from), `reason` a
+// short fixed diagnostic string. It still floors the credibility axis at `canary` — exactly what
+// `absent` already got — so honesty guard #1 (the decision) is unchanged; only the DISCLOSURE of
+// why is new.
+export function auditTestRejectedEntry(reason) {
+  return statement(EVIDENCE_PREDICATE, {
+    stage: 'audit-test',
+    producer: { id: 'gate://audit-test@0.x' },
+    verdict: { rejected: true, reason },
+    byproducts: [],
     annotations: {},
   });
 }
@@ -586,7 +606,37 @@ function executionCounts(entry) {
   return { executed, skipped, discovered: executed + skipped };
 }
 
-export function gate(bundle, { examinedFloor, executedFloor } = {}) {
+// Report freshness (hostile-review finding #3, 2026-07-25) — OPT-IN via `--max-age`: unlike the
+// examined/executed floors, there is no universally-safe default staleness threshold (a slow but
+// legitimate CI run and a genuinely stale leftover `results.json` are indistinguishable without a
+// user-supplied number), so this is null (no check) unless requested. Compares an execution
+// entry's own recorded `producer.startedOn` against the BUNDLE's own `producedOn` — both fields
+// already captured on the bundle, so this reuses data already in hand rather than reaching for
+// wall-clock time inside this otherwise-deterministic function (`producedOn` was fixed at
+// assembly time, in the CLI wrapper, not read again here). An entry with no recorded `startedOn`
+// can't be checked and is silently unaffected — no evidence either way, not flagged stale.
+// This only catches a report that is old RELATIVE TO WHEN THIS BUNDLE WAS ASSEMBLED — it does not
+// (yet) bind a report to the specific `--commit` named on the bundle; that remains a known,
+// separate gap (see gate/SKILL.md's Content-addressed inputs note).
+function staleMinutes(entry, bundle, maxAgeMinutes) {
+  const startedOn = entry?.predicate?.producer?.startedOn;
+  if (!startedOn) return null;
+  const startedMs = Date.parse(startedOn);
+  const producedMs = Date.parse(bundle?.producedOn);
+  if (!Number.isFinite(startedMs) || !Number.isFinite(producedMs)) return null;
+  const ageMinutes = (producedMs - startedMs) / 60000;
+  return ageMinutes > maxAgeMinutes ? ageMinutes : null;
+}
+
+// Clamp/parse a requested --max-age into a positive number of minutes, or null (no check) when
+// unset or invalid — invalid input disables the check rather than crashing or guessing a default.
+export function resolveMaxAgeMinutes(requested) {
+  if (requested === undefined || requested === null || requested === '') return null;
+  const n = Number(requested);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {}) {
   const floor = resolveExaminedFloor(examinedFloor);
   const execFloor = resolveExecutedFloor(executedFloor);
   const entries = bundle.entries ?? [];
@@ -624,6 +674,13 @@ export function gate(bundle, { examinedFloor, executedFloor } = {}) {
       const executedFloorMet = counts.discovered > 0 && counts.executed * 100 >= execFloor * counts.discovered;
       if (proposed === 'ship' && !executedFloorMet) proposed = 'canary';
 
+      // Freshness (#3, opt-in via --max-age; hostile-review finding #3, 2026-07-25) — checked
+      // independently of the executed-floor above. Only actually changes the outcome when the
+      // suite would otherwise have proposed `ship`; if the executed-floor already capped it at
+      // `canary`, staleness is redundant to disclose here (the cap already happened).
+      const stale = maxAgeMinutes != null ? staleMinutes(e, bundle, maxAgeMinutes) : null;
+      if (proposed === 'ship' && stale !== null) proposed = 'canary';
+
       // No new field needed to mark this: `result === 'PASSED'` with `proposed === 'canary'` is
       // otherwise unreachable on the execution axis (pre-#157, PASSED always proposed `ship`), so
       // it's a sufficient, schema-stable signal for the report to key off — same treatment
@@ -637,9 +694,11 @@ export function gate(bundle, { examinedFloor, executedFloor } = {}) {
             ? `${stage} produced no test results (empty/zero-test report) → hold (an unrun or empty report is not a pass — #111)`
             : result === 'WARNED'
               ? `${stage} WARNED (flaky)${scope} → canary (a trust defect, not buried under a note)`
-              : executedFloorMet
-                ? `${stage} PASSED${scope} → ship-baseline`
-                : `${stage} PASSED but only executed ${counts.executed} of ${counts.discovered} discovered tests (${executedPct}% — ${counts.skipped} skipped) → canary (execution incomplete — below the ${execFloor}% executed-floor, #157)`,
+              : !executedFloorMet
+                ? `${stage} PASSED but only executed ${counts.executed} of ${counts.discovered} discovered tests (${executedPct}% — ${counts.skipped} skipped) → canary (execution incomplete — below the ${execFloor}% executed-floor, #157)`
+                : stale !== null
+                  ? `${stage} PASSED${scope} but its report started ${Math.round(stale)}min before this bundle was produced — over the ${maxAgeMinutes}min --max-age → canary (stale evidence: looks like a report left over from an earlier run, #3)`
+                  : `${stage} PASSED${scope} → ship-baseline`,
       );
     }
   }
@@ -674,6 +733,14 @@ export function gate(bundle, { examinedFloor, executedFloor } = {}) {
                 ? 'audit-test PASSED but examined nothing (deep-audited 0) → canary (no proof of credibility — theater guard)'
                 : 'audit-test PASSED but reasoning-only (env not runnable) → canary (short of execution proof)',
     );
+  } else if (audit && audit.predicate?.verdict?.rejected) {
+    // Rejected, not absent (#2, hostile-review finding #2, 2026-07-25): the emission was received
+    // and failed a shape/consistency check — a distinct, disclosed state from `absent` (nothing
+    // ever sent) or `opaque` (unparsed prose). Same `canary` ceiling as both — the decision is
+    // unchanged (honesty guard #1); only the rationale/report now say WHY.
+    const reason = audit.predicate.verdict.reason ?? 'malformed or internally inconsistent';
+    inputs.push({ stage: 'audit-test', rejected: true, proposed: 'canary' });
+    rationale.push(`audit-test-json was rejected (${reason}) → floor at canary — the emission was received and discarded, not never sent`);
   } else if (audit) {
     inputs.push({ stage: 'audit-test', opaque: true, proposed: 'canary' });
     rationale.push('audit-test present but opaque → floor at canary (human must read the report)');
@@ -758,6 +825,19 @@ function findNumbers(value, path = 'predicate') {
 
 // ---- report (terminal) -----------------------------------------------------
 
+// Run-trace visibility (hostile-review finding #5, 2026-07-25): `runsVerified` was computed at
+// ingest (`auditTestParsedEntry`) but never surfaced in the rendered report — two `ship` verdicts
+// of materially different evidential weight (a per-test run trace cross-checked vs a bare tally)
+// printed identically apart from an input digest. Reads the metric straight off the audit-test
+// EVIDENCE entry's own metrics; the gate predicate itself stays untouched (honesty guard #3).
+function runTraceNote(bundle) {
+  const auditEv = bundle.entries.find((e) => e.predicate?.stage === 'audit-test');
+  const n = auditMetricsOf(auditEv).runsVerified;
+  return n === undefined
+    ? ' (no run trace carried — tally unverified against per-test records)'
+    : ` (${n} run record${n === 1 ? '' : 's'} cross-checked)`;
+}
+
 export function renderReport(bundle, gateEntry) {
   const d = gateEntry.predicate.decision;
   const icon = { ship: '🟢', canary: '🟡', hold: '🔴' }[d];
@@ -789,12 +869,14 @@ export function renderReport(bundle, gateEntry) {
     const detail = i.ignored
       ? 'ignored (unrecognized stage)'
       : i.label // a PARSED audit-test verdict carries result + proof-grade label
-        ? `${i.result} · ${i.label}`
+        ? `${i.result} · ${i.label}${i.stage === 'audit-test' ? runTraceNote(bundle) : ''}`
         : i.result
           ? `result=${i.result}`
-          : i.opaque
-            ? 'present but opaque (unread)'
-            : 'absent';
+          : i.rejected
+            ? 'rejected (malformed/inconsistent — discarded, not the same as never sent, #2)'
+            : i.opaque
+              ? 'present but opaque (unread)'
+              : 'absent';
     L.push(`- \`${i.stage}\` — ${detail} → proposes **${i.proposed ?? '—'}**`);
   }
   L.push('');
@@ -893,6 +975,7 @@ function main(argv) {
     console.log('                   [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
     console.log(`                   [--examined-floor=<pct>]  # default ${EXAMINED_FLOOR_DEFAULT}, clamped to a ${EXAMINED_FLOOR_MIN} minimum`);
     console.log(`                   [--executed-floor=<pct>]  # default ${EXECUTED_FLOOR_DEFAULT}, clamped to a ${EXECUTED_FLOOR_MIN} minimum (#157)`);
+    console.log('                   [--max-age=<minutes>]  # opt-in freshness check — no default (#3)');
     console.log('                   [--sign-key=<private-key.pem>]  # opt-in DSSE signing (ed25519) — unsigned by default');
     console.log('       gate.mjs --gen-key=<path-prefix>              # writes <prefix>.pem + <prefix>.pub.pem');
     console.log('       gate.mjs --verify --bundle=<bundle.json> --pubkey=<public-key.pem>');
@@ -904,31 +987,51 @@ function main(argv) {
   // one is required; both may be present (worst-wins across them in the gate). Raw bytes are
   // kept alongside the parsed form so they can be content-addressed into the bundle's
   // subjects (#139) — the hashing itself is pure (`inputSubjects`), only the read is here.
+  //
+  // A read/parse failure (#4) degrades to an EMPTY entry (`playwrightEntry({})` /
+  // `cypressEntry({})` both derive `EMPTY` from an empty stats object — the same, already-
+  // understood "unrun report is not a pass" path #111 built) rather than crashing — worst-wins
+  // then caps the whole decision at `hold`, the conservative default for evidence Gate couldn't
+  // read. A warning names which flag and why; bytes are content-addressed only when the file was
+  // actually readable (nothing to hash when the path itself didn't resolve).
   const entries = [];
   const inputs = [];
   if (opts.playwright) {
-    const { raw, parsed } = readJsonInputForCli(opts.playwright);
-    entries.push(playwrightEntry(parsed, { uri: opts.playwright }));
-    inputs.push({ name: 'playwright-json', bytes: raw });
+    const { raw, parsed, readError } = readJsonInputForCli(opts.playwright);
+    if (readError) console.error(`⚠ --playwright=${opts.playwright}: ${readError} — treating as no execution evidence (EMPTY → hold) rather than crashing.`);
+    entries.push(playwrightEntry(parsed ?? {}, { uri: opts.playwright }));
+    if (raw !== null) inputs.push({ name: 'playwright-json', bytes: raw });
   }
   if (opts.cypress) {
-    const { raw, parsed } = readJsonInputForCli(opts.cypress);
-    entries.push(cypressEntry(parsed, { uri: opts.cypress }));
-    inputs.push({ name: 'cypress-json', bytes: raw });
+    const { raw, parsed, readError } = readJsonInputForCli(opts.cypress);
+    if (readError) console.error(`⚠ --cypress=${opts.cypress}: ${readError} — treating as no execution evidence (EMPTY → hold) rather than crashing.`);
+    entries.push(cypressEntry(parsed ?? {}, { uri: opts.cypress }));
+    if (raw !== null) inputs.push({ name: 'cypress-json', bytes: raw });
   }
 
   // Credibility evidence: prefer a PARSED audit-test emission (can unlock `ship`);
   // fall back to the OPAQUE Markdown report (floors at canary). A malformed emission
-  // degrades to opaque-if-md-else-absent — never crash, never silently upgrade. Only
-  // bytes that actually made it into an entry are content-addressed — a rejected,
-  // never-ingested emission contributes no subject.
-  const md = opts['audit-test'] ? readFileSync(abs(opts['audit-test']), 'utf8') : undefined;
-  const auditJsonRaw = opts['audit-test-json'] ? readFileSync(abs(opts['audit-test-json']), 'utf8') : undefined;
+  // degrades to a REJECTED entry (#2 — distinct from absent) if-md-else-nothing — never
+  // crash, never silently upgrade. Only bytes that actually made it into an entry are
+  // content-addressed — a truly never-sent emission contributes no subject.
+  const md = opts['audit-test'] ? readTextFileOrWarn(opts['audit-test'], '--audit-test') : undefined;
+  const auditJsonRaw = opts['audit-test-json'] ? readTextFileOrWarn(opts['audit-test-json'], '--audit-test-json') : undefined;
   const tally = auditJsonRaw ? parseAuditEmission(auditJsonRaw) : null;
-  if (auditJsonRaw && !tally)
-    console.error(`⚠ --audit-test-json is not a valid gate-audit-test emission — ignoring it (falling back to ${md ? 'the opaque report' : 'no credibility evidence'}).`);
   if (tally) {
     entries.push(auditTestParsedEntry(tally, { markdown: md }));
+    inputs.push({ name: 'audit-test-json', bytes: auditJsonRaw });
+    if (md) inputs.push({ name: 'audit-test-report', bytes: md });
+  } else if (auditJsonRaw) {
+    // Rejected, not absent (#2): the JSON was received but failed the shape/consistency check in
+    // `parseAuditEmission` — persist that as its own entry rather than only a stderr warning, and
+    // content-address the rejected bytes (only a never-sent emission contributes no subject). A
+    // markdown report riding alongside still rides in, as a byproduct on this SAME entry — the
+    // gate only ever reads the first `audit-test`-stage entry it finds, and falling back to a
+    // competing opaque entry would silently bury the rejection the same way the old code did.
+    console.error('⚠ --audit-test-json is not a valid gate-audit-test emission — rejecting it (recorded as a distinct `rejected` entry, not silently dropped).');
+    const rejected = auditTestRejectedEntry('shape/consistency check failed — see the gate-audit-test emission schema');
+    if (md) rejected.predicate.byproducts.push({ name: 'audit-test-report', mediaType: 'text/markdown', text: md });
+    entries.push(rejected);
     inputs.push({ name: 'audit-test-json', bytes: auditJsonRaw });
     if (md) inputs.push({ name: 'audit-test-report', bytes: md });
   } else if (md) {
@@ -948,8 +1051,15 @@ function main(argv) {
   if (opts['executed-floor'] !== undefined && Number(opts['executed-floor']) !== executedFloor)
     console.error(`⚠ --executed-floor=${opts['executed-floor']} is invalid or below the ${EXECUTED_FLOOR_MIN}% minimum — using ${executedFloor}%.`);
 
+  // Report freshness (#3) — opt-in, no default (see `staleMinutes`'s comment for why). An
+  // invalid value disables the check rather than guessing, same disclosure treatment as an
+  // invalid floor.
+  const maxAgeMinutes = resolveMaxAgeMinutes(opts['max-age']);
+  if (opts['max-age'] !== undefined && maxAgeMinutes === null)
+    console.error(`⚠ --max-age=${opts['max-age']} is invalid (must be a positive number of minutes) — freshness check disabled for this run.`);
+
   const bundle = assembleBundle({ commit: opts.commit, entries, inputs });
-  const { gateEntry } = gate(bundle, { examinedFloor, executedFloor });
+  const { gateEntry } = gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes });
   bundle.entries.push(gateEntry);
 
   const errors = validateBundle(bundle);
@@ -993,9 +1103,40 @@ function abs(p) {
 // bytes are what gets content-addressed (#139), the parsed form is what gets ingested. The
 // `ForCli` suffix marks this as the CLI wrapper's own I/O helper: the file-read invariant
 // (all filesystem access stays with `main()`, never in the pure core) holds by name here.
-function readJsonInputForCli(path) {
-  const raw = readFileSync(abs(path), 'utf8');
-  return { raw, parsed: JSON.parse(raw) };
+//
+// Hardened (hostile-review finding #4, 2026-07-25): an unreadable path or malformed JSON used to
+// throw uncaught here, crashing with a raw stack trace despite the file's own "advisory — NEVER
+// fails the build" claim (a truncated `results.json` from a killed test runner is exactly the
+// kind of input this tool exists to survive). Now returns `readError` instead of throwing; the
+// caller degrades to treating the suite as EMPTY (no test results — #111's existing, already-
+// understood `hold` path) rather than crashing. `raw` stays `null` only when the file couldn't be
+// read at all (nothing to content-address); a file that WAS read but failed to parse still keeps
+// its raw bytes, so the decision remains bound to the exact bytes it saw even when they're junk.
+export function readJsonInputForCli(path) {
+  let raw;
+  try {
+    raw = readFileSync(abs(path), 'utf8');
+  } catch (err) {
+    return { raw: null, parsed: null, readError: `could not read ${path} (${err.code ?? err.message})` };
+  }
+  try {
+    return { raw, parsed: JSON.parse(raw) };
+  } catch {
+    return { raw, parsed: null, readError: `${path} is not valid JSON (malformed or truncated)` };
+  }
+}
+
+// Same "never throw, disclose and degrade" treatment for a plain-text input file (#4): used for
+// `--audit-test` (opaque Markdown) and `--audit-test-json` (the parsed emission) — a missing path
+// used to throw ENOENT uncaught. Returns undefined and prints a warning instead of crashing;
+// the caller already treats an undefined value as "this input wasn't given."
+function readTextFileOrWarn(path, flagName) {
+  try {
+    return readFileSync(abs(path), 'utf8');
+  } catch (err) {
+    console.error(`⚠ ${flagName}=${path}: could not read (${err.code ?? err.message}) — ignoring it.`);
+    return undefined;
+  }
 }
 
 // ---- certification sample-draw reproducibility (#171, ADR-0041) -----------
@@ -1057,6 +1198,62 @@ function runCertifySampleSelfTest(check) {
   }
 }
 
+// ---- CLI robustness — proving the real subprocess, not a reimplementation (#2, #4) ------------
+//
+// The truth-table checks above exercise `gate()`/`renderReport()` as pure functions; they never
+// go through `main()`'s own file-reading code, which is exactly where finding #4's crashes lived
+// (a bare `readFileSync`/`JSON.parse` with no try/catch) and where finding #2's rejected-vs-absent
+// bug lived (the CLI wrapper's own branching, not `parseAuditEmission` itself, which already
+// correctly returned null). Spawns the actual CLI as a child process — same pattern as
+// `runCertifySampleSelfTest` above shelling out to prove the real shell artifact — so this proves
+// the process genuinely exits 0 with no stack trace, not just that the right function was called.
+function runCliRobustnessSelfTest(check) {
+  const gatePath = resolve(HERE, 'gate.mjs');
+  const tmpDir = mkdtempSync(join(tmpdir(), 'gate-cli-robustness-'));
+  try {
+    const run = (args) => spawnSync(process.execPath, [gatePath, ...args], { cwd: tmpDir, encoding: 'utf8' });
+
+    // #4a — malformed/truncated playwright JSON must degrade to EMPTY → hold, never crash.
+    const badPwPath = join(tmpDir, 'bad-playwright.json');
+    writeFileSync(badPwPath, '{ "stats": { "expected": 1, '); // truncated — invalid JSON
+    const badPwOut = join(tmpDir, 'bad-pw-bundle.json');
+    const badPwResult = run([`--playwright=${badPwPath}`, '--commit=deadbeef', `--out=${badPwOut}`]);
+    check('#4: a truncated playwright JSON exits 0 (never crashes the build)', badPwResult.status === 0);
+    check('#4: no raw exception stack trace leaks to stderr', !/SyntaxError|at Object\.|at Module\._compile/.test(badPwResult.stderr ?? ''));
+    check('#4: a warning names the flag and the fallback', /--playwright=.*treating as no execution evidence/i.test(badPwResult.stderr ?? ''));
+    const badPwBundle = JSON.parse(readFileSync(badPwOut, 'utf8'));
+    const badPwGateEntry = badPwBundle.entries.find((e) => e.predicate?.stage === 'gate');
+    check('#4: the degraded bundle decides hold (EMPTY execution evidence, #111)', badPwGateEntry.predicate.decision === 'hold');
+
+    // #4b — a missing --audit-test-json path must warn and fall back to absent, never crash.
+    const goodPw = resolve(HERE, 'fixtures/playwright.passed.json');
+    const missingAuditOut = join(tmpDir, 'missing-audit-bundle.json');
+    const missingAuditResult = run([`--playwright=${goodPw}`, '--audit-test-json=' + join(tmpDir, 'does-not-exist.json'), '--commit=deadbeef', `--out=${missingAuditOut}`]);
+    check('#4: a missing --audit-test-json path exits 0 (never crashes)', missingAuditResult.status === 0);
+    check('#4: a warning names the missing path', /--audit-test-json=.*could not read/i.test(missingAuditResult.stderr ?? ''));
+    const missingAuditBundle = JSON.parse(readFileSync(missingAuditOut, 'utf8'));
+    const missingAuditInput = missingAuditBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.inputs.find((i) => i.stage === 'audit-test');
+    check('#4: falls back to absent (opaque:false, not rejected) — the path was never read, not rejected', missingAuditInput.rejected === undefined && missingAuditInput.opaque === false);
+
+    // #2 — a well-formed-JSON-but-inconsistent emission must persist as `rejected`, not `absent`.
+    const rejectedJsonPath = join(tmpDir, 'rejected-audit.json');
+    writeFileSync(rejectedJsonPath, JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 }));
+    const rejectedOut = join(tmpDir, 'rejected-bundle.json');
+    const rejectedResult = run([`--playwright=${goodPw}`, `--audit-test-json=${rejectedJsonPath}`, '--commit=deadbeef', `--out=${rejectedOut}`]);
+    check('#2: a rejected audit-test-json exits 0 (advisory — never fails the build)', rejectedResult.status === 0);
+    check('#2: a warning names the rejection', /is not a valid gate-audit-test emission — rejecting it/i.test(rejectedResult.stderr ?? ''));
+    check('#2: the rendered report shows `rejected`, not `absent`', /audit-test.*rejected/i.test(rejectedResult.stdout ?? ''));
+    const rejectedBundleOnDisk = JSON.parse(readFileSync(rejectedOut, 'utf8'));
+    const rejectedEvidenceEntry = rejectedBundleOnDisk.entries.find((e) => e.predicate?.stage === 'audit-test');
+    check('#2: the persisted bundle carries a distinct rejected audit-test entry (not silently dropped)', rejectedEvidenceEntry?.predicate?.verdict?.rejected === true);
+    check('#2: the rejected bytes are still content-addressed into subject[] (received, not never-sent)',
+      rejectedBundleOnDisk.subject.some((s) => s.name === 'audit-test-json'));
+    check('#2: the bundle still validates against the current schema', validateBundle(rejectedBundleOnDisk).length === 0);
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 // ---- golden truth-table self-test (deterministic, offline, zero-dep) -------
 
 function runSelfTest() {
@@ -1096,6 +1293,28 @@ function runSelfTest() {
   check('WARNED + no-audit → canary', decide('WARNED', false) === 'canary');
   check('no-playwright entry → hold', decide(null, true) === 'hold');
   check('empty bundle → hold', gate(assembleBundle({ commit: 'x', entries: [] })).decision === 'hold');
+
+  // ---- REJECTED audit-test-json — a distinct state from absent/opaque (#2, hostile-review
+  // finding #2, 2026-07-25). Same `canary` ceiling as absent (decision unchanged, honesty guard
+  // #1 intact) but must be DISCLOSED as its own thing, not silently rendered as "absent."
+  const rejectedBundle = (pw) =>
+    assembleBundle({
+      commit: 'deadbeef',
+      entries: [...(pw ? [mkPw(pw)] : []), auditTestRejectedEntry('arithmetically impossible tally')],
+    });
+  const rejectedGate = gate(rejectedBundle('PASSED'));
+  check('PASSED + rejected audit-test-json → canary (same ceiling as absent)', rejectedGate.decision === 'canary');
+  const rejectedInput = rejectedGate.gateEntry.predicate.inputs.find((i) => i.stage === 'audit-test');
+  check('rejected entry is marked `rejected: true` on the gate predicate — NOT `opaque` and NOT absent',
+    rejectedInput?.rejected === true && rejectedInput?.opaque === undefined && rejectedInput?.result === undefined);
+  check('rejected rationale names the rejection, not "absent"',
+    rejectedGate.gateEntry.predicate.rationale.some((r) => /rejected/.test(r) && !/no-credibility-evidence/.test(r)));
+  const rejectedEntries = rejectedBundle('PASSED').entries;
+  rejectedEntries.push(rejectedGate.gateEntry);
+  const rejectedReport = renderReport({ ...rejectedBundle('PASSED'), entries: rejectedEntries }, rejectedGate.gateEntry);
+  const rejectedInputsLine = rejectedReport.split('\n').find((l) => l.startsWith('- `audit-test`'));
+  check('rendered report shows `rejected`, not `absent`, in the Inputs list', /rejected/.test(rejectedInputsLine) && !/absent/.test(rejectedInputsLine));
+  check('a rejected gate entry still validates (no numeric field, valid decision)', validateGateEntry(rejectedGate.gateEntry).length === 0);
 
   // ---- PARSED audit-test (the B→A graduation) — derivation is a mechanical restatement
   // `confirmedClean` clears the default 50% examined-floor (4 of 8 = 50%, #127/ADR-0035);
@@ -1187,6 +1406,10 @@ function runSelfTest() {
   // Secondary seam — the documented sha256 draw command reproduces the checked-in golden sample.
   runCertifySampleSelfTest(check);
 
+  // CLI robustness — proves the real subprocess never crashes and persists rejected-vs-absent
+  // correctly (#2, #4), not just that the underlying pure functions behave.
+  runCliRobustnessSelfTest(check);
+
   const belowFloorBundle = assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedBelowFloor)] });
   const belowFloorGate = gate(belowFloorBundle);
   belowFloorBundle.entries.push(belowFloorGate.gateEntry);
@@ -1254,6 +1477,30 @@ function runSelfTest() {
   // Regression guard: the existing fixture-backed ship path (0 skipped) is unaffected by #157.
   check('executed-floor: a fully-executed suite (0 skipped) still ships — no regression on the existing ship path',
     gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] })).decision === 'ship');
+
+  // ---- report freshness — opt-in via --max-age (#3, hostile-review finding #3, 2026-07-25).
+  // Compares an execution entry's own `producer.startedOn` against the BUNDLE's `producedOn` —
+  // both already-captured fields, so this stays a pure function of the bundle (no wall-clock
+  // read inside `gate()` itself).
+  const freshPw = playwrightEntry({ stats: { expected: 12, unexpected: 0, flaky: 0, skipped: 0, startTime: '2026-07-20T12:00:00.000Z' } });
+  const staleBundleAt = (producedOn) => {
+    const b = assembleBundle({ commit: 'x', entries: [freshPw, auditTestParsedEntry(T.confirmedClean)] });
+    b.producedOn = producedOn;
+    return b;
+  };
+  check('--max-age unset (default): a report started long before the bundle was produced still ships — no check unless requested',
+    gate(staleBundleAt('2026-07-21T12:00:00.000Z')).decision === 'ship');
+  check('--max-age=60: a report started 24h before the bundle was produced is capped at canary (stale)',
+    gate(staleBundleAt('2026-07-21T12:00:00.000Z'), { maxAgeMinutes: 60 }).decision === 'canary');
+  check('--max-age=60: a report started 30min before the bundle was produced still ships (within the window)',
+    gate(staleBundleAt('2026-07-20T12:30:00.000Z'), { maxAgeMinutes: 60 }).decision === 'ship');
+  check('--max-age: an entry with no recorded startedOn is unaffected either way (nothing to check, not flagged stale)',
+    gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] }), { maxAgeMinutes: 1 }).decision === 'ship');
+  check('resolveMaxAgeMinutes: unset → null (no check)', resolveMaxAgeMinutes(undefined) === null);
+  check('resolveMaxAgeMinutes: invalid input → null (disables rather than guesses)', resolveMaxAgeMinutes('not-a-number') === null);
+  check('resolveMaxAgeMinutes: a valid override passes through', resolveMaxAgeMinutes('60') === 60);
+  const staleRationale = gate(staleBundleAt('2026-07-21T12:00:00.000Z'), { maxAgeMinutes: 60 }).gateEntry.predicate.rationale;
+  check('stale rationale names the staleness and the #3 issue', staleRationale.some((r) => /stale/i.test(r) && /--max-age/.test(r)));
 
   // #111 — empty/impossible evidence can never ship (the two disclosed exploits, defeated)
   const emptyPw = playwrightEntry({}); // `{}` → EMPTY
@@ -1565,6 +1812,22 @@ function runSelfTest() {
   const runsGateEntry = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), withRunsEntry] })).gateEntry;
   check('gate predicate stays number-free even when the audit-test entry carries `runsVerified` (honesty guard #3 intact)',
     validateGateEntry(runsGateEntry).length === 0);
+
+  // ---- run-trace VISIBILITY in the rendered report (#5, hostile-review finding #5, 2026-07-25).
+  // Two ship verdicts of materially different evidential weight (a cross-checked run trace vs a
+  // bare tally) used to print identically apart from an input digest — prove they now don't.
+  const withRunsBundle = assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), withRunsEntry] });
+  const withRunsDecision = gate(withRunsBundle);
+  withRunsBundle.entries.push(withRunsDecision.gateEntry);
+  const withRunsReport = renderReport(withRunsBundle, withRunsDecision.gateEntry);
+  check('report with a run trace states the record count was cross-checked', /4 run records cross-checked/i.test(withRunsReport));
+
+  const noRunsBundle = assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), noRunsEntry] });
+  const noRunsDecision = gate(noRunsBundle);
+  noRunsBundle.entries.push(noRunsDecision.gateEntry);
+  const noRunsReport = renderReport(noRunsBundle, noRunsDecision.gateEntry);
+  check('report with NO run trace discloses the absence, not silence', /no run trace carried/i.test(noRunsReport));
+  check('the two ship reports read differently (not typographically identical apart from the digest)', withRunsReport !== noRunsReport);
 
   // A trace-verified confirmed-clean tally still ships exactly like an untraced one — B2 hardens
   // the evidence behind the label, it does not open a new path to `ship` (issue #142's own AC).

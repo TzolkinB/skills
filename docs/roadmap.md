@@ -62,10 +62,13 @@ self-report, it does **not** make it trustless — Gate still never re-runs the 
 `ship`-eligibility rule is unchanged.
 **Third** — real engineering, no shortcut; the maturity pass that earned back "attestation"/"signed"
 language for the v1, replacing the "aggregator of self-reports" caveat `references/critique-synthesis.md`
-said could not be honestly fixed for the scrapped v0 launch. **Known gap, still open:** none of A/B1/B2
-bind an ingested report to *when* it was produced or to the commit Gate was told to gate — a stale
-`results.json` from an earlier run gates cleanly today (see `gate/SKILL.md`'s "Known limit" note under
-Content-addressed inputs). Closing that is a distinct, not-yet-scoped follow-up, not covered by this item.
+said could not be honestly fixed for the scrapped v0 launch. **Partially closed (hostile-review finding #3,
+2026-07-25):** an opt-in `--max-age=<minutes>` now caps a suite at `canary` when its report claims to have
+started longer ago than that, relative to when the bundle was assembled — closing the "stale leftover
+`results.json`" case. **Still open:** nothing binds a report to the specific `--commit` Gate was told to gate —
+a fresh-looking report regenerated moments before a *different* commit's gate run still passes (see
+`gate/SKILL.md`'s "Report freshness" note). Closing that fully needs a git-timestamp cross-check, a distinct,
+not-yet-scoped follow-up.
 
 ### 4. Calibration loop — numeric `confidence`
 [#129](https://github.com/TzolkinB/skills/issues/129) (open). The big one. Folded into [#49](https://github.com/TzolkinB/skills/issues/49) (epic) from the
