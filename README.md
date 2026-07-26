@@ -125,8 +125,14 @@ Bootstrap is intentionally lightweight. You do not need to classify the entire l
 `/gate` and `/audit-test` deliberately shipped narrower than they could be — see
 [`docs/roadmap.md`](./docs/roadmap.md) for the full list of what's deferred, why, and the
 order it's getting picked back up in. Three of the four items are closed (a taxonomy-wording
-fix, coverage-aware ship semantics, real evidence signing); what's left now: a calibration
-loop for a real confidence number.
+fix, coverage-aware ship semantics, real evidence signing); what's left is two v2 builds:
+
+- **Calibration loop** — a real confidence number instead of a bare category.
+- **Report-to-commit provenance** — have the test producer record the git SHA it ran against so
+  Gate can reject a report generated for a *different* commit than the one it's gating. (A
+  git-timestamp cross-check was considered for this and **rejected** — timestamps are too flaky
+  and don't even catch the wrong-commit case; the [roadmap](./docs/roadmap.md) explains why, and
+  what replaces it.)
 
 Separately, not built yet on the authoring side:
 - [ ] Starter templates for common frameworks (Jest, pytest, Playwright)

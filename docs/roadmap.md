@@ -65,10 +65,36 @@ language for the v1, replacing the "aggregator of self-reports" caveat `referenc
 said could not be honestly fixed for the scrapped v0 launch. **Partially closed (hostile-review finding #3,
 2026-07-25, [ADR-0042](adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)):** an opt-in `--max-age=<minutes>` now caps a suite at `canary` when its report claims to have
 started longer ago than that, relative to when the bundle was assembled — closing the "stale leftover
-`results.json`" case. **Still open:** nothing binds a report to the specific `--commit` Gate was told to gate —
-a fresh-looking report regenerated moments before a *different* commit's gate run still passes (see
-`gate/SKILL.md`'s "Report freshness" note). Closing that fully needs a git-timestamp cross-check, a distinct,
-not-yet-scoped follow-up.
+`results.json`" case.
+
+**Still open — and *not* closeable by the git-timestamp cross-check [ADR-0042](adr/0042-gate-rejected-credibility-state-and-freshness-floor.md) gestured at.** Nothing
+binds a report to the specific `--commit` Gate was told to gate: a fresh-looking report regenerated moments
+before a *different* commit's gate run still passes (see `gate/SKILL.md`'s "Report freshness" note). The
+deferred git-timestamp idea (resolve the commit's own `git show -s --format=%cI` and compare it to the report's
+`startedOn`) was re-examined and **rejected as the mechanism**, for two reasons: (1) it does not even catch this
+scenario — a report regenerated *now* for the wrong commit has `startedOn ≈ now`, which is ≥ any commit
+timestamp, so it still reads as fresh; and (2) the only signal it *can* give — "the report predates the commit"
+— collides with the ordinary local workflow (test the working tree, *then* commit), which legitimately has
+`startedOn < commit-time`, so it would false-positive honest runs and need an operator-supplied grace window
+with no universal default (the same wall `--max-age` hit, ADR-0042 §3). Timestamps are a flaky proxy for the
+real question — *did this report actually run against this commit's code?*
+
+**Deferred to v2 — report-to-commit provenance (the mature closure):** measure that question directly instead
+of proxying it through wall-clocks. The *producer* (the Playwright/Cypress ingest adapters and the `audit-test`
+emission) records the git SHA it executed against — `git rev-parse HEAD` at test time, plus a dirty-worktree
+flag — *into* the report; Gate cross-checks that recorded SHA against `--commit`, caps a mismatch at `canary`,
+and leaves a report with no recorded SHA unaffected (necessary-not-sufficient — the same discipline as
+content-addressing and the floors). This is exact rather than clock-flaky, it actually catches the
+wrong-commit-fresh-report case (recorded SHA=`D` ≠ gated `C`), and it is the natural maturation of
+[ADR-0037](adr/0037-gate-evidence-integrity.md)'s "bind the decision to exact bytes" into "bind the report to
+the exact commit it ran against" — the in-toto *materials* the product already gestures at. Cost, and why it
+waits for v2: the truth about "what commit did I run against" exists only at the producer, at test time, so it
+needs adapter changes + an `audit-test` schema field + a runtime `git rev-parse` in the test environment — a
+larger, correctly-placed surface than a CLI-side shell-out. **Not a v1 blocker:** Gate is advisory (never fails
+the build) and self-signed (not a third-party trust root), so defeating a motivated adversary who deliberately
+gates the wrong commit is outside its honest v1 threat model; what protects v1 trustworthiness is stating this
+gap plainly and *not* claiming a timestamp check would close it. Filed as
+[#177](https://github.com/TzolkinB/skills/issues/177).
 
 ### 4. Calibration loop — numeric `confidence`
 [#129](https://github.com/TzolkinB/skills/issues/129) (open). The big one. Folded into [#49](https://github.com/TzolkinB/skills/issues/49) (epic) from the
