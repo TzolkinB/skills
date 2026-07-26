@@ -539,8 +539,14 @@ function auditScope(auditEntry) {
   // Reported `scope` (#171, ADR-0038) is the producer's own free-text label (e.g. a certified
   // run naming how much of the whole suite `--changed` covered) — appended, never substituted,
   // so the mechanically-derived fraction above always prints regardless of what a producer says.
+  // Absence is disclosed explicitly rather than silently omitted (hostile-review finding #6,
+  // 2026-07-25): a skimming reader must see that nothing relates the triaged population above
+  // to the suite's actual size, not just see the clause go missing.
   const reported = auditEntry?.predicate?.verdict?.scope;
-  return reported ? `${base} — reported scope: "${reported}"` : base;
+  const scopeNote = reported
+    ? `reported scope: "${reported}"`
+    : 'reported scope: none declared — the triaged population above is not related to your suite\'s total size';
+  return `${base} — ${scopeNote}`;
 }
 
 // Clamp a requested examined-floor into [EXAMINED_FLOOR_MIN, 100], defaulting when unset/invalid.
