@@ -1,6 +1,6 @@
 # Glossary
 
-Reference for concepts Sentinel's skills flag. Written for someone newer to QA/testing — this is what `--explain` mode points back to instead of re-explaining itself every time.
+Reference for concepts this plugin's skills flag. Written for someone newer to QA/testing — this is what `--explain` mode points back to instead of re-explaining itself every time.
 
 ### Boundary Condition
 A value at the edge of what's valid — `0`, `-1`, the max allowed length, an empty string, `null`. Bugs cluster at boundaries because code often gets the "normal" middle case right but mishandles the edges (off-by-one errors, unhandled empty states).
@@ -75,4 +75,4 @@ An exhaustive mutation-testing run: a tool automatically inserts many small bugs
 The headline number a mutation campaign produces: the percentage of inserted mutants the test suite killed. It is a codebase-wide *evidence* artifact (the stronger cousin of line coverage — see Coverage — line vs behavioral), not a per-test judgment. `audit-test` produces no score by design — it answers "would *this one test* fail if its code broke, and what should it assert?", which is judgment about a specific test, not a suite-wide grade. A high mutation score still says nothing about *which* surviving mutant matters or how to fix the test that let it live; that translation is the judgment layer a score can't give.
 
 ### Sacred Path
-A code or test path you designate — per run, via `/sentinel --sacred=<glob>` — as critical enough that "shippable with notes" is the wrong answer to confirmed-hollow protection. On a sacred path, Sentinel drops its usual gradient and applies binary rigor: a **confirmed** false-confidence test (from `audit-test`) or an unhandled boundary (from `coverage-review`) forces an un-overridable FAIL, no matter how solid the rest of the branch is. Everything off the sacred paths keeps the normal PASS/CAUTION/FAIL gradient. Sacred paths are opt-in — Sentinel never guesses what's critical — and the override fires on *confirmed* evidence only, never on a reasoned-only (🟡 likely) finding.
+A code or test path you designate — per run, via `/sentinel --sacred=<glob>` — as critical enough that "shippable with notes" is the wrong answer to confirmed-hollow protection. On a sacred path, `/sentinel` drops its usual gradient and applies binary rigor: a **confirmed** false-confidence test (from `audit-test`) or an unhandled boundary (from `coverage-review`) forces an un-overridable FAIL, no matter how solid the rest of the branch is. Everything off the sacred paths keeps the normal PASS/CAUTION/FAIL gradient. Sacred paths are opt-in — `/sentinel` never guesses what's critical — and the override fires on *confirmed* evidence only, never on a reasoned-only (🟡 likely) finding.

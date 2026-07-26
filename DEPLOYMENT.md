@@ -1,10 +1,10 @@
 # kimbell-skills — Deployment Guide
 
-Step-by-step guide for getting Sentinel from your local machine to a shareable GitHub plugin.
+Step-by-step guide for getting this plugin from your local machine to a shareable GitHub plugin.
 
 ## Current State
 
-Sentinel is built and ready at:
+The plugin is built and ready at:
 ```
 sentinel/
 ├── .claude-plugin/plugin.json
