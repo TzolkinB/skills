@@ -319,9 +319,14 @@ Bundle written to gate-bundle.json
   the window caps at `canary` even if it would otherwise ship, with the staleness named in the rationale. An entry
   with no recorded start time can't be checked and is silently unaffected — no evidence either way, not flagged
   stale. **Known limit:** this only catches a report that's old *relative to when this bundle was assembled* — it
-  does not (yet) bind a report to the specific `--commit` named on the bundle, so a stale report regenerated
-  moments before a DIFFERENT commit's gate run would still pass. Closing that fully needs a git-timestamp
-  cross-check, a distinct, not-yet-built follow-up.
+  does not bind a report to the specific `--commit` named on the bundle, so a fresh-looking report regenerated
+  moments before a DIFFERENT commit's gate run still passes. A git-timestamp cross-check was considered for this
+  and **rejected** ([ADR-0043](../../docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md)): a report
+  regenerated *now* for the wrong commit has `startedOn ≈ now` ≥ any commit timestamp, so timestamps don't even
+  catch this case, and the "report predates the commit" signal they *could* give false-positives the ordinary
+  test-then-commit local workflow. The mature closure — deferred to v2 — is **producer-recorded SHA provenance**:
+  the test producer records the git SHA it ran against *into* the report and Gate cross-checks it against
+  `--commit`. See `docs/roadmap.md` item 3 and ADR-0043 for why.
 - **Optional DSSE signing** ([#141](https://github.com/TzolkinB/skills/issues/141),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §1, widened by
   [#158](https://github.com/TzolkinB/skills/issues/158)/[ADR-0040](../../docs/adr/0040-widen-gate-signed-scope-to-entries.md))

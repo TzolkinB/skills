@@ -616,8 +616,9 @@ function executionCounts(entry) {
 // assembly time, in the CLI wrapper, not read again here). An entry with no recorded `startedOn`
 // can't be checked and is silently unaffected — no evidence either way, not flagged stale.
 // This only catches a report that is old RELATIVE TO WHEN THIS BUNDLE WAS ASSEMBLED — it does not
-// (yet) bind a report to the specific `--commit` named on the bundle; that remains a known,
-// separate gap (see gate/SKILL.md's Content-addressed inputs note).
+// bind a report to the specific `--commit` named on the bundle; that remains a known, separate gap
+// whose closure is producer-recorded SHA provenance in v2, NOT a git-timestamp check (ADR-0043;
+// see gate/SKILL.md's "Report freshness" note for why timestamps can't close it).
 function staleMinutes(entry, bundle, maxAgeMinutes) {
   const startedOn = entry?.predicate?.producer?.startedOn;
   if (!startedOn) return null;

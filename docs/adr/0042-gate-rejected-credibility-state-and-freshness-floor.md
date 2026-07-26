@@ -113,6 +113,11 @@ plainly rather than let the gap go unstated as it did before this ADR.
   completely in one pass. Deferred, not rejected outright — it's a reasonable next step, but it adds a new
   subprocess dependency to the hot path (today's only shell-out, the `--certify` self-test, is test-only) and
   a new failure mode (missing/unreachable git) that deserves its own scoping rather than riding along here.
+  **Superseded by [ADR-0043](0043-report-to-commit-provenance-over-git-timestamp.md) (2026-07-25):** on
+  re-examination this timestamp cross-check is *rejected* as the mechanism — it doesn't even catch the target
+  wrong-commit-fresh-report case, and its only usable signal false-positives the test-then-commit local
+  workflow. The commit-binding closure is producer-recorded SHA provenance, deferred to v2. Do not build the
+  git-timestamp check.
 
 ## Consequences
 
