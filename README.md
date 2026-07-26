@@ -61,6 +61,27 @@ The release-decision layer: it never runs a suite, it **ingests the evidence a P
 
 - **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR: bind your existing Playwright/Cypress results + an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`). The decision step itself is deterministic code, carries no confidence number, and is advisory only — it does not abort the build, and a `hold`/`canary` doesn't by itself stop a deployment; that's on your CI or your team. Recommends `ship` only when every E2E suite is green **and clears an executed-floor against the tests the report itself says it discovered** — a report that only ran a sliver of what it discovered (e.g. `expected:1, skipped:999`) is capped at `canary`, not read as a pass; note the discovered count comes from the report, so a discovery/filter/config change that quietly narrows the suite *before* the report is written isn't caught — **and** a parsed `audit-test` verdict reports no hollow tests among the tests it deep-audited, **and** that deep-audited fraction clears an examined-floor (default 50% of everything triaged, overridable down to a 25% minimum) — a confirmed-clean verdict over too narrow a slice is disclosed, not upgraded (a shape-checked self-report, not an independent re-verification). Optionally, point it at a self-signed ed25519 key (`--sign-key`) and the **whole bundle** becomes tamper-evident — a DSSE envelope over an in-toto-*shaped* Statement (self-signed, not Sigstore, and not consumable by standard in-toto tooling as-is; unsigned by default). The signature covers the decision, the content-addressed digests of the files it ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion` — so `--verify` proves the entire normalized bundle, not just the decision, wasn't altered after Gate produced it.
 
+## Where this fits — the ecosystem, and when to use what
+
+These skills don't replace the mature test tooling that already exists — they **compose** with it and
+fill the one gap it leaves. The single source of truth for *which tool for which job, and in what
+order* is the orchestration map:
+
+- **[The AI-Test Tooling Orchestration Map](./docs/orchestration-map.md)** — a seven-stage QA workflow
+  (Plan → Author → Audit → Coverage → Flake → Triage → Gate), each stage naming the **best free tool**,
+  **the wall where it stops**, and **where one of these skills fills the gap** — every recommendation
+  carrying a provenance label (Confirmed / Likely / Unexamined), no unproven claim presented as advice.
+
+**Deciding between a specific tool and one of these skills?** The head-to-head notes state the boundary
+plainly, in the other tool's favor where it wins:
+
+- **[vs. mutation tools (Stryker / Tautest / Exspec / Pitest·Arcmutate)](./docs/comparisons/mutation-tools.md)**
+  — at the **unit** layer, run the mutation tool (it wins on false confidence there); reach for
+  `audit-test` at the **app-driven E2E** layer those tools structurally can't enter; Gate composes the
+  evidence, it doesn't verify.
+- **[vs. TEA (BMAD Test Architect)](./docs/comparisons/tea.md)** — use TEA for risk planning and its
+  governance gate; reach for these skills for the mutation check and calibration TEA's docs show it can't do.
+
 ## Dependencies
 
 Most of these skills are self-contained — they statically read your code and tests and need nothing beyond Claude Code. Two reach for external tools: **`/debug-test` requires them to run at all**, and **`/audit-orchestrator` optionally routes to them** (falling back to a self-contained skill when they're absent). Install these before you rely on them.
