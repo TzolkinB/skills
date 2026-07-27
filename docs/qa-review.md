@@ -6,7 +6,7 @@
 
 `qa-review` is a code review from the QA angle, and it asks different questions than a general one: *Can I test this? Will it be flaky? Are there hidden dependencies? Is it coupled to something I can't mock?* It scans for hard-coded dependencies, non-determinism (`Date.now()`, `Math.random()`, uncontrolled timers), coupling that resists mocking, brittle assertions, and unclear contracts.
 
-The point is that testability is orthogonal to code quality. Beautiful code can be untestable and ugly code can be perfectly testable — so this review catches a class of problem a style or correctness review sails right past. Untestable code is a signal that hidden dependencies and non-determinism are baked in; the fix is usually the code, not the test.
+The point is that testability is independent of code quality. Beautiful code can be untestable and ugly code can be perfectly testable — so this review catches a class of problem a style or correctness review sails right past. Untestable code is a signal that hidden dependencies and non-determinism are baked in; the fix is usually the code, not the test.
 
 ## When to use it
 
@@ -41,7 +41,7 @@ Note what a correct run does *not* do: it doesn't rank the production impact of 
 
 ## Where it fits
 
-Sits in the *while-reviewing* slot of the [QA flow](./ask-sentinel.md) — before tests are written, catching untestable code while it's cheap to fix — and it's part of the [`sentinel`](./sentinel.md) QA-synthesis chain. Its consequence-focused sibling [`threat-model`](./threat-model.md) asks the orthogonal "what breaks in production" question and runs on its own.
+Sits in the *while-reviewing* slot of the [QA flow](./ask-sentinel.md) — before tests are written, catching untestable code while it's cheap to fix — and it's part of the [`sentinel`](./sentinel.md) QA-synthesis chain. Its consequence-focused sibling [`threat-model`](./threat-model.md) asks the separate "what breaks in production" question and runs on its own.
 
 ## Anti-patterns
 

@@ -131,7 +131,10 @@ accordingly: a signed bundle may be called "signed," "tamper-evident," or a "DSS
 
 ### 3. Present the decision — as-is
 Show the script's report: the decision, the per-input proposals (it **shows its work**), and the rationale.
-Tell the user where the bundle was written. Then interpret it honestly:
+Tell the user where the bundle was written. **State plainly, every time, that the Gate ingested existing
+evidence and did not run the suite or launch a browser** — this is the Gate's core boundary (see *Ingests,
+never executes* below); it must be said in the presented report itself, not left implicit in the decision or
+assumed from context. Then interpret it honestly:
 
 - **`hold`** — an E2E failure (Playwright or Cypress), an **empty/zero-test report**, or no execution
   evidence at all dominates. Route the red to `/debug-test`; the gate is not the place to fix it. (A
@@ -184,6 +187,8 @@ Present the script's report verbatim. A `canary` (opaque audit-test) and the ear
 confirmed-clean audit-test) look like:
 
 ```
+The Gate ingested existing evidence — it did not run the suite or launch a browser.
+
 ## Gate decision: 🟡 CANARY  ·  advisory (did not fail the build)
 
 subject: pr-head `<sha>`  ·  3 entries
@@ -208,6 +213,8 @@ Bundle written to gate-bundle.json
 ```
 
 ```
+The Gate ingested existing evidence — it did not run the suite or launch a browser.
+
 ## Gate decision: 🟢 SHIP  ·  advisory (did not fail the build)
 
 subject: pr-head `<sha>`  ·  3 entries

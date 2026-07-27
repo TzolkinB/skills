@@ -23,7 +23,7 @@ Each skill answers exactly one question, thirteen skills plus the `/sentinel` or
 | `sentinel` | What's the net QA verdict across all of the above? |
 | `gate` | Given this PR's E2E results and audit-test evidence, is it safe to ship? |
 
-`threat-model` and `bug-report` are core-but-independent, real skills, but deliberately *not* in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability. `e2e-impact`, `audit-orchestrator`, and `contract-guard` are likewise standalone and outside the chain, the newer app-driven / E2E-focused additions. `ask-sentinel` is a router, not a chain member: it points at whichever tool fits a situation, one of this plugin's own or an external one. `gate` sits downstream of the chain entirely (see below).
+`threat-model` and `bug-report` are core-but-independent, real skills, but deliberately *not* in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) separate from shippability. `e2e-impact`, `audit-orchestrator`, and `contract-guard` are likewise standalone and outside the chain, the newer app-driven / E2E-focused additions. `ask-sentinel` is a router, not a chain member: it points at whichever tool fits a situation, one of this plugin's own or an external one. `gate` sits downstream of the chain entirely (see below).
 
 A single mega-prompt would blur these questions together, you'd get one wall of text instead of being able to run `/qa-review` mid-code-review and `/debug-test` when a Playwright test is actively failing. Splitting them means each one stays sharp for its one job, and they compose instead of overlapping. This is the same reason you don't write one function that validates, saves, and emails; single responsibility applies to prompts too.
 
@@ -55,7 +55,7 @@ The one deliberate exception is the **sacred-path override** ([ADR-0007](docs/ad
 
 ## Why `qa-review` is a separate concern from general code quality
 
-Testability and code quality are orthogonal, ugly code can be perfectly testable, and clean code can hide a `Date.now()` that makes every test flaky. Folding testability into a general code review means it competes for attention with style and structure and usually loses. Giving it its own skill means "can I test this" gets asked explicitly, every time, instead of being an afterthought.
+Testability and code quality are independent, ugly code can be perfectly testable, and clean code can hide a `Date.now()` that makes every test flaky. Folding testability into a general code review means it competes for attention with style and structure and usually loses. Giving it its own skill means "can I test this" gets asked explicitly, every time, instead of being an afterthought.
 
 ## Tradeoffs, honestly
 
