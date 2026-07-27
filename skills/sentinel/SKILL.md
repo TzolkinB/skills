@@ -5,7 +5,7 @@ argument-hint: "[branch or file path] [--sacred=<glob>] [--explain]"
 allowed-tools: [Read, Bash, Glob]
 ---
 
-Sentinel is the **orchestrator**: it runs no original analysis of its own — it composes the atomic QA skills over a feature branch and synthesizes one QA read (🟢/🟡/🔴) you act on. The question every part serves: do the tests *verify behavior*, or just show green lights? It surfaces the AI-generated suite that passes while guarding nothing before you merge.
+Sentinel is the **orchestrator**: it runs no original analysis of its own — it composes the atomic QA skills over a feature branch and synthesizes one QA read (🟢/🟡/🔴) you act on. The question every part serves: do the tests *verify behavior*, or just show green lights? It surfaces the AI-generated suite that passes while guarding nothing before you merge. **This is a QA judgment read, not the release gate** — `/sentinel` does not speak shippability; pair it with **`/gate`** for the actual ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
 
 ## Steps
 
@@ -63,7 +63,6 @@ Guardrails that keep this honest:
 **Verdict:** 🟡 CAUTION  
 **Provenance:** static judgment — 0 confirmed-solid · 1 confirmed-hollow · 1 likely-hollow · 4 unexamined (audit ran; not INCONCLUSIVE)  
 **Risk Level:** Medium  
-**Shippable:** Yes, with notes  
 **Sacred paths:** `src/payments/**` (1 designated) — none tripped (the flagged tests cover booking, not payments)
 
 ---
@@ -138,6 +137,7 @@ _Provenance: reused from `/coverage-review`'s static read — not a separate ana
 - Branch: `feat/booking-calendar`
 - Files reviewed: BookingService.test.js, BookingService.js
 - Sacred paths designated: `src/payments/**` — none tripped this run
+- This is a QA judgment read, not the release gate — pair with `/gate` for the ship/canary/hold decision
 ```
 
 ## Explain Mode (`--explain`)
@@ -159,4 +159,4 @@ This is the mode to use when reviewing a branch with someone newer to testing �
 ## Notes
 
 - Prioritize recommendations by shippability impact — BEFORE SHIPPING vs FOLLOW-UP vs NICE TO HAVE, as in the example. A report that just lists every issue is useless.
-- `/threat-model` exists as a separate skill and is intentionally NOT part of this chain — it answers a different question (what breaks in production) than shippability (are the tests solid). Call it on its own when that's the question; don't assume `/sentinel` covers it.
+- `/threat-model` exists as a separate skill and is intentionally NOT part of this chain — it answers a different question (what breaks in production) than this chain's QA read (are the tests solid). Call it on its own when that's the question; don't assume `/sentinel` covers it.

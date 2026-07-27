@@ -1,10 +1,10 @@
 # Architecture & Decisions
 
-This doc exists because a feature list ("this plugin has a dozen skills") doesn't show engineering judgment, and a working plugin doesn't explain itself. This is the *why* behind this plugin — the part that's actually useful on a resume or in an interview, and the part I'd want to remember myself six months from now.
+This doc exists because a feature list ("this plugin has a dozen skills") doesn't show engineering judgment, and a working plugin doesn't explain itself. This is the *why* behind this plugin, the part that's actually useful on a resume or in an interview, and the part I'd want to remember myself six months from now.
 
 ## Why separate skills instead of one big prompt
 
-Each skill answers exactly one question — eleven skills plus the `/sentinel` orchestrator:
+Each skill answers exactly one question, thirteen skills plus the `/sentinel` orchestrator:
 
 | Skill | Question it answers |
 |---|---|
@@ -14,51 +14,55 @@ Each skill answers exactly one question — eleven skills plus the `/sentinel` o
 | `audit-test` | Would this *passing* test fail if the code it covers broke? |
 | `prune-tests` | Which existing tests cost more than they protect? |
 | `threat-model` | If this change is wrong, what breaks in production and would anyone notice? |
-| `debug-test` | When a Playwright test is failing — what's the root cause and how do I fix it? |
+| `debug-test` | When a Playwright test is failing, what's the root cause and how do I fix it? |
 | `bug-report` | How do I hand this off cleanly? |
 | `e2e-impact` | Which E2E specs does this diff plausibly hit? |
 | `audit-orchestrator` | Which tool can actually *prove* this suspicious passing test? |
 | `contract-guard` | Does the backend response the frontend depends on still match its published contract? |
-| `sentinel` | What's the net verdict across all of the above? |
+| `ask-sentinel` | Given a QA situation, which tool, mine or an external one, should I reach for? |
+| `sentinel` | What's the net QA verdict across all of the above? |
+| `gate` | Given this PR's E2E results and audit-test evidence, is it safe to ship? |
 
-`threat-model` and `bug-report` are core-but-independent — real skills, but deliberately *not* in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability. `e2e-impact`, `audit-orchestrator`, and `contract-guard` are likewise standalone and outside the chain — the newer app-driven / E2E-focused additions.
+`threat-model` and `bug-report` are core-but-independent, real skills, but deliberately *not* in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability. `e2e-impact`, `audit-orchestrator`, and `contract-guard` are likewise standalone and outside the chain, the newer app-driven / E2E-focused additions. `ask-sentinel` is a router, not a chain member: it points at whichever tool fits a situation, one of this plugin's own or an external one. `gate` sits downstream of the chain entirely (see below).
 
-A single mega-prompt would blur these questions together — you'd get one wall of text instead of being able to run `/qa-review` mid-code-review and `/debug-test` when a Playwright test is actively failing. Splitting them means each one stays sharp for its one job, and they compose instead of overlapping. This is the same reason you don't write one function that validates, saves, and emails — single responsibility applies to prompts too.
+A single mega-prompt would blur these questions together, you'd get one wall of text instead of being able to run `/qa-review` mid-code-review and `/debug-test` when a Playwright test is actively failing. Splitting them means each one stays sharp for its one job, and they compose instead of overlapping. This is the same reason you don't write one function that validates, saves, and emails; single responsibility applies to prompts too.
 
 ## Why `debug-test` orchestrates instead of just analyzing
 
-`debug-test` is different from the other skills — it doesn't just read and reason. It runs the test, routes to the Playwright healer for UI/locator/timing failures, and escalates to Matt Pocock's diagnosing-bugs workflow for logic failures. This is deliberate: a failing Playwright test has three distinct failure categories (selector/timing, logic, flakiness) that require fundamentally different tools. Handling all three with one analysis pass would mean either missing healer's auto-fix capability or applying heavy debugging machinery to a broken locator that healer would fix in seconds.
+`debug-test` is different from the other skills: it doesn't just read and reason. It runs the test, routes to the Playwright healer for UI/locator/timing failures, and escalates to Matt Pocock's diagnosing-bugs workflow for logic failures. This is deliberate: a failing Playwright test has three distinct failure categories (selector/timing, logic, flakiness) that require fundamentally different tools. Handling all three with one analysis pass would mean either missing healer's auto-fix capability or applying heavy debugging machinery to a broken locator that healer would fix in seconds.
 
 The tradeoff: `debug-test` now has an external dependency on the Playwright healer agent and on diagnosing-bugs. Those must be available for the escalation paths to work. The fast-heuristics layer (Step 2) is self-contained and catches the majority of common failures without any external dependency.
 
 ## Why `/sentinel` orchestrates instead of everything being flat
 
-Several independent skills solve independent problems, but shipping a branch requires them at once, synthesized into one decision. `/sentinel` is the only skill that doesn't do original analysis — it calls the others in its chain (`test-plan`, `coverage-review`, `qa-review`, `debug-test`, and `audit-test` in batch over the changed tests) and reduces their output to a verdict. That's a deliberate layering: atomic skills for daily use, one orchestrator for the "am I safe to merge" moment. It is not a peer of the skills it runs.
+Several independent skills solve independent problems, but shipping a branch requires them at once, synthesized into one decision. `/sentinel` is the only skill that doesn't do original analysis: it calls the others in its chain (`test-plan`, `coverage-review`, `qa-review`, `debug-test`, and `audit-test` in batch over the changed tests) and reduces their output to a verdict. That's a deliberate layering: atomic skills for daily use, one orchestrator for the "am I safe to merge" moment. It is not a peer of the skills it runs.
 
-`audit-test` joined the chain deliberately: without it, a branch could pass `/sentinel` while its "passing" tests prove nothing — the exact false confidence the suite exists to expose. It runs as a batch False-Confidence Audit over the changed tests, and its 🔴 *confirmed* findings move the verdict (see the sacred-path override below).
+`audit-test` joined the chain deliberately: without it, a branch could pass `/sentinel` while its "passing" tests prove nothing, the exact false confidence the suite exists to expose. It runs as a batch False-Confidence Audit over the changed tests, and its 🔴 *confirmed* findings move the verdict (see the sacred-path override below).
 
-The alternative — teaching every skill to also produce a verdict — would mean several different opinions about shippability with no single source of truth. Centralizing that judgment in one place was worth the extra layer of indirection.
+The alternative, teaching every skill to also produce a verdict, would mean several different opinions about shippability with no single source of truth. Centralizing that judgment in one place was worth the extra layer of indirection.
+
+`/sentinel`'s verdict is QA *judgment*, not release evidence ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)): it never runs your E2E suite and never claims to. That's `gate`'s job, a separate skill downstream of `/sentinel`, never inside its chain, that ingests a PR's actual Playwright/Cypress results plus `audit-test`'s evidence and derives an advisory ship/canary/hold release decision. The Gate owns the ship verdict; `/sentinel` does not.
 
 ## Why a 3-state verdict (PASS / CAUTION / FAIL) instead of pass/fail
 
-Binary pass/fail either ships you something that isn't ready, or blocks you over a `LOW`-severity nit. Real QA judgment isn't binary — most branches are "shippable with known gaps," which is a real, distinct state from "solid" and from "broken." CAUTION exists so the report can be honest about risk without becoming a blocker for every minor gap. This mirrors the actual conversation you'd have in a PR review, not a CI gate.
+Binary pass/fail either ships you something that isn't ready, or blocks you over a `LOW`-severity nit. Real QA judgment isn't binary, most branches are "shippable with known gaps," which is a real, distinct state from "solid" and from "broken." CAUTION exists so the report can be honest about risk without becoming a blocker for every minor gap. This mirrors the actual conversation you'd have in a PR review, not a CI gate.
 
-The one deliberate exception is the **sacred-path override** ([ADR-0007](docs/adr/0007-sentinel-sacred-path-fail-override.md)). On paths the user marks as sacred (`--sacred=<glob>`), "shippable with notes" is the wrong answer to a test that's been *confirmed* to guard nothing — so there, and only there, `/sentinel` drops the gradient and issues an un-overridable FAIL. This borrows J-Rig's binary rigor for the paths that earn it while keeping CAUTION everywhere else. It doesn't reintroduce numeric scoring: the override changes *which* categorical state is reached, not how it's expressed ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)).
+The one deliberate exception is the **sacred-path override** ([ADR-0007](docs/adr/0007-sentinel-sacred-path-fail-override.md)). On paths the user marks as sacred (`--sacred=<glob>`), "shippable with notes" is the wrong answer to a test that's been *confirmed* to guard nothing, so there, and only there, `/sentinel` drops the gradient and issues an un-overridable FAIL. This borrows J-Rig's binary rigor for the paths that earn it while keeping CAUTION everywhere else. It doesn't reintroduce numeric scoring: the override changes *which* categorical state is reached, not how it's expressed ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)).
 
 ## Why coverage-review flags loose assertions, not just missing ones
 
-`expect(result).toBeDefined()` passes CI and looks like a real test. It isn't — it can't fail in any way that matters. Line-coverage tools don't catch this; they only see that the line executed, not that anything was verified. This was the actual frustration that started the whole project: AI-generated tests that are syntactically real but semantically empty. `coverage-review` treats a loose assertion as equivalent to a missing one, because functionally it is.
+`expect(result).toBeDefined()` passes CI and looks like a real test. It isn't, it can't fail in any way that matters. Line-coverage tools don't catch this; they only see that the line executed, not that anything was verified. This was the actual frustration that started the whole project: AI-generated tests that are syntactically real but semantically empty. `coverage-review` treats a loose assertion as equivalent to a missing one, because functionally it is.
 
 ## Why `qa-review` is a separate concern from general code quality
 
-Testability and code quality are orthogonal — ugly code can be perfectly testable, and clean code can hide a `Date.now()` that makes every test flaky. Folding testability into a general code review means it competes for attention with style and structure and usually loses. Giving it its own skill means "can I test this" gets asked explicitly, every time, instead of being an afterthought.
+Testability and code quality are orthogonal, ugly code can be perfectly testable, and clean code can hide a `Date.now()` that makes every test flaky. Folding testability into a general code review means it competes for attention with style and structure and usually loses. Giving it its own skill means "can I test this" gets asked explicitly, every time, instead of being an afterthought.
 
 ## Tradeoffs, honestly
 
-- **Execution is scoped, not blanket.** Most skills read and reason without running your suite — the report is only as good as what gets read. A few skills deliberately cross that line where reasoning alone can't produce ground truth: `debug-test` runs the failing test to route it, `audit-test` applies a targeted mutation and runs a single test to *prove* false confidence rather than assert it (see [ADR-0001](docs/adr/0001-audit-test-proves-by-execution.md)), and `prune-tests --apply` edits or deletes flagged tests and reruns the affected ones to confirm (see [ADR-0003](docs/adr/0003-prune-tests-proposes-before-deleting.md)). All of it stays surgical and gated — on a clean git tree, always revertible, never a full suite or mutation campaign.
-- **Judgment over rules.** Severity labels (HIGH/MEDIUM/LOW) are inherently subjective. This is deliberate — a rigid rules engine would either be too strict to be useful or too lax to catch real gaps. The cost is that verdicts can vary run to run.
-- **English output, not structured data.** Reports are markdown, not JSON. Good for reading in a PR or Slack, not (yet) for piping into other tooling. Fine for a personal framework; would need rework for team-wide CI integration.
+- **Execution is scoped, not blanket.** Most skills read and reason without running your suite; the report is only as good as what gets read. A few skills deliberately cross that line where reasoning alone can't produce ground truth: `debug-test` runs the failing test to route it, `audit-test` applies a targeted mutation and runs a single test to *prove* false confidence rather than assert it (see [ADR-0001](docs/adr/0001-audit-test-proves-by-execution.md)), and `prune-tests --apply` edits or deletes flagged tests and reruns the affected ones to confirm (see [ADR-0003](docs/adr/0003-prune-tests-proposes-before-deleting.md)). All of it stays surgical and gated, on a clean git tree, always revertible, never a full suite or mutation campaign.
+- **Judgment over rules.** Severity labels (HIGH/MEDIUM/LOW) are inherently subjective. This is deliberate, a rigid rules engine would either be too strict to be useful or too lax to catch real gaps. The cost is that verdicts can vary run to run.
+- **English output, not structured data, except at the Gate.** `/sentinel` and the atomic skills report in markdown, good for reading in a PR or Slack, not for piping into other tooling. `gate` is the exception: it emits a schema-versioned, content-addressed JSON bundle (optionally DSSE-signed) alongside its markdown report, purpose-built for that "am I safe to ship" moment where a machine-readable decision earns its keep.
 
 ## What I'd change if this became a team tool instead of a personal one
 
-Make verdicts configurable per-team risk tolerance, and emit structured output alongside the markdown report so it can gate CI, not just inform a human. (`coverage-review` now already *reads* real coverage output when a project emits it, falling back to static inference otherwise — see [ADR-0011](docs/adr/0011-coverage-review-prefers-real-instrumentation.md) — so the remaining team-tool gap is generating coverage on demand, not consuming it.)
+Make verdicts configurable per-team risk tolerance. `gate` already emits structured JSON a CI step could consume, but it always exits 0 by design, it's advisory and never aborts the build ([ADR-0038](docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md): verification is declined, not deferred). A hard CI gate would be a thin wrapper reading that JSON, not a change to this suite. (`coverage-review` now already *reads* real coverage output when a project emits it, falling back to static inference otherwise, see [ADR-0011](docs/adr/0011-coverage-review-prefers-real-instrumentation.md), so the remaining team-tool gap there is generating coverage on demand, not consuming it.)

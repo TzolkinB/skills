@@ -21,7 +21,7 @@ to one skill's contract" (`gate`'s schema). Enumerating the actual blast radius 
 made relative to ADR-0032's estimate) found `proven` is the single vocabulary [ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md)
 established for evidence provenance, and `audit-test`'s schema is downstream of it, not a fork of it. `sentinel`,
 `debug-test`, `prune-tests`, `GLOSSARY.md`, and the project's own top-level docs (`README.md`, `ARCHITECTURE.md`,
-`CONTEXT.md`, `PLAN.md`, `REVIEWERS.md`) all quote or restate the same `audit-test` verdict tags — leaving those
+`CONTEXT.md`, `REVIEWERS.md`) all quote or restate the same `audit-test` verdict tags — leaving those
 saying "proven" while the schema says something else would be a *fresh* inconsistency, not a fix.
 
 **Deliberately left out — a genuinely separate axis, not this issue.** `ask-sentinel` and `audit-orchestrator`
@@ -61,7 +61,7 @@ reviewer opens next): `skills/gate/fixtures/audit-test.proven.json` → `audit-t
 **4. In scope for the word swap** (quote or restate the renamed schema/GLOSSARY term, so leaving them stale would
 contradict the rename): `skills/gate/**`, `skills/audit-test/**`, `skills/sentinel/SKILL.md`,
 `skills/debug-test/reference/flake-mode.md`, `GLOSSARY.md`, `README.md`, `ARCHITECTURE.md`, `CONTEXT.md`,
-`PLAN.md`, `REVIEWERS.md`, `docs/audit-test.md`, `docs/sentinel.md`, `docs/prune-tests.md`, `docs/comparisons/tea.md`,
+`REVIEWERS.md`, `docs/audit-test.md`, `docs/sentinel.md`, `docs/prune-tests.md`, `docs/comparisons/tea.md`,
 the `gate`/`sentinel`/`audit-test`/`prune-tests` fixtures and eval cases/samples.
 
 **5. Out of scope, left untouched:**

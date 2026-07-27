@@ -43,4 +43,4 @@ difference between *Likely-good* and *Unexamined*.
   *Likely — criteria model-generated from the commit message*, and a consumed `lcov` older than the
   branch's changes is marked *possibly stale* rather than presented as authoritative ground truth.
 - The hard **execution gate** — "no PASS without Proven evidence on changed paths" — is recorded as
-  the evidence pipeline's job; its threshold is set empirically there (see PLAN.md, Phase 3), not here.
+  the evidence pipeline's job; its threshold is set empirically there, not here.

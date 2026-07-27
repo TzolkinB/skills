@@ -41,7 +41,7 @@ Note what a correct run does *not* do: it doesn't rank the production impact of 
 
 ## Where it fits
 
-Sits in the *while-reviewing* slot of the [Sentinel flow](./ask-sentinel.md) — before tests are written, catching untestable code while it's cheap to fix — and it's part of the [`sentinel`](./sentinel.md) shippability chain. Its consequence-focused sibling [`threat-model`](./threat-model.md) asks the orthogonal "what breaks in production" question and runs on its own.
+Sits in the *while-reviewing* slot of the [QA flow](./ask-sentinel.md) — before tests are written, catching untestable code while it's cheap to fix — and it's part of the [`sentinel`](./sentinel.md) QA-synthesis chain. Its consequence-focused sibling [`threat-model`](./threat-model.md) asks the orthogonal "what breaks in production" question and runs on its own.
 
 ## Anti-patterns
 

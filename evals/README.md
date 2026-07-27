@@ -1,4 +1,4 @@
-# Sentinel skill-eval harness
+# Skill-eval harness
 
 A lightweight harness that catches a skill regressing **before a user does** — the running
 skeleton for [#74](https://github.com/TzolkinB/skills/issues/74). Design and grading stance are

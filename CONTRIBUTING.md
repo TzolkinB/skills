@@ -56,6 +56,5 @@ marketplace manifest plus each plugin — and fails on any invalid manifest or
 malformed skill/agent/command frontmatter. Run it locally before pushing:
 
 ```
-claude plugin validate .          # marketplace manifest
-claude plugin validate ./sentinel # a plugin (manifest + skill frontmatter)
+claude plugin validate .          # marketplace manifest + the plugin (manifest + skill frontmatter)
 ```

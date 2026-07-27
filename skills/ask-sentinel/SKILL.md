@@ -1,15 +1,15 @@
 ---
 name: ask-sentinel
-description: Router — describe your QA situation (and, if you have one, your stack) and get pointed at the best QA-AI tool for it, Sentinel's own or an external one, across the seven-stage map — with why it fits, the exact way to run it, its evidence label, and where it sits in the flow. The runnable front door to the orchestration map.
+description: Router — describe your QA situation (and, if you have one, your stack) and get pointed at the best QA-AI tool for it, one of these skills or an external one, across the seven-stage map — with why it fits, the exact way to run it, its evidence label, and where it sits in the flow. The runnable front door to the orchestration map.
 argument-hint: "[what you're trying to do, or a file/branch/situation — omit for the full map]"
 allowed-tools: [Read, Glob]
 ---
 
-The best QA-AI tooling is scattered across a dozen Sentinel skills *and* an ecosystem of external tools — more than anyone wants to memorize, and no single one is best at everything. `ask-sentinel` is the front door to the whole map: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"this passing test smells wrong"* — and it names the **one best tool for your situation and stack**, whether that's a Sentinel skill or an external tool, says why, shows its evidence label, and where that step sits in the wider QA flow. Sentinel's own skills fill the app-driven gaps the external tools can't reach; the external tools own the stages where they're strongest. This router hands you whichever fits.
+The best QA-AI tooling is scattered across a dozen of these skills *and* an ecosystem of external tools — more than anyone wants to memorize, and no single one is best at everything. `ask-sentinel` is the front door to the whole map: describe the situation in plain terms — *"AI just wrote 500 lines of tests"*, *"a Playwright test is red"*, *"this passing test smells wrong"* — and it names the **one best tool for your situation and stack**, whether that's one of these skills or an external tool, says why, shows its evidence label, and where that step sits in the wider QA flow. These skills fill the app-driven gaps the external tools can't reach; the external tools own the stages where they're strongest. This router hands you whichever fits.
 
 **Two ways to ask (the map's two readings).** Name a *single question at a single moment* — *"this passing test smells"* — and you get **one** best tool (à la carte). Describe a *change moving through its lifecycle* — *"I built this feature, walk me through QA before I merge"*, *"what's the full path to ship this safely"* — and you get an **ordered stage path** (orchestrated): the best tool per relevant stage, in the order to run them, with the escalation between them. Same router, same evidence labels; the *shape of your ask* picks the mode — and the path is always a recommendation you can take whole or lift one stage out of, never a mandate.
 
-It **routes; it doesn't analyze.** It may **read your stack manifests** — `package.json`, a `playwright.config.*` / `cypress.config.*`, a published `openapi`/`swagger` doc — to tell whether the best tool at a stage is an external one or a Sentinel gap-filler (e.g. a suspicious *unit* test → external Stryker/Tautest; a suspicious *app-driven* Playwright test → Sentinel's `audit-test`, because the external mutators can't reach it). But it never reads your test or source *logic* to judge it, never runs a test, never emits a verdict, and never runs the tool for you — it hands you the invocation. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other atomic skills run standalone, and each answers exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for a QA synthesis read across your branch; route to **`/gate`** for the actual ship/canary/hold decision — `/sentinel` does not speak shippability ([#99](https://github.com/TzolkinB/skills/issues/99)); `/gate` is the release gate that ingests your branch's existing evidence (Playwright/Cypress + `audit-test`) and derives it.
+It **routes; it doesn't analyze.** It may **read your stack manifests** — `package.json`, a `playwright.config.*` / `cypress.config.*`, a published `openapi`/`swagger` doc — to tell whether the best tool at a stage is an external one or a gap-filler skill (e.g. a suspicious *unit* test → external Stryker/Tautest; a suspicious *app-driven* Playwright test → `/audit-test`, because the external mutators can't reach it). But it never reads your test or source *logic* to judge it, never runs a test, never emits a verdict, and never runs the tool for you — it hands you the invocation. The one rule worth internalizing: **`/sentinel` is the orchestrator, not a peer** — the other atomic skills run standalone, and each answers exactly one question. Route to an atomic skill for a specific question; route to `/sentinel` for a QA synthesis read across your branch; route to **`/gate`** for the actual ship/canary/hold decision — `/sentinel` does not speak shippability ([#99](https://github.com/TzolkinB/skills/issues/99)); `/gate` is the release gate that ingests your branch's existing evidence (Playwright/Cypress + `audit-test`) and derives it.
 
 **Every recommendation carries its evidence label** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) — this is the map's *"no proof → no recommendation"* rule applied to routing:
 
@@ -17,7 +17,7 @@ It **routes; it doesn't analyze.** It may **read your stack manifests** — `pac
 - **Unexamined → a lead, not advice.** "There's a tool here worth checking — we haven't verified it in our context." Never dressed up as a confident recommendation.
 - A **self-healer** is surfaced only *with its credibility caveat* — it heals or skips to green, which can mask a real regression; that's a hazard, not an endorsement.
 
-## The Sentinel skills, by the question each answers
+## These skills, by the question each answers
 
 | Skill | Question it answers | Reach for it when |
 |---|---|---|
@@ -38,7 +38,7 @@ It **routes; it doesn't analyze.** It may **read your stack manifests** — `pac
 
 ## The wider map: the best tool by stage + stack
 
-Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best* tool may be an external one. This is the ecosystem map (full evidence ledger in [`orchestration-map.md`](../../docs/orchestration-map.md)), distilled to what's routable today. **Advice** = Confirmed/Likely; **lead** = Unexamined, named but unverified.
+These skills are the gap-fillers; at each of the seven QA stages the *best* tool may be an external one. This is the ecosystem map (full evidence ledger in [`orchestration-map.md`](../../docs/orchestration-map.md)), distilled to what's routable today. **Advice** = Confirmed/Likely; **lead** = Unexamined, named but unverified.
 
 | Stage | The question | Reach for (best for your stack) | Label |
 |---|---|---|---|
@@ -93,7 +93,7 @@ Sentinel's skills are the gap-fillers; at each of the seven QA stages the *best*
 
 ## The intended flow
 
-Sentinel's own skills map onto the life of a change, not a fixed pipeline — most runs touch two or three, not all:
+These skills map onto the life of a change, not a fixed pipeline — most runs touch two or three, not all:
 
 ```
 BEFORE CODE        /test-plan        define the cases + layers before anything exists

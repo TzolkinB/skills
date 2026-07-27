@@ -218,15 +218,20 @@ tool. It only has value sitting on top of trustworthy stages 3–5.
 1. **Cataloged vs. owned boundary** — for each stage, is our tool a thin wrapper that *invokes* the
    best free tool (e.g. `audit-test` orchestrating Stryker where it fits), or a genuine replacement
    in the E2E domain? Probably *both, per stage*.
-2. **Router** — `ask-sentinel` already routes across nine skills. Does the ecosystem map become the
-   new top-level router (skills repo → "given your situation + stack, here's the tool + order")?
-3. **The gate-verdict ownership question** (from `sentinel-witness-split`) resolves cleanly here:
+2. **Router — resolved.** `ask-sentinel` *is* the ecosystem's top-level router now ([ADR-0025](adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
+   [ADR-0027](adr/0027-ask-sentinel-orchestrated-sequence-mode.md)): stack-aware, routes to external tools and to these skills alike,
+   and returns either one best tool (à la carte) or an ordered stage path (a lifecycle ask). It routes across
+   thirteen skills plus itself.
+3. **The gate-verdict ownership question — resolved.** (from `sentinel-witness-split`):
    Sentinel stages 3–5 emit *credibility evidence*; Gate stage 7 owns the *ship verdict*,
-   earned via calibration. Stop having `/sentinel` speak in shippability verdicts.
+   earned via calibration. `skills/sentinel/SKILL.md` and `docs/sentinel.md` now say plainly
+   that `/sentinel` is a QA judgment read, not the release gate, and point to `/gate` for the
+   actual ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
 4. **Spin-out** — user flagged this may become its own project. Decide when the map stabilizes.
 
-## Next artifact
-Turn one stage (proposal: **Audit**, stage 3 — the sharpest verified gap) into a fully executable
-Skill that: detects the stack, invokes Tautest/Stryker where they fit, and falls back to
-`audit-test` (dev-served) for app-driven Playwright/Cypress — with the ADR-0016 staleness guard.
-That proves the "orchestrate free tools + fill the gap" pattern end-to-end on the strongest stage.
+## Next artifact — shipped
+The proposal below was to turn one stage into a fully executable Skill proving the
+"orchestrate free tools + fill the gap" pattern end-to-end. **Done**: `audit-orchestrator`
+(issue #43) is that Skill for stage 3 — it detects the stack, routes unit JS/TS to
+Tautest/StrykerJS where they fit, and falls back to `audit-test` (dev-served) for app-driven
+Playwright/Cypress, with the ADR-0016/0019 staleness guard.
