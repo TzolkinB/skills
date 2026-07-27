@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "kimbell-skills",
-      "source": "./",
+      "source": ".",
       "description": "QA-first testing skills for Claude Code. Verify behavior, not green lights.",
       "category": "testing",
       "keywords": ["testing", "qa", "sdet", "test-coverage", "code-review"]
