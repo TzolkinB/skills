@@ -1,4 +1,4 @@
-# Sentinel fixtures
+# Fixtures
 
 Lightweight, per-skill **known-bad inputs** — one tiny fixture per skill, paired with an
 `expected-findings.md` naming what a correct run should surface. Most are a small, self-contained
@@ -50,11 +50,16 @@ Then compare the run to that fixture's `expected-findings.md`.
 | `threat-model` | `refund.js` | Fire-and-forget refund: silent failure, all-refunds blast radius, hard reversibility (email sent, status flipped) |
 | `test-plan` | `discount-code.md` *(scenario — a ticket)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |
 | `bug-report` | `report-export.md` *(scenario — an observation)* | A report that fabricates the sparse input's missing fields — a specific browser/OS/version, an exact `TypeError`, a confident root cause — instead of marking them `Unknown — not provided` (the anti-guess rule) |
-| `sentinel` | `branch-scenario.md` *(scenario — a branch)* | Softening a confirmed-hollow test on a **sacred** path to 🟡 CAUTION ("shippable with notes") instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
+| `sentinel` | `branch-scenario.md` *(scenario — a branch)* | Softening a confirmed-hollow test on a **sacred** path to 🟡 CAUTION instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
+| `gate` | *(none vendored here — reads the skill's own committed fixtures under [`skills/gate/fixtures/`](../skills/gate/fixtures/))* | Worst-wins across a green Playwright/Cypress run plus a present `audit-test` verdict; the decision arithmetic itself is covered by `node skills/gate/gate.mjs --self-test`, this eval grades only the skill's honest reporting of that decision |
 
 Three more skills route/detect against a **warm sibling repo** and so keep only an
 `expected-findings.md` (no vendored input): `e2e-impact`, `contract-guard`, and
 `audit-orchestrator` (targets in `~/projects/`, hand-traced — see each skill's `expected-findings.md`).
+
+`ask-sentinel` has no fixture directory at all — by design, it's a router with no code/scenario
+input to plant a smell in; its eval (`evals/cases/ask-sentinel.json`) grades routing accuracy
+against situations, not a fixture.
 
 ## Fixture kinds
 

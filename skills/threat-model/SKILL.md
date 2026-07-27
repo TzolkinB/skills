@@ -48,7 +48,7 @@ This is reasoning, not verification. It doesn't execute the code under review an
 
 ### Open Questions (for the developer, not answered here)
 - Is there a feature flag for this? [if unknown, ask]
-- What's the actual rollback mechanism for this system? [Sentinel doesn't know your deploy pipeline]
+- What's the actual rollback mechanism for this system? [this skill doesn't know your deploy pipeline]
 ```
 
 ## Explain Mode (`--explain`)

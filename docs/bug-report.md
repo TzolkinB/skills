@@ -41,7 +41,7 @@ a good report replaces "broken" with something reproducible:
 
 ## Where it fits
 
-Outside the [`sentinel`](./sentinel.md) chain — it's a handoff tool, not a shippability check. It often follows [`debug-test`](./debug-test.md): once a failing test is diagnosed, bug-report turns the finding into a report the team can act on.
+Outside the [`sentinel`](./sentinel.md) chain — it's a handoff tool, not a QA judgment or ship-decision skill. It often follows [`debug-test`](./debug-test.md): once a failing test is diagnosed, bug-report turns the finding into a report the team can act on.
 
 ## Anti-patterns
 

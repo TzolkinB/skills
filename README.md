@@ -88,7 +88,7 @@ Most of these skills are self-contained — they statically read your code and t
 
 `diagnosing-bugs` is load-bearing: when Playwright agents aren't set up, locator failures route to it too, so `/debug-test` leans on it for anything past a clean auto-heal. Installing Matt Pocock's skills alongside these is recommended — the two compose by design: **build with Matt's skills, verify with these.**
 
-Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/e2e-impact`, `/contract-guard`, `/sentinel`, `/gate`) needs only Claude Code — `/contract-guard` optionally reads a published OpenAPI spec from a URL you supply, and `/gate` reads result files you already produced, but neither requires an install.
+Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/e2e-impact`, `/contract-guard`, `/ask-sentinel`, `/sentinel`, `/gate`) needs only Claude Code — `/contract-guard` optionally reads a published OpenAPI spec from a URL you supply, and `/gate` reads result files you already produced, but neither requires an install.
 
 ## Privacy — what each skill reads, runs, and routes externally
 

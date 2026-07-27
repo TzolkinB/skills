@@ -17,7 +17,7 @@ For everything a change touches — data writes, external systems, downstream de
 
 - **You want testability smells** (hard-coded values, non-determinism) → [`qa-review`](./qa-review.md). threat-model deliberately doesn't re-flag those.
 - **You want coverage gaps** → [`coverage-review`](./coverage-review.md).
-- **You want a shippability verdict** → [`sentinel`](./sentinel.md). threat-model is intentionally *not* in the `/sentinel` chain — it answers a different question and is called on its own.
+- **You want a QA judgment read across a branch** → [`sentinel`](./sentinel.md); **you want the actual ship/canary/hold decision** → `gate`. threat-model is intentionally *not* in the `/sentinel` chain — it answers a different question and is called on its own.
 
 ## Prerequisites
 
@@ -42,7 +42,7 @@ It raises open questions (is this flag-gated? what reconciles gateway refunds ag
 
 ## Where it fits
 
-Runs *independently* of the [`sentinel`](./sentinel.md) chain — "what breaks in production" is orthogonal to shippability, so `/sentinel` never calls it. Pair it with [`qa-review`](./qa-review.md) on a risky change: qa-review asks *can I test this*, threat-model asks *what happens if it's wrong*.
+Runs *independently* of the [`sentinel`](./sentinel.md) chain — "what breaks in production" is orthogonal to the tests-are-solid question that chain answers, so `/sentinel` never calls it. Pair it with [`qa-review`](./qa-review.md) on a risky change: qa-review asks *can I test this*, threat-model asks *what happens if it's wrong*.
 
 ## Anti-patterns
 
