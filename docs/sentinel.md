@@ -4,7 +4,7 @@
 
 ## What it does
 
-`sentinel` is the **orchestrator**, and it's the one skill that does no original analysis of its own. It composes the QA skills across a branch — [`test-plan`](./test-plan.md), [`coverage-review`](./coverage-review.md), [`qa-review`](./qa-review.md), [`debug-test`](./debug-test.md) on any failing tests, and [`audit-test`](./audit-test.md) in batch over the changed tests — and reduces their output to a single decision: 🟢 **PASS** / 🟡 **CAUTION** / 🔴 **FAIL**. The question every part serves is the same one: do the tests *verify behavior*, or just show green lights? **This is a QA judgment read, not the release gate** — pair it with [`gate`](../skills/gate/SKILL.md) for the actual ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
+`sentinel` is the **orchestrator**, and it's the one skill that does no original analysis of its own. It composes the QA skills across a branch — [`test-plan`](./test-plan.md), [`coverage-review`](./coverage-review.md), [`qa-review`](./qa-review.md), [`debug-test`](./debug-test.md) on any failing tests, and [`audit-test`](./audit-test.md) in batch over the changed tests — and reduces their output to a single decision: 🟢 **PASS** / 🟡 **CAUTION** / 🔴 **FAIL**. The question every part serves is the same one: do the tests *verify behavior*, or just show green lights? **This is a QA judgment read, not the release gate** — pair it with [`gate`](./gate.md) for the actual ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
 
 The verdict is a categorical judgment, never a numeric score. A confirmed false-confidence finding can't be PASS; a lone non-sacred one is CAUTION, not FAIL. For the paths that actually matter, you designate `--sacred` globs and a *confirmed*-hollow test there — or an unhandled boundary in that logic — fires an **un-overridable FAIL** that an otherwise-solid branch can't soften. It's a layer *above* the atomic skills, not a peer of them.
 
@@ -33,7 +33,7 @@ Because sacred paths are matched through the test↔code pairing, designating th
 
 ## Where it fits
 
-The QA-synthesis step in the [QA flow](./ask-sentinel.md), just before the release gate — a layer *above* the atomic skills, not a peer. It composes [`test-plan`](./test-plan.md), [`coverage-review`](./coverage-review.md), [`qa-review`](./qa-review.md), [`debug-test`](./debug-test.md) (on failing tests), and [`audit-test`](./audit-test.md) (batch) into one verdict, which feeds [`gate`](../skills/gate/SKILL.md)'s ship/canary/hold decision; [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md) sit outside the chain by design. Not sure whether you want the QA read, the release gate, or a single atomic skill? [`ask-sentinel`](./ask-sentinel.md) routes you.
+The QA-synthesis step in the [QA flow](./ask-sentinel.md), just before the release gate — a layer *above* the atomic skills, not a peer. It composes [`test-plan`](./test-plan.md), [`coverage-review`](./coverage-review.md), [`qa-review`](./qa-review.md), [`debug-test`](./debug-test.md) (on failing tests), and [`audit-test`](./audit-test.md) (batch) into one verdict, which feeds [`gate`](./gate.md)'s ship/canary/hold decision; [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md) sit outside the chain by design. Not sure whether you want the QA read, the release gate, or a single atomic skill? [`ask-sentinel`](./ask-sentinel.md) routes you.
 
 ## Anti-patterns
 
