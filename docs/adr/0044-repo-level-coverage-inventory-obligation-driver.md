@@ -160,3 +160,35 @@ decisions are deferred to the v2 increment: whether the inventory is a **new top
   orchestration-surface extension) as its first open question.
 - **The orchestration map gains a candidate stage-0 / cross-stage capability** — a repo-level
   "obligation ↔ verified-coverage" inventory that sits across stages 3–5 rather than inside one.
+
+## Follow-up: Seekers2001's reply (2026-07-26)
+
+Seekers2001 replied to confirm the boundary this ADR already drew, narrowing their own proposal
+rather than expanding it: they are **not** proposing coverage analysis, pruning, flaky-test
+handling, or mutation-based auditing — agreeing those are Sentinel's WIP skills' job, not
+theirs. They frame their layer as one step earlier than test evidence: *authoritative project
+intent → test obligations → executable test evidence*, with docs (specs, acceptance criteria,
+contracts, ADRs, incident records) and tests (TDD) as complementary, not interchangeable — the
+proposed layer periodically reconnects the two.
+
+Two things worth recording:
+
+1. **They explicitly decline to propose their own artifact.** Their `docs-governance` /
+   `test-collaboration` skill uses a TESTS.md/TEST-ID model, but they are not asking this repo to
+   adopt it — only the "evidence discipline" (derive obligations from authoritative intent →
+   map each obligation to runnable test evidence → distinguish confirmed from missing/unverifiable
+   → aggregate by observable behavior, not test function) is offered as transferable. This is
+   independent confirmation of Decision §3 and the "Require an obligation manifest" rejection
+   above: the obligation layer should stay artifact-agnostic, not standardize on any one
+   project's manifest format.
+2. **They restate Sentinel's WIP skills as "specialist reviewers underneath that layer"** and name
+   the missing piece as *"the thin repository-level intent mapper and aggregator"* — independent
+   external agreement with Decision §2 (driver over the leaves, not a new analyzer) and this ADR's
+   framing of the obligation-discovery layer + rollup as the net-new work.
+
+Their closing question — *"what minimal structured output would let these responsibilities compose
+without duplicating one another"* — is a direct, externally-motivated ask for the **rollup output
+schema**, deferred in Decision §5 and tracked as open question #2 in
+[TzolkinB/skills#180](https://github.com/TzolkinB/skills/issues/180). No architecture decision
+here changes; this promotes that schema from an internal open question to the concrete next thing
+a reply owes them.
