@@ -32,7 +32,7 @@ Just Claude Code. It may read your stack manifests (`package.json`, `playwright.
 | "AI just wrote 500 lines of tests" | [`coverage-review`](./coverage-review.md) — find the missing cases and loose assertions |
 | "this test passes but I don't trust it" | [`audit-test`](./audit-test.md) — prove it by mutation |
 | "a Playwright test is red" | [`debug-test`](./debug-test.md) — diagnose and route the fix |
-| "about to merge" | [`sentinel`](./sentinel.md) — one PASS/CAUTION/FAIL QA read across the branch (a read to act on, not the release gate — pair with `/gate` for the ship/canary/hold decision) |
+| "about to merge" | [`sentinel`](./sentinel.md) — one PASS/CAUTION/FAIL QA read across the branch (a read to act on, not the release gate — pair with [`gate`](./gate.md) for the ship/canary/hold decision) |
 
 Run `/ask-sentinel` with no argument and it prints the full skill table and the flow diagram instead of routing. The complete routing signals and flow live in [`skills/ask-sentinel/SKILL.md`](../skills/ask-sentinel/SKILL.md).
 
