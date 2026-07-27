@@ -42,7 +42,7 @@ It raises open questions (is this flag-gated? what reconciles gateway refunds ag
 
 ## Where it fits
 
-Runs *independently* of the [`sentinel`](./sentinel.md) chain — "what breaks in production" is orthogonal to the tests-are-solid question that chain answers, so `/sentinel` never calls it. Pair it with [`qa-review`](./qa-review.md) on a risky change: qa-review asks *can I test this*, threat-model asks *what happens if it's wrong*.
+Runs *independently* of the [`sentinel`](./sentinel.md) chain — "what breaks in production" is separate from the tests-are-solid question that chain answers, so `/sentinel` never calls it. Pair it with [`qa-review`](./qa-review.md) on a risky change: qa-review asks *can I test this*, threat-model asks *what happens if it's wrong*.
 
 ## Anti-patterns
 

@@ -81,5 +81,5 @@ Keep it concept-level, not a repeat of the finding. The finding already says *wh
 
 ## Notes
 
-- Testability review ≠ code quality review — orthogonal concerns. Even beautiful code can be untestable; even ugly code can be testable.
+- Testability review ≠ code quality review — independent concerns. Even beautiful code can be untestable; even ugly code can be testable.
 - **Credit handling that is present; don't flag it.** Well-guarded I/O — a `fetch` with a timeout, a try/catch with a graceful fallback — is a *coupling* to note (still not injectable), not a "missing error handling" gap. Report the seam you'd need to mock, not an error path the code already covers.

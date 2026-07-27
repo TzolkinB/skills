@@ -34,7 +34,7 @@ It **routes; it doesn't analyze.** It may **read your stack manifests** — `pac
 | `/bug-report` | How do I hand this off cleanly? | Something broke and you need a structured, repro-able report |
 | `/sentinel` | What's the net QA read across all of the above? | A full pass on a branch, reduced to one PASS/CAUTION/FAIL — a read to act on, not the release gate; pair with `/gate` for the ship/canary/hold decision |
 
-`/audit-orchestrator` is the **stack-aware Audit entry point**; `/audit-test` is its app-driven leaf. Route to `/audit-orchestrator` when the stack is unit, mixed, or unknown and you want the right prover picked for you; route **direct** to `/audit-test` when the situation already names an app-driven Playwright/Cypress test and wants the mutation itself. `/threat-model` and `/bug-report` are core-but-independent — real skills, deliberately **not** in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) orthogonal to shippability.
+`/audit-orchestrator` is the **stack-aware Audit entry point**; `/audit-test` is its app-driven leaf. Route to `/audit-orchestrator` when the stack is unit, mixed, or unknown and you want the right prover picked for you; route **direct** to `/audit-test` when the situation already names an app-driven Playwright/Cypress test and wants the mutation itself. `/threat-model` and `/bug-report` are core-but-independent — real skills, deliberately **not** in the `/sentinel` chain, because they answer questions (what breaks in production; how to hand off) separate from shippability.
 
 ## The wider map: the best tool by stage + stack
 

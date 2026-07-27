@@ -58,7 +58,7 @@ and they have very different answers.
    that the credibility axis is a **shape-checked, cross-checked self-report, not an independent
    re-verification** — and every user-facing surface must keep saying exactly that.
 
-3. **Calibration — how much should the signal be trusted over time?** *Orthogonal — not a trust boundary at
+3. **Calibration — how much should the signal be trusted over time?** *Independent — not a trust boundary at
    all.* A calibration loop makes a confidence *estimate* defensible by scoring predictions against outcomes.
    It does not make evidence tamper-proof (that's axis 1) or independently verified (axis 2). It is filed
    under the roadmap's future work and must not be conflated with either integrity or verification. (And it
@@ -144,7 +144,7 @@ only better words) was considered and declined — it leaves the funnel with no 
   reads `canary` with a *diagnostic-scope* rationale. Under (B), `ship` becomes reachable through a certification
   run whose breadth it can actually defend. Either way the denominator stays `audited`; #127's guard is intact.
 - **ADR-0035 stands.** Its floor, default, 25% clamp, and honesty-guard treatment are unchanged. This ADR only
-  refines the *caveat wording* and (if B) adds an orthogonal opt-in path; it does not redefine "confirmed" or
+  refines the *caveat wording* and (if B) adds a separate opt-in path; it does not redefine "confirmed" or
   the floor arithmetic.
 - **Downstream issues (filed off this Accepted ADR):** (1a) [#163](https://github.com/TzolkinB/skills/issues/163)
   — rationale/caveat reword in `gate.mjs` + `gate/SKILL.md` (claims-safe, agent-ready); and (1b)

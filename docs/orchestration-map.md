@@ -131,7 +131,7 @@ lane:
   spaghetti conditionals, missed simplifications). Verified from source (SKILL.md, 2026-07-12): does
   **not** execute, does **not** verify test behavior, no mutation, no E2E. Its *"do not approve merely
   because behavior seems correct"* rhymes with our *"a green is not proof"* — **same skeptical spirit,
-  orthogonal target.** A team runs both: thermo-nuclear (is the code well-built?) + audit-test (do the
+  independent target.** A team runs both: thermo-nuclear (is the code well-built?) + audit-test (do the
   tests prove it works?). Nearest in-repo neighbor is `qa-review` / `codebase-design`, not audit.
 - **Strategic signal:** the majors are shipping static code-*quality* review, **not** test-*credibility*
   proof — which *reinforces* the audit lane rather than closing it. A Cursor user with thermo-nuclear

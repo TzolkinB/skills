@@ -38,6 +38,6 @@ The QA-synthesis step in the [QA flow](./ask-sentinel.md), just before the relea
 ## Anti-patterns
 
 - **Treating it as a peer skill or a CI gate.** It's an orchestrator and a QA conversation; the 3-state verdict exists precisely so it isn't a binary pipeline gate ([ADR-0002](./adr/0002-sentinel-is-judgment-not-release-evidence.md)).
-- **Expecting it to threat-model or file bugs.** Those questions are orthogonal to this QA read and out of the chain by design.
+- **Expecting it to threat-model or file bugs.** Those questions are separate from this QA read and out of the chain by design.
 - **Reading a numeric score into the verdict.** It's categorical; more and higher-severity findings push toward FAIL, but there's no percentage.
 - **Guessing sacred paths for the user.** The override only fires on `--sacred` globs the user designates; no `--sacred`, no override — and that's a valid way to run.
