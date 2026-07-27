@@ -13,6 +13,15 @@ Built by a QA professional tired of AI tests that pass but don't catch real bugs
 /plugin install kimbell-skills@kimbell
 ```
 
+## Update
+
+Claude Code has no single update command for a marketplace-installed plugin — refresh the marketplace listing, then reinstall to pick up the new version:
+
+```
+/plugin marketplace update kimbell
+/plugin install kimbell-skills@kimbell
+```
+
 Then, in any Claude Code session:
 
 ```
