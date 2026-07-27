@@ -17,6 +17,8 @@ release heading.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-07-27
+
 ### Added
 
 - **`gate.mjs --max-age=<minutes>`: opt-in report-freshness check** (hostile-review finding #3,
@@ -31,6 +33,22 @@ release heading.
   (see `gate/SKILL.md`'s "Report freshness" note, and `docs/roadmap.md` item 3).
 
 ### Fixed
+
+- **`gate/SKILL.md` now requires stating plainly, every run, that the Gate ingested existing evidence and
+  did not run the suite or launch a browser.** Found via a live-eval pass (`evals/run-eval.mjs --live`,
+  freshly repaired — see below): the disclosure was documented as a background principle ("Ingests, never
+  executes") but never mandated as a line the skill actually has to say, and neither Output Format reference
+  example modeled it, so real invocations frequently omitted it even though the recorded eval sample did
+  say it. Step 3 now requires the line explicitly, and both reference outputs model it; verified by hand
+  against a live run.
+- **`evals/run-eval.mjs --live` actually runs now** — four blocking bugs fixed: `REPO_ROOT` resolved outside
+  the repo entirely (every worktree creation failed instantly); the `{prompt}` template substitution was
+  unquoted, so a multi-word invoke got word-split by the shell and `-p` only ever received the first token;
+  two cases' embedded `$(cat fixture)` shell substitution needed resolving separately once that was quoted;
+  and headless `claude -p` had no permission bypass, so a mutation-based skill (`audit-test`) silently
+  stalled on an Edit approval prompt it could never answer. Also now passes `--plugin-dir` at the isolated
+  worktree it builds — without it, `--live` silently graded whatever `kimbell-skills` build happened to be
+  globally installed, never the worktree's own checkout, making the isolation cosmetic.
 
 - **`gate.mjs` persists a rejected `audit-test-json` emission as its own distinct state, not identically to
   `absent`** (closes hostile-review finding #2, 2026-07-25, [ADR-0042](docs/adr/0042-gate-rejected-credibility-state-and-freshness-floor.md)).
