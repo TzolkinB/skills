@@ -29,7 +29,7 @@ import { tmpdir } from 'node:os';
 import { gradeSampleFile, gradeTranscript } from './lib/grade.mjs';
 
 const EVALS_ROOT = dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = resolve(EVALS_ROOT, '../..');
+const REPO_ROOT = resolve(EVALS_ROOT, '..');
 
 const argv = process.argv.slice(2);
 const flags = new Set(argv.filter((a) => a.startsWith('--') && !a.includes('=')));
@@ -110,8 +110,27 @@ function runInIsolatedWorktree(c) {
   const wt = mkdtempSync(resolve(tmpdir(), 'sentinel-eval-'));
   try {
     git(['worktree', 'add', '--detach', wt, 'HEAD']);
-    const template = opts.agent ?? process.env.SENTINEL_EVAL_AGENT ?? 'claude -p {prompt}';
-    const cmd = template.replace('{prompt}', c.invoke);
+    // --dangerously-skip-permissions: the agent runs headless (-p) with nothing to answer an
+    // Edit/Bash permission prompt, so without this a mutation-based skill (audit-test) just
+    // stalls asking for approval and never reaches a verdict. Safe here specifically because
+    // wt is a throwaway git worktree created and destroyed per trial, isolated for exactly
+    // this reason (see the isolation comment above).
+    // --plugin-dir {worktree}: without this, `claude -p` resolves /gate, /audit-test, etc.
+    // from whatever kimbell-skills build happens to be globally installed in
+    // ~/.claude/plugins/cache — a separate, independently-versioned copy that does NOT track
+    // this worktree's checkout. That defeats the isolation above: a SKILL.md edit in this
+    // repo would silently test as a no-op. Pointing --plugin-dir at wt makes the worktree's
+    // own skills/ the one actually invoked.
+    const template =
+      opts.agent ??
+      process.env.SENTINEL_EVAL_AGENT ??
+      'claude -p {prompt} --dangerously-skip-permissions --plugin-dir {worktree}';
+    // Some cases embed `$(cat <fixture>)` in their invoke string to inline a fixture's
+    // full text. shQuote below single-quotes the whole prompt (needed so a multi-word
+    // invoke reaches -p as one argument), which would otherwise suppress that shell
+    // expansion — so resolve it ourselves first, against the worktree the fixture lives in.
+    const resolvedInvoke = resolveInvokeSubstitutions(c.invoke, wt);
+    const cmd = template.replace('{prompt}', shQuote(resolvedInvoke)).replace('{worktree}', shQuote(wt));
     const r = spawnSync('bash', ['-lc', cmd], { cwd: wt, encoding: 'utf8', timeout: 300_000 });
     if (r.status !== 0) console.error(`  (agent exited ${r.status}) ${r.stderr ?? ''}`);
     return (r.stdout ?? '') + '\n' + (r.stderr ?? '');
@@ -122,6 +141,17 @@ function runInIsolatedWorktree(c) {
       rmSync(wt, { recursive: true, force: true });
     }
   }
+}
+
+function resolveInvokeSubstitutions(invoke, cwd) {
+  return invoke.replace(/\$\(cat ([^)]+)\)/g, (_, relPath) => {
+    const abs = isAbsolute(relPath) ? relPath : resolve(cwd, relPath);
+    return readFileSync(abs, 'utf8');
+  });
+}
+
+function shQuote(s) {
+  return `'${s.replace(/'/g, `'\\''`)}'`;
 }
 
 function git(args) {
