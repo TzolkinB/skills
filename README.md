@@ -36,29 +36,35 @@ Then, in any Claude Code session:
 /gate test-results/results.json --audit-test-json=audit.json
 ```
 
-Not sure which to reach for? Run `/ask-sentinel` and describe your situation.
+## The skills, by the moment you'd reach for one
 
-## Judgement
+Not sure? Run `/ask-sentinel` and describe your situation — it routes you to the one that fits, including to external tools when they're the better answer.
 
-Skills that reason about whether your tests protect you. The flagship, **[`/audit-test`](./skills/audit-test/SKILL.md)**, runs a real mutation to _show_ whether a passing test would catch the single most-likely break to the code it covers — execution-grounded evidence, not reasoning. Start there.
+### The coverage illusion — your suite is green, but is it protecting anything?
 
-### User-invoked
+The core of this plugin. A high **test coverage** number and a green suite say a test *ran*; none of them say it would have *failed*.
 
-- **[`/test-plan`](./skills/test-plan/SKILL.md)** — Before you write code or tests: define what to test and at which layer (`unit`/`component`/`integration`/`e2e`).
-- **[`/qa-review`](./skills/qa-review/SKILL.md)** — During code review: catch untestable code before it ships.
-- **[`/coverage-review`](./skills/coverage-review/SKILL.md)** — After AI writes tests: find the missing cases and loose assertions.
 - **[`/audit-test`](./skills/audit-test/SKILL.md)** — A test passes but you don't trust it: run one targeted, behaviorally-meaningful mutation and report what happened — a killed mutation confirms the test catches _that specific_ break (not any break), a survivor is execution-grounded proof it's hollow. Labels findings **Confirmed** vs **Likely**, never an invented score. Runs on dev-served Playwright/Cypress, not just unit tests. _(Cypress needs single-test isolation for a clean proof — a one-test spec or the `@cypress/grep` plugin; otherwise `cypress run --spec` runs the whole file and the audit falls back to 🟡.)_
+- **[`/coverage-review`](./skills/coverage-review/SKILL.md)** — After AI writes tests: find the missing cases and the assertions too loose to fail.
+- **[`/audit-orchestrator`](./skills/audit-orchestrator/SKILL.md)** — A suspicious passing test: route it to the tool that can actually prove it (Tautest/StrykerJS at the unit layer, `/audit-test` for app-driven tests).
 - **[`/prune-tests`](./skills/prune-tests/SKILL.md)** — The suite feels slow or noisy: cut tests that cost more than they protect (proposes before it deletes).
+
+### Before the code exists
+
+- **[`/test-plan`](./skills/test-plan/SKILL.md)** — Define what to test and at which layer (`unit`/`component`/`integration`/`e2e`).
+- **[`/qa-review`](./skills/qa-review/SKILL.md)** — During code review: catch untestable code before it ships.
 - **[`/threat-model`](./skills/threat-model/SKILL.md)** — Before shipping something risky: what breaks in production, and would you notice — ranked by how long a failure would go unseen.
-- **[`/debug-test`](./skills/debug-test/SKILL.md)** — A Playwright test is failing: auto-diagnose and route the fix (also a flake mode).
-- **[`/bug-report`](./skills/bug-report/SKILL.md)** — Something broke: structure it into a clean handoff for the team.
-- **[`/e2e-impact`](./skills/e2e-impact/SKILL.md)** — Before running E2E: map a diff to the Playwright/Cypress specs it plausibly hits.
-- **[`/audit-orchestrator`](./skills/audit-orchestrator/SKILL.md)** — A suspicious passing test: route it to the tool that can actually prove it (Tautest/StrykerJS, or `/audit-test` for app-driven tests).
+
+### Something is red, flaky, or drifting
+
+- **[`/debug-test`](./skills/debug-test/SKILL.md)** — A Playwright test is failing: auto-diagnose and route the fix. Its flake mode detects and **quarantines** rather than healing to green — a healed locator can leave a test passing while silently no longer checking what it was written to check.
 - **[`/contract-guard`](./skills/contract-guard/SKILL.md)** — A frontend suite reddens on backend drift: check the consumer's expectations against the provider's published OpenAPI.
+- **[`/bug-report`](./skills/bug-report/SKILL.md)** — Something broke: structure it into a clean handoff for the team.
 
-### Model-invoked
+### Around a PR
 
-- **[`/sentinel`](./skills/sentinel/SKILL.md)** — Before you merge: one QA judgment pass over your branch, composed from the skills above and reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate).
+- **[`/e2e-impact`](./skills/e2e-impact/SKILL.md)** — Which user journeys does this PR touch? Maps a diff to the Playwright/Cypress specs it plausibly hits, with an explicit "can't tell, run everything" bucket rather than a confident guess.
+- **[`/sentinel`](./skills/sentinel/SKILL.md)** — Before you merge: one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate).
 - **[`/ask-sentinel`](./skills/ask-sentinel/SKILL.md)** — The front door: describe your situation and get routed to the one skill that answers it, plus where it sits in the flow.
 
 ## Gate
@@ -67,7 +73,11 @@ The release-decision layer: it never runs a suite, it **ingests the evidence a P
 
 ### User-invoked
 
-- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR: bind your existing Playwright/Cypress results + an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`). The decision is deterministic code, carries no confidence number, and is advisory only — it doesn't abort the build, and a `hold`/`canary` doesn't by itself stop a deployment; that's on your CI or team. It recommends `ship` only when every E2E suite is green **and clears an executed-floor against the tests the report says it discovered** — a report that ran only a sliver of what it discovered (e.g. `expected:1, skipped:999`) is capped at `canary`; since the discovered count comes from the report, a discovery/filter/config change that quietly narrows the suite _before_ the report is written won't be caught — **and** a parsed `audit-test` verdict shows no hollow tests among those it deep-audited, **and** that deep-audited fraction clears an examined-floor (default 50% of everything triaged, overridable down to 25%) — a clean verdict over too narrow a slice is disclosed, not upgraded (a shape-checked self-report, not an independent re-verification). Point it at a self-signed ed25519 key (`--sign-key`, optional) to make the **whole bundle** tamper-evident — a DSSE envelope over an in-toto-_shaped_ Statement (self-signed, not Sigstore, and not consumable by standard in-toto tooling as-is; unsigned by default). The signature covers the decision, content-addressed digests of the files it ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion` — so `--verify` proves the entire normalized bundle, not just the decision, wasn't altered after Gate produced it.
+- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR, when you want **release readiness** you can show someone: bind your existing Playwright/Cypress results and an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`).
+
+  The decision is deterministic code and carries **no confidence number**. It's advisory — it doesn't abort your build. A bare green E2E run can never launder into `ship` on its own: that needs a parsed `audit-test` verdict clearing an examined-floor, and a suite that ran only a sliver of what it discovered is capped at `canary`. Optionally DSSE-signed with your own ed25519 key so a reader can verify the bundle wasn't altered — self-signed, **not** Sigstore, and never a claim that any producer was honest.
+
+  The floors are necessary, not sufficient, and their exact limits are worth reading before you rely on them: [what the floors do and don't catch](./docs/gate.md#what-the-floors-do-and-dont-catch).
 
 ## Where this fits — the ecosystem, and when to use what
 
@@ -88,7 +98,9 @@ plainly, in the other tool's favor where it wins:
   `audit-test` at the **app-driven E2E** layer those tools structurally can't enter; Gate composes the
   evidence, it doesn't verify.
 - **[vs. TEA (BMAD Test Architect)](./docs/comparisons/tea.md)** — use TEA for risk planning and its
-  governance gate; reach for these skills for the mutation check and calibration TEA's docs show it can't do.
+  governance gate. Reach for these skills for the mutation check its docs show it can't do — and note
+  that its **requirements traceability** marks a requirement covered because a matching test *exists*,
+  never because that test would fail. Presence is not proof; that's the seam `audit-test` fills.
 
 ## Dependencies
 

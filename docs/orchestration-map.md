@@ -1,13 +1,22 @@
 # The AI-Test Tooling Orchestration Map
 
-**Thesis:** This repo is an *opinionated orchestration layer* over the ecosystem of free AI-test
-tools — a curated map of **which tool is best for which stage of the QA workflow, and in what
-order** — with **our own tools plugged in where there's a verified gap** (the app-driven
-Playwright/Cypress "usefulness" domain).
+> **New here? Run [`audit-test`](audit-test.md) on one test first** — one command, and you'll see
+> straight away whether it finds anything in your suite. Read this when you want the whole picture:
+> it's the reference for **which tool to use at which stage, and in what order.**
 
-The moat is **not the inventory** (a bare awesome-list is commodity). It's the **executable
-roadmap**: each stage is a runnable Skill that says *reach for tool X now; if its result survives
-condition Y, escalate to Z*. Sequencing + gap-filling, not links.
+**What this is:** a guide to which testing tool to use at each stage of QA work — from planning what
+to test, through judging whether the tests you already have are any good, to deciding whether a
+change is safe to ship.
+
+**There's a skill here for every stage,** and each one is something you run, not a link — it tells you
+what to do next with its result. `prune-tests` won't delete a test it suspects is hollow, for
+instance; it hands that test to `audit-test` to be proven first.
+
+At each stage the map also names the best free tool someone else built, and says plainly when to reach
+for that one instead — the recommendation goes against us wherever it should. The one place those
+tools can't help at all is a test that drives a real browser: they work by changing your source and
+re-running it under Vitest or Jest, so a Playwright or Cypress test is out of their reach. That gap is
+why these skills exist.
 
 ## Two ways to use this (à la carte, not a funnel)
 

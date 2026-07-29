@@ -11,7 +11,7 @@
       "source": ".",
       "description": "Know which green tests you can trust. QA judgment skills for Claude Code — test planning, testability and coverage review, mutation-backed test audits, flake triage, and an evidence-based ship gate.",
       "category": "testing",
-      "keywords": ["testing", "qa", "sdet", "test-coverage", "code-review"]
+      "keywords": ["testing", "qa", "sdet", "test-quality", "mutation", "playwright", "cypress", "e2e", "test-coverage", "flaky-tests"]
     }
   ]
 }

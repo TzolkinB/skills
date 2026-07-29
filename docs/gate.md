@@ -8,6 +8,24 @@
 
 The bar for `ship` is deliberately hard to clear: every E2E suite passed in must be green **and** clear an **executed-floor** against what the report itself says it discovered (a suite that only ran a sliver of what it found is capped at `canary`, not read as green) — **and** a *parsed* `audit-test` verdict must show no hollow tests among what it deep-audited, with that deep-audited fraction clearing an **examined-floor**. An *opaque* audit-test report (human-readable but not machine-parsed) or no audit-test at all floors the decision at `canary` — a bare green E2E run can never launder into `ship` on its own. The whole bundle can optionally be DSSE-signed with a self-signed ed25519 key so a reader can verify nothing was altered after Gate produced it — self-signed, not Sigstore, and unsigned by default.
 
+## What the floors do and don't catch
+
+The two floors are **necessary, not sufficient** — they raise the bar for `ship`, they don't certify a
+suite. Their exact limits:
+
+- **Examined-floor threshold.** Defaults to 50% of everything triaged, overridable down to 25%. A
+  clean verdict over a slice narrower than that is *disclosed*, not upgraded.
+- **The executed-floor trusts the report's own denominator.** It compares tests run against the tests
+  the report says it *discovered*. Because that discovered count comes from the report itself, a
+  discovery, filter, or config change that quietly narrows the suite *before* the report is written
+  won't be caught — the narrowed suite looks fully executed.
+- **A parsed `audit-test` verdict is a shape-checked self-report**, not an independent
+  re-verification. Gate never re-runs a mutation ([ADR-0038](./adr/0038-gate-trust-boundary-and-examined-floor-population.md)).
+- **Signing scope.** The DSSE envelope wraps an in-toto-*shaped* Statement — **not** consumable by
+  standard in-toto tooling as-is. The signature covers the decision, content-addressed digests of the
+  files Gate ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion`, so
+  `--verify` proves the whole normalized bundle was unaltered — never that any producer was honest.
+
 ## When to use it
 
 - At the end of a PR, to turn a Playwright/Cypress result and an `audit-test` verdict into one honest, human-readable release recommendation instead of eyeballing two separate reports.
