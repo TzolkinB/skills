@@ -1,22 +1,25 @@
 # Why not *just* TEA?
 
 **TL;DR** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
-what it's genuinely good at: risk planning, static test review, traceability, scaffolding, and a
-governance gate with a compliance audit trail. Reach for Sentinel/Gate for what TEA's own docs show
-it **cannot** do — **run a mutation to check whether a passing test is hollow** (`audit-test`, a
+what it's genuinely good at: risk planning, static test review, requirement→test mapping, scaffolding,
+and a governance gate with a compliance audit trail. Reach for Sentinel/Gate for what TEA's own docs
+and source show it **cannot** do — **run a mutation to check whether a passing test is hollow** (`audit-test`, a
 shipping skill today): a survived mutation is an execution-grounded counterexample that the test is
 hollow; a killed one confirms the test solid *against that specific break*, never a blanket guarantee.
 The second gap — aggregating that evidence plus live execution into a **risk-weighted, calibrated**
 release confidence that **learns from your gate overrides** — is where Gate is *headed*, but read it as
 a **design, not a live feature**: Gate ships today as a categorical advisory ship/canary/hold gate, and
 the calibrated/learning layer is parked until there's a labelled history to calibrate against (see the
-load-bearing caveat below). TEA plans and governs; it doesn't run a mutation to check. Those gaps slot
-*into* TEA's gate rather than replacing it.
+load-bearing caveat below). The third gap follows from the first: because `trace`'s gate is arithmetic
+over **coverage presence** with no credibility input, a P0 requirement whose only test is hollow reads
+as covered and gates **PASS** (§3, verified at source). TEA plans and governs; it doesn't run a
+mutation to check. Those gaps slot *into* TEA's gate rather than replacing it.
 
 This is a "why ours, not just theirs?" note, held to the same bar as the rest of the repo: **no claim
 here that isn't a verified TEA absence.** Every "TEA can't" below was confirmed against TEA's own
-published docs on 2026-07-17, and each is falsifiable — the "How to check" line tells you where to
-look. If a future TEA release closes one of these gaps, this note is wrong and should be updated.
+published docs on 2026-07-17 — and §3 additionally against the workflow **source** on 2026-07-29 — and
+each is falsifiable: the "How to check" line tells you where to look. If a future TEA release closes
+one of these gaps, this note is wrong and should be updated.
 
 ---
 
@@ -39,7 +42,7 @@ TEA's stated enemy is *"AI tests that rot"* — it is a **credibility-side ally*
 On its home turf — risk-ranked planning, static review, traceability, and a governance gate with an
 NFR/compliance audit trail — reach for TEA. This note is not a takedown; it's a boundary line.
 
-## The two things TEA's own docs show it can't do
+## The three things TEA's own docs and source show it can't do
 
 ### 1. Run a mutation to check a passing test — the strongest, uncontested differentiator
 
@@ -80,14 +83,63 @@ time. TEA governs each release in isolation; Gate is meant to be the memory acro
 > parked until there's data to calibrate against. This note over-claims nothing on the Gate side —
 > and if the reviewer pitch ever does, that's a bug in the pitch.
 
+### 3. `trace` gates on coverage *presence*, so a hollow test reads as covered
+
+Verified against the workflow **source** (not the docs) on 2026-07-29 — `bmad-testarch-trace`, v1.19.1:
+
+- **`steps-c/step-03-map-criteria.md`** marks each oracle item **FULL / PARTIAL / NONE** by mapping a
+  *matching test*. Every validation rule it applies is a presence check — endpoint, auth, error-path
+  and UI-state coverage "present or missing", plus a not-happy-path-only rule. None inspects whether
+  a mapped test would fail if the code broke.
+- **`steps-c/step-05-gate-decision.md`** is deterministic JS over the resulting percentages:
+  `if (p0Coverage < 100) → FAIL`; `P1 >= 90 && overall >= 80 && P0 === 100 → PASS`. `p0Coverage` is
+  `covered/total` straight out of Step 3's mapping.
+- **Zero occurrences** of `mutation` / `hollow` / `would fail` / `kill score` anywhere in the trace
+  source: `SKILL.md`, `instructions.md`, the 671-line `checklist.md`, and all four step files
+  (including the 628-line gap analysis and the 681-line gate decision).
+- Test quality appears **once**, in step-04, as a printed recommendation —
+  `action: 'Run /bmad:tea:test-review to assess test quality'`. That is advice in the gaps report,
+  **not an input to the gate arithmetic**. (The published docs describe "optional test quality scores
+  from test-review" feeding Phase 2; that does not appear in the gate-decision source.)
+
+**Consequence:** a P0 requirement whose only test is hollow is counted as covered, so `trace` returns
+**PASS**. This repo's own [`fixtures/audit-test/booking.spec.js`](../../fixtures/audit-test/booking.spec.js)
+is exactly that shape — "rejects overlapping bookings" asserts only that `save()` was called, with
+`findOverlapping` stubbed to `[]` so the guard it is named for is never entered. Because it reads as a
+*rejection* test, it also satisfies Step 3's error-path-present and not-happy-path-only heuristics.
+
+**Two limits on this claim, stated plainly:**
+
+- On a **synthetic** oracle (no formal requirements) Step 5 downgrades PASS→CONCERNS when oracle
+  confidence isn't high. The clean PASS needs formal requirements — so this bites hardest for teams
+  with the *most* mature requirements practice, not the least.
+- Composing `test-review` does **not** close it: per §1, a test can score 100/100 on static review and
+  still be hollow.
+
+> **How to check:** read `src/workflows/testarch/bmad-testarch-trace/steps-c/step-03-map-criteria.md`
+> and `step-05-gate-decision.md`, then grep the workflow tree for `mutation`. (Verified 2026-07-29
+> against `main`, v1.19.1.) **Falsifier:** a TEA release that adds a credibility input to Step 5's
+> arithmetic.
+
+**This is not a TEA-specific flaw — and shouldn't be pitched as one.** Presence-based coverage is the
+category default: Qase's requirements-traceability report links test cases to issues, and the same
+shape appears in commercial tools whose internals we can't inspect. TEA is simply the one whose source
+is open, which makes it the one place the pattern is *verifiable* rather than inferred. Label the
+generalisation honestly — **Confirmed** for TEA (source), **Likely** for Qase (docs only),
+**Unexamined** for closed tools. The transferable claim is about the category, and it is TEA's
+openness that lets us make it at all.
+
 ## Where the overlap is real (so you don't over-trust this note)
 
 An honest positioning note has to name the ground it *doesn't* win:
 
-- **`coverage-review` vs TEA — SOFT overlap.** TEA's `test-review` + `trace` already cover much of
-  what coverage-review does. Coverage-review's edge is narrower than it looks: granularity and *real
-  instrumentation* (it reads code→coverage data when present) vs TEA's requirement→test matrix. Real,
-  but not a knockout. **Don't lead a "why not just TEA" pitch with coverage.**
+- **`coverage-review` vs TEA — SOFT overlap, with one hard exception.** TEA's `test-review` + `trace`
+  still cover much of what coverage-review does, and coverage-review's edge there stays narrow:
+  granularity and *real instrumentation* (it reads code→coverage data when present) vs TEA's
+  requirement→test matrix. **Don't lead a "why not just TEA" pitch with additive coverage
+  gap-finding.** The exception is coverage ***traceability***: §3 shows `trace` counts a requirement
+  covered on the strength of a hollow test, which is a source-verified gap rather than a soft overlap.
+  That one is safe to lead with — but it routes to `audit-test`, not to coverage-review.
 - **Static test quality — crowded.** `qa-review`, TEA's `test-review`, and third-party tools like
   Exspec all audit static test quality. Overlapping territory; no clean win for anyone. The uncontested
   ground is (1) mutation proof and (2) calibration — lead with those, not with static review.
