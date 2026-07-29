@@ -1,7 +1,7 @@
 {
   "name": "kimbell-skills",
   "version": "1.0.0",
-  "description": "QA-first testing skills for Claude Code. Verify behavior, not green lights.",
+  "description": "Prove your green tests would go red. Runs a real mutation against dev-served Playwright/Cypress tests and reports whether they caught it.",
   "author": {
     "name": "Kim"
   },

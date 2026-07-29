@@ -1,11 +1,14 @@
 # kimbell-skills
 
 QA-first Claude Code skills that audit whether AI-generated code and tests actually verify
-behavior, not whether the suite is merely green. Aimed first at developers *without* a QA
-background who are accumulating AI-written tests faster than anyone can review them.
+behavior, not whether the suite is merely green. Aimed first at **QA and SDET professionals** who
+already own a running suite and already believe hollow tests are real — so the pitch leads with the
+proof, not with an explanation of the problem ([`docs/positioning.md`](docs/positioning.md)).
 
 _User-facing concept definitions shipped with the plugin live in `GLOSSARY.md`. This file is
-the canonical design vocabulary for building this plugin: the words we commit to when we design._
+the canonical design vocabulary for building this plugin: the words we commit to when we design.
+Outward-facing claims and their labels are governed by [`docs/positioning.md`](docs/positioning.md),
+which also maps our internal terms to the words this audience actually uses._
 
 ## Language
 
