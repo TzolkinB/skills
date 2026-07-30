@@ -39,7 +39,7 @@ expect(result).toBeDefined();   // passes for any non-undefined return
 expect(result.ok).toBeTruthy(); // never checks status or remaining
 ```
 
-A correct run flags the loose assertions (they'd pass even if the arithmetic were wrong) and the untested branches: `amount <= 0`, `amount > order.total`, the already-`refunded` no-op, and the full-refund boundary where `status` flips to `refunded`. Then it recommends the specific tests that would close each gap.
+A correct run flags the loose assertions (they'd pass even if the arithmetic were wrong) and the untested branches: `amount <= 0`, `amount > order.total`, the already-`refunded` no-op, and the full-refund boundary where `status` flips to `refunded`. Then it recommends the specific tests that would close each gap, and turns the two loose assertions into an **Escalate to audit-test** list — named candidates for a targeted mutation, not a verdict on them.
 
 ## Where it fits
 

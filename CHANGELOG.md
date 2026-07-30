@@ -47,6 +47,12 @@ release heading.
   fields, the footer, and the label the full run earned; its negative sample is the failure the flag
   invites — the full report emitted unchanged, with no card, no footer, and evidence dropped to a
   characterization.
+- **`coverage-review`: an "Escalate to audit-test" section** — [#191](https://github.com/TzolkinB/skills/issues/191).
+  Turns the Loose Assertions findings it already produces into named `/audit-test` candidates, one line
+  each: the assertion, why it's worth a mutation, and the invocation. Copies `prune-tests`' existing
+  `Deferred to audit-test` hand-off pattern rather than adding new analysis, and is omitted entirely when
+  there are no loose or incidental assertions to escalate — coverage-review still never runs a mutation
+  itself, the section only names the candidate.
 
 ### Fixed
 
