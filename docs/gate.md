@@ -8,6 +8,28 @@
 
 The bar for `ship` is deliberately hard to clear: every E2E suite passed in must be green **and** clear an **executed-floor** against what the report itself says it discovered (a suite that only ran a sliver of what it found is capped at `canary`, not read as green) — **and** a *parsed* `audit-test` verdict must show no hollow tests among what it deep-audited, with that deep-audited fraction clearing an **examined-floor**. An *opaque* audit-test report (human-readable but not machine-parsed) or no audit-test at all floors the decision at `canary` — a bare green E2E run can never launder into `ship` on its own. The whole bundle can optionally be DSSE-signed with a self-signed ed25519 key so a reader can verify nothing was altered after Gate produced it — self-signed, not Sigstore, and unsigned by default.
 
+## What the floors do and don't catch
+
+Clearing both floors is *required* to get `ship` — but clearing them doesn't mean the suite is
+trustworthy, only that it hit a specific minimum. Each bullet below is a way a suite could clear the
+floor and still have a real gap the floor doesn't check for:
+
+- **Examined-floor threshold.** Defaults to 50% of everything triaged, overridable down to 25%. If the
+  deep-audited fraction falls short of that, the report says so plainly — but the decision stays
+  capped at `canary` regardless; a narrow clean audit is never treated as if it cleared the bar.
+- **The executed-floor trusts the report's own denominator.** It compares tests run against the tests
+  the report says it *discovered*. Because that discovered count comes from the report itself, a
+  discovery, filter, or config change that quietly narrows the suite *before* the report is written
+  won't be caught — the narrowed suite looks fully executed.
+- **A parsed `audit-test` verdict is a shape-checked self-report**, not an independent
+  re-verification. Gate never re-runs a mutation ([ADR-0038](./adr/0038-gate-trust-boundary-and-examined-floor-population.md)).
+- **Signing scope.** The DSSE envelope wraps an in-toto-*shaped* Statement — **not** consumable by
+  standard in-toto tooling as-is. The signature covers four things: the decision itself,
+  content-addressed digests of the files Gate ran on, a digest of every parsed evidence entry, and
+  `producedOn`/`schemaVersion`. `--verify` proves that bundle wasn't altered after Gate produced it.
+  It proves nothing about whether any producer's report was honest in the first place — Gate signs its
+  own bundle, not the truthfulness of what went into it.
+
 ## When to use it
 
 - At the end of a PR, to turn a Playwright/Cypress result and an `audit-test` verdict into one honest, human-readable release recommendation instead of eyeballing two separate reports.
