@@ -57,7 +57,7 @@ The core of this plugin. A high **test coverage** number and a green suite say a
 
 ### Something is red, flaky, or drifting
 
-- **[`/debug-test`](./skills/debug-test/SKILL.md)** _(user-invoked)_ — A Playwright test is failing: auto-diagnose and route the fix. Its flake mode detects and **quarantines** rather than healing to green — a healed locator can leave a test passing while silently no longer checking what it was written to check.
+- **[`/debug-test`](./skills/debug-test/SKILL.md)** _(user-invoked)_ — A Playwright test is failing: auto-diagnose and route the fix. Its flake mode — the one part of this skill that also covers Cypress — detects and **quarantines** rather than healing to green: a healed locator can leave a test passing while silently no longer checking what it was written to check.
 - **[`/contract-guard`](./skills/contract-guard/SKILL.md)** _(user-invoked)_ — A frontend suite reddens on backend drift: check the consumer's expectations against the provider's published OpenAPI.
 - **[`/bug-report`](./skills/bug-report/SKILL.md)** _(user-invoked)_ — Something broke: structure it into a clean handoff for the team.
 
@@ -73,7 +73,7 @@ The release-decision layer: it never runs a suite, it **ingests the evidence a P
 
 ### User-invoked
 
-- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR, when you want **release readiness** you can show someone: bind your existing Playwright/Cypress results and an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`).
+- **[`/gate`](./skills/gate/SKILL.md)** — At the end of a PR, when you want **release readiness** you can show someone: bind your existing Playwright/Cypress results and an `audit-test` verdict into one readable evidence bundle, and derive an advisory `ship` / `canary` / `hold` decision by **worst-wins** (any input says `hold` → `hold`; else any says `canary` → `canary`; else `ship`). Playwright's JSON reporter writes its result to disk on its own; Cypress doesn't, so it needs a small Module API wrapper first — [`docs/gate.md`](./docs/gate.md) has it.
 
   The decision is deterministic code and carries **no confidence number**. It's advisory — it doesn't abort your build. A bare green E2E run can never launder into `ship` on its own: that needs a parsed `audit-test` verdict clearing an examined-floor, and a suite that ran only a sliver of what it discovered is capped at `canary`. Optionally DSSE-signed with your own ed25519 key so a reader can verify the bundle wasn't altered — self-signed, **not** Sigstore, and never a claim that any producer was honest.
 

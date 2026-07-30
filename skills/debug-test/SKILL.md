@@ -1,12 +1,12 @@
 ---
 name: debug-test
-description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs. Also has a flake mode (detects, quarantines, routes flaky tests) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
+description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs. Also has a flake mode (detects, quarantines, routes flaky tests — Playwright or Cypress) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
 argument-hint: "[test file path or test name] [--flake] [--drift]"
 allowed-tools: [Read, Bash, Task, Skill]
 disable-model-invocation: true
 ---
 
-When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. Scoped to Playwright; for non-Playwright failures, invoke diagnosing-bugs directly.
+When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. **Steps 0–5 below assume Playwright** — Flake Mode is the one exception, since measuring a flake rate doesn't need the rest of this skill's Playwright-specific diagnosis machinery, and also supports Cypress (via `@cypress/grep --burn`). For a plain, non-flaky Cypress failure, or any other non-Playwright failure (Jest/Vitest/pytest), invoke diagnosing-bugs directly.
 
 Two special cases branch off the normal flow, each with its own procedure file — load it only when its trigger fires:
 - **Flake Mode** — a *non-deterministic* failure (mixed pass/fail). Most teams `.skip()` or delete it; this skill instead **detects, quarantines, and routes the cause**, consuming the framework's own burn rather than rebuilding a runner. Triggered by `--flake` (Step 0) or a mixed-result Step 1. → follow [reference/flake-mode.md](reference/flake-mode.md).
