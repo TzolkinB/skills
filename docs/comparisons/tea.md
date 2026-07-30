@@ -72,7 +72,9 @@ gate decisions.
 
 Gate is designed to be that missing layer: aggregate execution + credibility evidence into a
 **numeric, risk-weighted** release confidence, and **calibrate** it against your gate overrides over
-time. TEA governs each release in isolation; Gate is meant to be the memory across releases.
+time. TEA governs each release in isolation; Gate is meant to be the layer that reads across them —
+calibrating against an override history it *reads*, never one it accumulates itself
+([ADR-0047](../adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)).
 
 > **Honest caveat, load-bearing:** the *audit-test* half of this pitch is credible **today** — it's a
 > shipping skill you can run on your own tests in ten minutes. The *Gate* half is a **design, not a
@@ -155,10 +157,16 @@ workflows. Two concrete seams, both feeding TEA's gate rather than competing wit
   *weight* on aggregated, credibility-adjusted execution evidence — a P0 requirement whose tests
   `audit-test` flags as hollow contributes ~0 confidence, not a false pass. (Design sketch; see #96.)
 - **Calibration feed (TEA → Gate).** TEA's **WAIVED** decisions are already an audit-trailed
-  human-override record (evidence → decision → reason) — exactly the labeled data Gate's calibration
-  loop needs. TEA is stateless; Gate becomes the memory, fed by TEA's own audit trail.
+  human-override record (evidence → decision → reason) — the closest thing to the labeled data a
+  calibration loop needs. Gate would **read** that record where it already lives; per
+  [ADR-0047](../adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) nothing in this repo
+  accumulates a store of its own, so "Gate becomes the memory" is not the design. Two caveats before
+  anyone leans on this: where TEA persists that trail is **unverified** (the 2026-07-29 teardown
+  source-verified `trace`, not the WAIVED trail), and an override is a *proxy* label — it records the
+  human's call at gate time, not whether that call was later vindicated.
 
-Net: **TEA plans and governs; Sentinel checks by execution; Gate (eventually) weighs and remembers.**
+Net: **TEA plans and governs; Sentinel checks by execution; Gate (eventually) weighs — reading a
+history it doesn't own.**
 You can run TEA for its governance gate and slot `audit-test` in as the mutation check its
 `test-review` structurally lacks — today, without adopting anything else.
 

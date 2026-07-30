@@ -37,7 +37,6 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0023](0023-selector-guard-static-testid-drift-check.md) | `selector-guard` — static test-id reconciliation before a browser launches | [#78](https://github.com/TzolkinB/skills/issues/78), post-v1 fast-follow |
 | [0026](0026-live-evals-opt-in-pr-and-scheduled-drift.md) | Live skill-eval runs are opt-in per PR and scheduled for drift | `--live` is wired in `run-eval.mjs`; the CI trigger model is unbuilt |
 | [0044](0044-repo-level-coverage-inventory-obligation-driver.md) | Repo-level obligation-driven coverage inventory as a v2 driver | [mattpocock/skills#654](https://github.com/mattpocock/skills/issues/654) |
-| [0046](0046-does-sentinel-become-stateful.md) | Does Sentinel ever own a persistent store? | [#200](https://github.com/TzolkinB/skills/issues/200) — undecided, needs a maintainer call |
 
 ## Index
 
@@ -88,14 +87,15 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0043](0043-report-to-commit-provenance-over-git-timestamp.md) | Bind a report to its commit via producer-recorded SHA provenance, not a git-timestamp check | Accepted 2026-07-25 |
 | [0044](0044-repo-level-coverage-inventory-obligation-driver.md) | A repo-level obligation-driven coverage inventory is a v2 driver over the leaf skills | **Proposed** |
 | [0045](0045-business-risk-coverage-is-a-join-not-a-register.md) | Business-risk coverage is a stateless join over an external matrix, not a register of our own | Accepted 2026-07-29 |
-| [0046](0046-does-sentinel-become-stateful.md) | Does Sentinel become a stateful tool? | **Proposed** — undecided |
+| [0046](0046-does-sentinel-become-stateful.md) | Does Sentinel become a stateful tool? | Superseded by [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) |
+| [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) | Statelessness is a write-boundary property, and git is the heal ledger | Accepted 2026-07-30 · supersedes [0046](0046-does-sentinel-become-stateful.md) |
 
 ## By area
 
-- **Suite philosophy and scope** — [0002](0002-sentinel-is-judgment-not-release-evidence.md), [0005](0005-match-quality-bar-not-scope.md), [0010](0010-execution-out-temporal-deferred-behind-a-seam.md), [0013](0013-evidence-provenance-sentinel-labels-not-gates.md), [0020](0020-suite-trigger-model-leaves-user-invoked.md), [0038](0038-gate-trust-boundary-and-examined-floor-population.md), [0045](0045-business-risk-coverage-is-a-join-not-a-register.md), [0046](0046-does-sentinel-become-stateful.md)
+- **Suite philosophy and scope** — [0002](0002-sentinel-is-judgment-not-release-evidence.md), [0005](0005-match-quality-bar-not-scope.md), [0010](0010-execution-out-temporal-deferred-behind-a-seam.md), [0013](0013-evidence-provenance-sentinel-labels-not-gates.md), [0020](0020-suite-trigger-model-leaves-user-invoked.md), [0038](0038-gate-trust-boundary-and-examined-floor-population.md), [0045](0045-business-risk-coverage-is-a-join-not-a-register.md), [0046](0046-does-sentinel-become-stateful.md), [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)
 - **`audit-test`** — [0001](0001-audit-test-proves-by-execution.md), [0004](0004-audit-test-is-judgment-not-a-stryker-substitute.md), [0016](0016-audit-test-reachability-guard.md), [0017](0017-audit-test-baseline-lock-suspected.md), [0019](0019-audit-test-reachability-warm-dev-propagation.md), [0039](0039-audit-test-green-requires-execution.md), [0041](0041-audit-test-certification-mode-verdict-semantics.md)
 - **`coverage-review`** — [0009](0009-coverage-review-consumes-coverage-not-produces-it.md), [0011](0011-coverage-review-prefers-real-instrumentation.md), [0044](0044-repo-level-coverage-inventory-obligation-driver.md)
-- **`debug-test`** — [0012](0012-debug-test-flake-mode.md), [0018](0018-debug-test-drift-triage.md)
+- **`debug-test`** — [0012](0012-debug-test-flake-mode.md), [0018](0018-debug-test-drift-triage.md), [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)
 - **`prune-tests`** — [0003](0003-prune-tests-proposes-before-deleting.md)
 - **`/sentinel` verdict and the sacred path** — [0007](0007-sentinel-sacred-path-fail-override.md), [0014](0014-sacred-path-integrity-discovery-fails-loud.md)
 - **Drift guards** — [0021](0021-contract-guard-consumer-side-openapi-differ.md), [0023](0023-selector-guard-static-testid-drift-check.md)
