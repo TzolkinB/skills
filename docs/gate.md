@@ -10,11 +10,13 @@ The bar for `ship` is deliberately hard to clear: every E2E suite passed in must
 
 ## What the floors do and don't catch
 
-The two floors are **necessary, not sufficient** — they raise the bar for `ship`, they don't certify a
-suite. Their exact limits:
+Clearing both floors is *required* to get `ship` — but clearing them doesn't mean the suite is
+trustworthy, only that it hit a specific minimum. Each bullet below is a way a suite could clear the
+floor and still have a real gap the floor doesn't check for:
 
-- **Examined-floor threshold.** Defaults to 50% of everything triaged, overridable down to 25%. A
-  clean verdict over a slice narrower than that is *disclosed*, not upgraded.
+- **Examined-floor threshold.** Defaults to 50% of everything triaged, overridable down to 25%. If the
+  deep-audited fraction falls short of that, the report says so plainly — but the decision stays
+  capped at `canary` regardless; a narrow clean audit is never treated as if it cleared the bar.
 - **The executed-floor trusts the report's own denominator.** It compares tests run against the tests
   the report says it *discovered*. Because that discovered count comes from the report itself, a
   discovery, filter, or config change that quietly narrows the suite *before* the report is written
@@ -22,9 +24,11 @@ suite. Their exact limits:
 - **A parsed `audit-test` verdict is a shape-checked self-report**, not an independent
   re-verification. Gate never re-runs a mutation ([ADR-0038](./adr/0038-gate-trust-boundary-and-examined-floor-population.md)).
 - **Signing scope.** The DSSE envelope wraps an in-toto-*shaped* Statement — **not** consumable by
-  standard in-toto tooling as-is. The signature covers the decision, content-addressed digests of the
-  files Gate ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion`, so
-  `--verify` proves the whole normalized bundle was unaltered — never that any producer was honest.
+  standard in-toto tooling as-is. The signature covers four things: the decision itself,
+  content-addressed digests of the files Gate ran on, a digest of every parsed evidence entry, and
+  `producedOn`/`schemaVersion`. `--verify` proves that bundle wasn't altered after Gate produced it.
+  It proves nothing about whether any producer's report was honest in the first place — Gate signs its
+  own bundle, not the truthfulness of what went into it.
 
 ## When to use it
 
