@@ -9,7 +9,7 @@
     {
       "name": "kimbell-skills",
       "source": ".",
-      "description": "QA-first testing skills for Claude Code. Verify behavior, not green lights.",
+      "description": "Know which green tests you can trust. QA judgment skills for Claude Code — test planning, testability and coverage review, mutation-backed test audits, flake triage, and an evidence-based ship gate.",
       "category": "testing",
       "keywords": ["testing", "qa", "sdet", "test-coverage", "code-review"]
     }

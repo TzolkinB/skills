@@ -1,8 +1,14 @@
 # Kim Bell's QA Skills
 
-**QA-first testing skills for Claude Code — verify behavior, not green lights.**
+**Know which green tests you can trust.**
 
-AI writes tests that pass without proving anything — green even when you break the behavior they claim to guard. That's false confidence. These skills are a **judgement layer** that reasons about whether your tests actually protect you, composing with the tools that already do execution (coverage instrumentation, Playwright, Cypress, mutation testing) instead of reimplementing them.
+Some of your passing tests would catch a real regression. Some would stay green while the behaviour broke underneath them — and a coverage number can't tell you which is which. That gap is the **coverage illusion**.
+
+Mutation tools can't close it above the unit layer: StrykerJS and Tautest mutate source and run Vitest/Jest, so they structurally can't reach a Playwright or Cypress test driving a running app. The app-driven agents push the other way — Playwright's and Cypress's own agents author and heal *toward* green, and the healer will skip a test outright if the functionality looks broken.
+
+**[`/audit-test`](./skills/audit-test/SKILL.md)** closes it. It picks the change most likely to expose the test, applies it to your dev-served app, runs that one test, and reports what happened. A kill confirms the test catches _that specific_ break — not any break; a survivor is execution-grounded proof it's hollow. Findings are labelled **Confirmed** or **Likely**, never an invented score.
+
+Start there — one test, one command, no adoption required. Behind it sits a seven-stage map of which free tool to reach for at each point in the QA workflow, with these skills filling the gaps those tools leave.
 
 Built by a QA professional tired of AI tests that pass but don't catch real bugs.
 
