@@ -107,6 +107,16 @@ today on purpose — its arrival is deliberately the signal this has landed
 (#98) parked because it needs the categorical gate to have been in real use first to have
 anything to calibrate against.
 
+**Not a storage problem** ([ADR-0047](adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)).
+[#200](https://github.com/TzolkinB/skills/issues/200) briefly grouped this with the heal-ledger as
+one "does the repo adopt a persistent store" fork; it isn't. Its blockers are that there are no
+labelled *outcomes* (an override records the human's call, never whether that call was vindicated)
+and no usage at volume to generate them. It stays open because
+[#49](https://github.com/TzolkinB/skills/issues/49) names the calibration loop as *what earns Gate
+the verdict* — retiring it would decide Gate is permanently advisory, and it would also silently
+retire the #99/#130 plugin-independence trigger. Full recovered rationale and the revisit trigger are
+in ADR-0047.
+
 ---
 
 ## Tier 3 — housekeeping, not urgent

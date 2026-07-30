@@ -1,6 +1,13 @@
 # Does Sentinel become a stateful tool?
 
-**Status: Proposed (2026-07-29) — undecided, needs a maintainer call.** Tracked as [#200](https://github.com/TzolkinB/skills/issues/200). This ADR does not decide
+**Status: Superseded by [ADR-0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)
+(2026-07-30).** The fork this ADR named was decided there: statelessness is a **write-boundary**
+property, [#194](https://github.com/TzolkinB/skills/issues/194) is re-scoped to derive repeat-heals
+from git rather than a store of its own, and [#129](https://github.com/TzolkinB/skills/issues/129)
+stays open with its blocker corrected — it was never blocked on storage. Kept as history; 0047 is
+authoritative.
+
+**Original status: Proposed (2026-07-29) — undecided, needs a maintainer call.** Tracked as [#200](https://github.com/TzolkinB/skills/issues/200). This ADR does not decide
 anything. It names a fork that three separate issues have each been parked on without any of them
 naming it, so the shared dependency stops being invisible. No code changes.
 
