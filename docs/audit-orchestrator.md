@@ -31,7 +31,7 @@ Pointed at an epic-stack Playwright spec, it detects **Playwright app-driven** (
 
 ## Where it fits
 
-Stage 3 of the [orchestration map](./orchestration-map.md) — after tests exist, routing the audit rather than performing it. It hands off to [`audit-test`](./audit-test.md) for app-driven targets and to Tautest/StrykerJS (external, pointed at rather than absorbed) for unit/component targets. It never emits a PASS/FAIL gate — that's [`sentinel`](./sentinel.md) → [`gate`](./adr/0028-witness-gate-skill-mvp1.md)'s job downstream.
+Stage 3 of the [orchestration map](./orchestration-map.md) — after tests exist, routing the audit rather than performing it. It hands off to [`audit-test`](./audit-test.md) for app-driven targets and to Tautest/StrykerJS (external, pointed at rather than absorbed) for unit/component targets. It never emits a PASS/FAIL gate — that's [`sentinel`](./sentinel.md) → [`gate`](./gate.md)'s job downstream.
 
 ## Anti-patterns
 
