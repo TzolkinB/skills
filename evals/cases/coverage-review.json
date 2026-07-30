@@ -1,7 +1,7 @@
 {
   "skill": "coverage-review",
   "trials": 3,
-  "_note": "Prose-only skill (no verdict emoji) — the first of the judge-heavy tier (ADR-0022: these land second because the deterministic assert does little work). Rubric from fixtures/coverage-review/expected-findings.md against refund.spec.js + refund.js: one green happy-path test with two loose assertions that leaves every guard, error path, and the full-refund boundary untested. The one deterministic token is the required mode line (SKILL step 3) — in this fixture there is no coverage output, so a faithful run states `static inference`. Real discrimination rests on must_surface (the specific gaps) / must_not (boundary), graded by the LLM judge; the hollow sample is the signature failure this skill exists to counter — a rubber-stamp `looks good` review that flags none of them. `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "_note": "Prose-only skill (no verdict emoji) — the first of the judge-heavy tier (ADR-0022: these land second because the deterministic assert does little work). Rubric from fixtures/coverage-review/expected-findings.md against refund.spec.js + refund.js: one green happy-path test with two loose assertions that leaves every guard, error path, and the full-refund boundary untested. The one deterministic token is the required mode line (SKILL step 3) — in this fixture there is no coverage output, so a faithful run states `static inference`. Real discrimination rests on must_surface (the specific gaps) / must_not (boundary), graded by the LLM judge; the hollow sample is the signature failure this skill exists to counter — a rubber-stamp `looks good` review that flags none of them. `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly. #191 added the Escalate-to-audit-test must_surface entry: the two loose assertions turned into named candidates, mirroring prune-tests' Deferred hand-off — not new analysis, so it must be the same two entries as the Loose Assertions check above it.",
   "cases": [
     {
       "id": "refund-loose-and-gaps",
@@ -26,6 +26,10 @@
         {
           "claim": "Flags the untested full-refund boundary: `remaining === 0` → `status: 'refunded'` is never hit (only the `'partial'` side is tested), and the `remaining` value is never asserted.",
           "anchors": { "any": ["remaining === 0", "full-refund boundary", "full refund", "boundary", "'partial'"] }
+        },
+        {
+          "claim": "Escalates both loose assertions to `/audit-test` as named candidates (an 'Escalate to audit-test' section or equivalent) — this is more than the closing `Next:` footer alone: each assertion gets its own one-line reason it's worth a mutation, naming the `/audit-test fixtures/coverage-review/refund.spec.js fixtures/coverage-review/refund.js` invocation.",
+          "anchors": { "any": ["escalate to audit-test", "audit-test candidate", "worth a mutation", "worth confirming by mutation"] }
         }
       ],
       "must_not": [

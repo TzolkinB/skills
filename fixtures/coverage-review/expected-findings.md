@@ -25,3 +25,10 @@ loose assertions. A correct run should flag the gaps below.
 3. Refund on an already-`refunded` order returns `{ ok: false }`.
 4. Full refund (`amount === order.total`) returns `status: 'refunded'`, `remaining: 0`.
 5. Assert the exact shape/values of the returned object, not just its existence.
+
+## Escalate to audit-test (should be flagged — #191)
+Both loose assertions from the section above, turned into candidates: which assertion, why it's
+worth a mutation, and the `/audit-test fixtures/coverage-review/refund.spec.js
+fixtures/coverage-review/refund.js` invocation. This is the same two entries as Loose Assertions,
+not new analysis — a faithful run never adds a third candidate here, and never omits the section
+since the fixture does have loose assertions.

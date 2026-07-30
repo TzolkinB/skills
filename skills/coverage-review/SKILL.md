@@ -27,10 +27,11 @@ A test suite that makes green lights doesn't protect you. Coverage review asks: 
 5. List code paths, conditions, and edge cases in the source. In instrumentation mode, anchor "not covered" to the real uncovered lines/branches from the report; in static mode, reason them out.
 6. Flag every path NOT covered by an assertion.
 7. Flag assertions that are too loose (e.g., `expect(result).toBeDefined()`). **This runs identically in both modes** — instrumentation proves a line *executed*, never that anything *verified* it, so assertion-quality and edge-case judgment is exactly the value a coverage number can't give. A line at 100% coverage with a loose assertion is still a gap.
-8. Flag untested error paths, boundary conditions, state transitions.
-9. Summarize gaps in order of risk.
-10. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
-11. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the report above — the same gaps, trimmed to the top three as risk / evidence / action / confidence. The confidence ceiling is split, and the split is the point: a line or branch read from a **fresh** instrumentation report is **Confirmed**; static-mode inference, every assertion-quality call (even in instrumentation mode), and anything from a report older than the source are **Likely**.
+8. **Build "Escalate to audit-test" directly from step 7's findings** — one line per loose or incidental assertion: which one, a one-line reason it's worth a mutation, and the invocation (`/audit-test <test file> <code file>`). This is not new analysis; it's the prune-tests "Deferred to audit-test" hand-off applied to what step 7 already found. **Omit the section entirely when step 7 found nothing** — an escalation list with nothing to escalate is a manufactured finding, not a hand-off.
+9. Flag untested error paths, boundary conditions, state transitions.
+10. Summarize gaps in order of risk.
+11. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
+12. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the report above — the same gaps, trimmed to the top three as risk / evidence / action / confidence. The confidence ceiling is split, and the split is the point: a line or branch read from a **fresh** instrumentation report is **Confirmed**; static-mode inference, every assertion-quality call (even in instrumentation mode), and anything from a report older than the source are **Likely**.
 
 ## Output Format
 
@@ -63,10 +64,17 @@ A test suite that makes green lights doesn't protect you. Coverage review asks: 
 3. Test date/time boundary (midnight, month boundary, DST)
 4. Assert exact structure of returned booking object, not just existence
 
+### Escalate to audit-test
+- **Line 8** — `expect(result).toBeDefined()` passes for any non-undefined return; only a mutation shows whether it actually protects the write path. → `/audit-test booking.spec.js src/booking.js`
+- **Line 15** — `expect(bookings.length).toBeGreaterThan(0)` could pass with wrong data; worth confirming by mutation. → `/audit-test booking.spec.js src/booking.js`
+<!-- omit this whole section when Loose Assertions is empty — no findings, no escalation -->
+
 **Next:** `/audit-test booking.spec.js src/booking.js` on the assertions above — this pass names them, only a mutation proves whether they bite
 ```
 
-Close every review — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: loose or incidental assertions route to `/audit-test`; a report with gaps but nothing loose routes on to `/sentinel` once the gaps are closed. The footer **points** — this skill still never runs a mutation ([ADR-0009](../../docs/adr/0009-coverage-review-consumes-coverage-not-produces-it.md)).
+**Escalate to audit-test** is the Loose Assertions list turned into candidates, one-for-one — same entries, each naming the assertion, the one-line reason it's worth a mutation, and the invocation. Omit the section entirely when Loose Assertions has nothing in it; don't manufacture an entry to fill the template (same rule prune-tests applies to its own Deferred list).
+
+Close every review — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: loose or incidental assertions route to `/audit-test`; a report with gaps but nothing loose routes on to `/sentinel` once the gaps are closed. Both the section and the footer **point** — this skill still never runs a mutation itself, it only names the candidate ([ADR-0009](../../docs/adr/0009-coverage-review-consumes-coverage-not-produces-it.md)).
 
 ## Explain Mode (`--explain`)
 
@@ -88,3 +96,4 @@ Keep it concept-level. The gap list already says *what's* missing; this says *wh
 - A covered line with a loose assertion is still a gap — the executed-vs-verified distinction is the whole point (see GLOSSARY: Coverage — line vs behavioral).
 - Boundary conditions to probe: 0, 1, -1, max, null, undefined, empty string, [], {}. State transitions: before/after state, side effects.
 - This reads coverage reports; it does **not** run your suite to generate them. No report → static mode, never a coverage run.
+- Escalate to audit-test is a mirror of the Loose Assertions list, never independent analysis — if a suite has no loose or incidental assertions, the section doesn't appear, full stop.
