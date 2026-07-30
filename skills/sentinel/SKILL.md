@@ -1,7 +1,7 @@
 ---
 name: sentinel
 description: Run a QA judgment pass over a feature branch — test plan gaps, coverage, assertion quality, false-confidence audit, regression risks
-argument-hint: "[branch or file path] [--sacred=<glob>] [--explain]"
+argument-hint: "[branch or file path] [--sacred=<glob>] [--digest] [--explain]"
 allowed-tools: [Read, Bash, Glob]
 ---
 
@@ -28,6 +28,7 @@ Sentinel is the **orchestrator**: it runs no original analysis of its own — it
    - 🔴 **FAIL**: Major untested paths, brittleness risks, assertions that make no sense, **enough confirmed false-confidence to sink the change** (see How audit-test findings shift the verdict — a lone non-sacred confirmed finding is CAUTION, not FAIL), or a fired Sacred-Path Override
    - The False-Confidence Audit shifts the verdict categorically (see How audit-test findings shift the verdict). A fired Sacred-Path Override is an **un-overridable FAIL** — it cannot be softened to CAUTION regardless of how solid the rest of the branch looks.
 9. Output a **Sentinel Report** with risk summary
+10. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the full report — the verdict line plus at most three cards for the findings that actually drove it. Sentinel composes and originates no evidence of its own, so its confidence label is **worst-wins**: the weakest label among the inputs behind the verdict. A PASS carried by four reasoned reads is `Likely`, and a mostly-Unexamined audit tally is reported as such, never as confirmed-solid. `--digest` never changes the verdict — it changes how much of the report you read to reach it.
 
 ## How audit-test findings shift the verdict
 
@@ -138,7 +139,11 @@ _Provenance: reused from `/coverage-review`'s static read — not a separate ana
 - Files reviewed: BookingService.test.js, BookingService.js
 - Sacred paths designated: `src/payments/**` — none tripped this run
 - This is a QA judgment read, not the release gate — pair with `/gate` for the ship/canary/hold decision
+
+**Next:** `/gate` — this is the QA read; `/gate` is the one that says ship / canary / hold
 ```
+
+Close every report — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Sentinel's row is the same for every verdict: the chain ends at `/gate`, which is where shippability is actually spoken.
 
 ## Explain Mode (`--explain`)
 

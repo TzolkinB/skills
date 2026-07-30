@@ -1,7 +1,7 @@
 ---
 name: audit-test
 description: Audit a passing test for false confidence — would it still pass if the code it covers broke? — by running a targeted mutation and reporting what actually happened, not by reasoning alone
-argument-hint: "[test name, test file, test + its code, or a directory/glob/--changed for batch]"
+argument-hint: "[test name, test file, test + its code, or a directory/glob/--changed for batch] [--digest] [--explain]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
 ---
@@ -44,6 +44,7 @@ Every verdict below is this skill's own account of a mutation it actually ran in
    - If the code can't be run (no runnable env, missing deps), do **not** guess a Confirmed verdict — fall back to the mutation *thought* experiment and label it **🟡 Likely**.
 5. Classify each finding with the failure taxonomy and write the report. A **characterization test** (one deliberately pinning current behavior, even quirky behavior, so a refactor can't change it silently) is *labeled a safety net*, not condemned.
 6. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode). Otherwise omit it — default output stays lean.
+7. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the report above — the same verdicts, trimmed to the top three findings as risk / evidence / action / confidence. The verdict maps straight onto the label and never moves: 🔴/🟢 are **Confirmed** (a mutation ran and its outcome was observed), 🟡 and ⚠️ are **Likely**, triaged-but-never-mutated is **Unexamined** and belongs in the header's denominator, not in a card.
 
 ## Verdicts
 
@@ -75,6 +76,8 @@ Single-test / flagged-test entry:
 **How it fails:** Overmocked — asserts save() was called, never that the overlap was rejected
 **Proof:** commented out the overlap guard (booking.ts:34) → ran this test → still passed
 **A real test would:** assert the 2nd booking is rejected with 409, not that save() ran
+
+**Next:** strengthen the assertion above, then re-run `/audit-test tests/booking.spec.ts` — the fix is only real when the mutation dies
 ```
 
 For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code couldn't be run (or, if no plausible breaking mutation was found, say so — that's a 🟡, not a 🟢). For a 🟢, state briefly what mutation you ran and how it made the test fail. For **⚠️ Baseline-lock suspected**, show the intent signal — the co-changed assertion (`old → new` expected value) or the in-code source of truth it contradicts — and the remedy:
@@ -88,6 +91,8 @@ For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code co
 ```
 
 Single-test mode always shows its verdict, including 🟢. **Batch mode** reports a provenance tally instead — Unexamined tests are never folded into the confirmed-solid greens; see [reference/batch-mode.md](reference/batch-mode.md) for its format ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
+
+Close every report — single-test, batch, or `--digest` ([shared card](../shared/digest-format.md)) — with the one-line [`Next:` footer](../shared/next-footers.md) shown above. Pick the row for the verdict you actually reported: 🔴/⚠️ route back into a re-run after the fix; 🟡 routes to making the code runnable (or to `/audit-orchestrator` to pick a prover your stack can run); 🟢 or a clean batch routes on to `/sentinel`, then `/gate`.
 
 ## Structured emission (`--emit-json=<path>`) — for the Gate skill
 

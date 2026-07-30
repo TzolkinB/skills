@@ -50,3 +50,5 @@ record for the one test a mutation actually ran against, matching the Proof abov
   ]
 }
 ```
+
+**Next:** strengthen the assertion above, then re-run `/audit-test fixtures/audit-test/booking.spec.js` — the fix is only real when the mutation dies

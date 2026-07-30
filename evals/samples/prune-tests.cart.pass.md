@@ -24,3 +24,5 @@ Tests reviewed: 5   |   Proposed: 1 merge / 2 rewrite / 1 keep
 ### 5. Keep (Conservative — Anti-Over-Prune)
 - **`empty cart totals zero`** — a real boundary condition with unique signal.
   - action: keep
+
+**Next:** re-run with `--apply` on a clean tree — this pass proposes, it deletes nothing

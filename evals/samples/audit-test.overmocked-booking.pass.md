@@ -20,3 +20,5 @@ candidate 🔴 is confirmed, not downgraded to 🟡.
 **A real test would:** set `findOverlapping` to return a non-empty array and assert that
 `svc.book(...)` throws with `code === 409` — exercise and pin the rejection behavior, not the
 mock interaction.
+
+**Next:** strengthen the assertion above, then re-run `/audit-test fixtures/audit-test/booking.spec.js` — the fix is only real when the mutation dies

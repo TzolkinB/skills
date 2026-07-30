@@ -91,6 +91,16 @@ These skills are the gap-fillers; at each of the seven QA stages the *best* tool
 - "about to merge / full pass on my branch / how's my branch's QA shape" → **`/sentinel`**
 - "am I safe to ship / give me the ship decision / I have E2E + audit-test results" → **`/gate`**
 
+> **These signals are where the skills' inline footers come from.** Every judgment skill closes its
+> own report with a one-line `Next:` footer from the table in
+> [`shared/next-footers.md`](../shared/next-footers.md), so the next step arrives with the finding
+> instead of behind a second lookup here. That table is keyed by *result* rather than by situation —
+> a skill writing its footer already knows what it found — but the destinations are these, and this
+> list stays authoritative: where the two name a different next skill, change it here first, then
+> sync the footer row. Judgment skills also take **`--digest`**
+> ([shared card](../shared/digest-format.md)), so a `Run:` line may carry it when the user wants the
+> short form.
+
 ## The intended flow
 
 These skills map onto the life of a change, not a fixed pipeline — most runs touch two or three, not all:

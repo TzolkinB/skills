@@ -36,3 +36,5 @@ Audited 6 changed tests · deep-audited 1 (0 🟢 confirmed-solid · 1 🔴 conf
 1. **BEFORE SHIPPING (blocks merge — sacred, un-overridable):** Fix "refunds the full charge" — assert the refund amount actually returned, not that a stub was called. It guards `src/payments/refund.js` and currently guards nothing (confirmed by mutation).
 2. **BEFORE SHIPPING:** Mock the hard-coded URL in `src/reports/export.js` (testability).
 3. **FOLLOW-UP:** Tighten the loose assertion in `src/reports/export.test.js`.
+
+**Next:** `/gate` — this is the QA read; `/gate` is the one that says ship / canary / hold

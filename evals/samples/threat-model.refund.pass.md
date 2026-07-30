@@ -23,3 +23,5 @@
 ### Open Questions (for the developer, not answered here)
 - Is the refund path flag-gated / can this change be rolled back independently?
 - What reconciles gateway refunds against order status today?
+
+**Next:** `/test-plan "a refund that fails after the order is already marked refunded"` — turn the ranked risks into cases

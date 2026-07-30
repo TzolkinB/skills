@@ -1,7 +1,7 @@
 ---
 name: threat-model
 description: Threat model a change — what actually breaks in production if it's wrong, and how you'd find out — independent of whether it's tested
-argument-hint: "[file path, diff, or change description]"
+argument-hint: "[file path, diff, or change description] [--digest] [--explain]"
 allowed-tools: [Read, Bash]
 disable-model-invocation: true
 ---
@@ -21,6 +21,7 @@ This is reasoning, not verification. It doesn't execute the code under review an
    - **Reversibility**: Is this easy to undo (stateless, flag-gated) or hard (data migration, sent email, charged payment)?
 4. Rank by impact × how long the failure would go unnoticed — a low-detectability (silent) failure outranks a loud one at the same impact, because loud failures get fixed fast and silent ones run in production
 5. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
+6. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the report above — the same risks, trimmed to the top three as risk / evidence / action / confidence. The confidence ceiling is **Likely** and stays there no matter how plausible the risk reads: this skill reasons about consequence, it executes nothing and cannot confirm a risk is real.
 
 ## Output Format
 
@@ -49,7 +50,11 @@ This is reasoning, not verification. It doesn't execute the code under review an
 ### Open Questions (for the developer, not answered here)
 - Is there a feature flag for this? [if unknown, ask]
 - What's the actual rollback mechanism for this system? [this skill doesn't know your deploy pipeline]
+
+**Next:** `/test-plan "refund retry leaves a double-charge"` — turn the ranked risks into cases
 ```
+
+Close every model — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: a HIGH risk with no test behind it routes to `/test-plan`; HIGHs that are already covered route to `/sentinel`.
 
 ## Explain Mode (`--explain`)
 

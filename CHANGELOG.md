@@ -17,6 +17,50 @@ release heading.
 
 ## [Unreleased]
 
+### Added
+
+- **A shared `--digest` evidence card across the seven judgment skills** (`test-plan`, `qa-review`,
+  `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `sentinel`) — [#193](https://github.com/TzolkinB/skills/issues/193),
+  [ADR-0048](docs/adr/0048-shared-digest-card-and-inline-next-footers.md). `--digest` replaces the full
+  report with a header line carrying scope + tally and at most three cards: **Risk** (one line) /
+  **Evidence** (the exact observation — `file:line`, the literal assertion, the command and its exit code)
+  / **Action** (one concrete step) / **Confidence** (`Confirmed` | `Likely` | `Unexamined`). It generalizes
+  the four-field shape `audit-test`'s single-test entry already had, and it is defined **once** in
+  [`skills/shared/digest-format.md`](skills/shared/digest-format.md) — each skill's Output Format links it
+  rather than restating it. The load-bearing rule: **a digest may only say less than the report it
+  replaces, and never upgrades a label.** The shared doc fixes a confidence ceiling per skill —
+  `Likely` for the four that execute nothing, split for `coverage-review` (`Confirmed` only for
+  line/branch facts from a *fresh* instrumentation report), verdict-mapped for `audit-test`, and
+  worst-wins for `sentinel` — so seven skills can't each invent their own answer to "how well is this
+  known."
+- **A one-line `Next:` footer on every judgment report** (full *and* `--digest`), tabulated in
+  [`skills/shared/next-footers.md`](skills/shared/next-footers.md) and derived from `ask-sentinel` —
+  its routing signals plus its intended-flow diagram. Not a copy of them: the router is keyed by
+  *situation*, a footer by *result* (a 🔴 `audit-test` routes back into a re-run after the fix; a 🟡
+  routes to making the code runnable, or to `/audit-orchestrator` if it can't be). Generalizes the
+  inline hand-off `prune-tests` already shipped as `Deferred to audit-test`, so the next step arrives
+  with the finding instead of behind a second `/ask-sentinel` lookup, with `ask-sentinel` authoritative
+  where the two ever name different destinations. `debug-test`, `e2e-impact`,
+  `contract-guard`, `bug-report`, `audit-orchestrator`, and `gate` are named as out of scope for now
+  rather than silently skipped.
+- **`evals`: an `audit-test --digest` case** (`digest-honest-label`) asserting the digest keeps the four
+  fields, the footer, and the label the full run earned; its negative sample is the failure the flag
+  invites — the full report emitted unchanged, with no card, no footer, and evidence dropped to a
+  characterization.
+
+### Fixed
+
+- **`evals/changed.mjs` missed the shared-contract surface.** A `skills/shared/**` edit changes seven
+  skills' output but matches no `skills/<name>/SKILL.md` path, so change detection would have selected
+  **zero** evals for it. It now fans a shared-contract change out to every skill with a case, the same
+  way a harness-core change does, with a self-test row proving it.
+- **`evals/cases/coverage-review.json`: the `must_not` anchor on bare `"mutation"` was over-broad.** It
+  fired on a faithful run that merely *names* `/audit-test` as the next step — the exact hand-off the new
+  footer makes — rather than on one that actually ran a mutation. Narrowed to the doing-it phrasings
+  (`applied the mutation`, `ran the mutation`, `mutation survived`, …) and the rubric now says naming the
+  escalation is allowed. The pass sample carries the footer, so the case guards the distinction instead of
+  tripping over it.
+
 ## [1.0.0] - 2026-07-27
 
 ### Added
