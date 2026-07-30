@@ -6,7 +6,7 @@ allowed-tools: [Read, Bash, Task, Skill]
 disable-model-invocation: true
 ---
 
-When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. **Steps 0–5 below assume Playwright** — Flake Mode is the one exception, since measuring a flake rate doesn't need the rest of this skill's Playwright-specific diagnosis machinery, and also supports Cypress (via `@cypress/grep --burn`). For a plain, non-flaky Cypress failure, or any other non-Playwright failure (Jest/Vitest/pytest), invoke diagnosing-bugs directly.
+When a Playwright test fails, don't describe the problem — let the skill read it. This skill runs the test, reads the file, applies fast QA heuristics, and routes to the right tool. **Steps 0–5 below assume Playwright** — Flake Mode is the one exception, since measuring a flake rate doesn't need the rest of this skill's Playwright-specific diagnosis machinery, and also supports Cypress (via `@cypress/grep --burn`). For a plain, non-flaky Cypress failure, or any other non-Playwright failure (Jest/Vitest/pytest), this skill stops rather than running its Playwright-specific steps against the wrong target — Step 0 checks for this and names `diagnosing-bugs` as the tool to reach for instead of proceeding.
 
 Two special cases branch off the normal flow, each with its own procedure file — load it only when its trigger fires:
 - **Flake Mode** — a *non-deterministic* failure (mixed pass/fail). Most teams `.skip()` or delete it; this skill instead **detects, quarantines, and routes the cause**, consuming the framework's own burn rather than rebuilding a runner. Triggered by `--flake` (Step 0) or a mixed-result Step 1. → follow [reference/flake-mode.md](reference/flake-mode.md).
@@ -16,10 +16,11 @@ Two special cases branch off the normal flow, each with its own procedure file �
 
 ### 0. Locate the test
 Get the test file path or test name from $ARGUMENTS.
+- If `--flake` is present → load and follow [reference/flake-mode.md](reference/flake-mode.md). Use this when the complaint is "it's flaky," not "it's failing." (Flake mode does its own Playwright/Cypress detection.)
+- If `--drift` is present → load and follow [reference/drift-mode.md](reference/drift-mode.md). Use this when a long-green test went red and nothing in its own repo changed. (Framework-agnostic — drift mode never runs the suite.)
+- **Otherwise (the main diagnosis flow, Steps 1–5): confirm the target is Playwright first** — a `playwright.config.*` in the project, or a `@playwright/test` import in the file. **If it isn't, stop here** — do not proceed to Step 1. Report that this skill's diagnosis is Playwright-scoped and name `diagnosing-bugs` as the tool to reach for instead (see Output Format). Don't self-invoke it — that's a decision for the user to make, not a silent handoff.
 - If a file path: read it directly; pass it **positionally** to the run commands below (`playwright test path/to/file.spec.ts`).
 - If a test name: `grep -r "$ARGUMENTS" tests/ --include="*.spec.*" -l`, then select it in every run command below with **`-g "$TEST_NAME"`** — Playwright's title filter. A bare positional arg is a *filename* regex, not a title: passing a test name positionally matches **zero** files, runs 0 tests, and reports 0 failures — which reads as a false "not flaky." Always `-g` for a name.
-- If `--flake` is present → load and follow [reference/flake-mode.md](reference/flake-mode.md). Use this when the complaint is "it's flaky," not "it's failing."
-- If `--drift` is present → load and follow [reference/drift-mode.md](reference/drift-mode.md). Use this when a long-green test went red and nothing in its own repo changed.
 
 ### 1. Flakiness check first
 Before single-run analysis, rule out non-determinism using the framework's **own** burn mechanism — never a hand-rolled loop. With Playwright, `--repeat-each` runs the same test N times in one invocation:
@@ -93,6 +94,17 @@ Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skill
   4. Code logic regression — behavior changed, test not updated
 
 ## Output Format
+
+### Not a Playwright test (Step 0)
+```
+## debug-test: [Test Name / file]
+
+### Not Playwright
+[file] has no `playwright.config.*` / `@playwright/test` import — debug-test's diagnosis (Steps 1–5) is Playwright-scoped.
+
+### Route
+Invoke diagnosing-bugs directly for this one. (If the actual complaint is flakiness, `--flake` also covers Cypress.)
+```
 
 ### Heuristics caught it (Step 2)
 ```
