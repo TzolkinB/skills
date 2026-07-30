@@ -1,5 +1,7 @@
 # audit-test is judgment bounded by a triage funnel; Stryker is the exhaustive route, reached by a seam
 
+**Status: Accepted (2026-07-09).**
+
 `audit-test` runs its own targeted mutation ([ADR-0001](0001-audit-test-proves-by-execution.md)), which invites an obvious question: why build a hand-rolled mutation step when [StrykerJS](https://stryker-mutator.io/) is a mature, widely-adopted mutation-testing framework? The answer is that they answer different questions on different axes, and `audit-test` deliberately keeps the cheaper one. Stryker mutates **all of `src/`** and emits a codebase-wide **mutation score** — an *evidence* artifact, the kind [ADR-0002-sentinel](0002-sentinel-is-judgment-not-release-evidence.md) explicitly assigns to the separate evidence pipeline, not to Sentinel. `audit-test` answers a *judgment* question about a **specific passing test** — "does this guard anything, and if not, what should it assert?" — interactively, during a PR review, bounded by its triage funnel. We keep `audit-test` as the judgment tool and treat Stryker as the exhaustive route reached across a clean seam, not as a replacement for `audit-test`'s engine.
 
 ## Considered options

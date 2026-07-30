@@ -1,5 +1,7 @@
 # Every /sentinel verdict input carries its evidence provenance — Proven, Likely, or Unexamined — and Sentinel labels, it does not gate on execution
 
+**Status: Accepted (2026-07-10);** the clause allowing a 🟢 on reasoning alone is superseded by [ADR-0039](0039-audit-test-green-requires-execution.md) (2026-07-24). The rest stands.
+
 `/sentinel` sells an executed-evidence verdict, but execution is an *optional* sub-step:
 `audit-test`'s funnel decides statically which tests earn a live mutation, and only those get run.
 The rest are cleared by the same static read `coverage-review` performs — the "AI's say-so"

@@ -1,5 +1,7 @@
 # audit-test gates a 🔴 behind a harness-reachability check
 
+**Status: Accepted (2026-07-10).**
+
 `audit-test`'s 🔴 "Proven false-confidence" verdict rests on one factual claim: *the mutation ran
 and the test stayed green.* That claim is only meaningful if the mutation actually reached the code
 the running test exercises. For unit tests run against source that is always true. For **app-driven

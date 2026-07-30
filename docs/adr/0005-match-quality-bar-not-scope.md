@@ -1,5 +1,7 @@
 # Sentinel matches the quality bar of a maintained plugin product, not the scope of a workflow-OS
 
+**Status: Accepted (2026-07-09).**
+
 Sentinel has a differentiated QA worldview but a repository that reads like a promising internal
 framework rather than a maintained product. The maturity effort raises it to the *quality bar* of a
 real plugin product — unambiguous install, self-consistent docs, release discipline, dogfooding —

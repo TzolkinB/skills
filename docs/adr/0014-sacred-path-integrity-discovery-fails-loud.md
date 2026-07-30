@@ -1,5 +1,7 @@
 # The sacred-path FAIL must fail loud, never silent: test discovery is multi-ecosystem, zero matches is INCONCLUSIVE, and the test↔code pairing is specified
 
+**Status: Accepted (2026-07-10).**
+
 The sacred-path override ([ADR-0007](0007-sentinel-sacred-path-fail-override.md)) is Sentinel's only
 hard guarantee — a proven false-confidence finding on a `--sacred` path forces an un-overridable
 FAIL. A guarantee that degrades to *nothing without an error* is worse than no guarantee, because the

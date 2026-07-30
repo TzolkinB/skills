@@ -1,5 +1,7 @@
 # debug-test gains a flake mode that detects, quarantines, and routes — it does not rebuild the runner
 
+**Status: Accepted (2026-07-09).**
+
 Flaky tests are the one failure category `debug-test` handled only rudimentarily: run it a few
 times, and if it's non-deterministic, hand off to `qa-review`. A market analysis of
 judgment-layer tools and everyday practice both show the

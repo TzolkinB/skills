@@ -1,5 +1,7 @@
 # coverage-review consumes line-coverage as evidence; it does not produce it — the analyzer is a route, not a rival
 
+**Status: Accepted (2026-07-09).**
+
 `coverage-review` reads a test and its code statically and asks a judgment question — "what could break that these tests wouldn't catch?" This invites the same question ADR-0004 raised about Stryker: why not just run a coverage tool? Ecosystem skills like `test-coverage-analyzer` (and the frameworks under them, NYC / JaCoCo / `c8`) execute the suite, parse coverage data, and pinpoint the exact untested lines. The answer is the same shape as [ADR-0004](0004-audit-test-is-judgment-not-a-stryker-substitute.md): they answer different questions on different axes, and `coverage-review` deliberately keeps the judgment one. A coverage tool emits **which lines executed** — an *evidence* artifact, the kind [ADR-0002](0002-sentinel-is-judgment-not-release-evidence.md) explicitly assigns to the separate evidence pipeline, not to Sentinel. `coverage-review` answers **which behaviors are guarded**: it flags loose assertions, untested branches, and boundary conditions — including on lines a coverage tool already counts as green. We keep `coverage-review` as the judgment tool and treat the coverage analyzer as evidence reached across a clean seam, not as a replacement.
 
 ## The blind spot that makes this a complement, not a substitution

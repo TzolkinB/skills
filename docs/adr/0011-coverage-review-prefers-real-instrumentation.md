@@ -1,5 +1,7 @@
 # coverage-review prefers real coverage instrumentation, falling back to static inference
 
+**Status: Accepted (2026-07-09).**
+
 `coverage-review` historically inferred coverage *statically* — it read the test and the code and
 reasoned about which paths were exercised. A market analysis of judgment-layer
 tools flags this as the suite's weakest moat: ecosystem tools (nyc/istanbul, c8, JaCoCo, `test-coverage-analyzer`) *run*

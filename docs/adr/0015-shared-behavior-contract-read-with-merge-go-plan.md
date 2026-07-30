@@ -1,5 +1,7 @@
 # coverage-review, audit-test, and prune-tests consume one shared behavior-contract read; the three-into-one merge is designed but not taken
 
+**Status: Accepted (2026-07-10).**
+
 Under `/sentinel`, three skills independently read every changed test and derive the same thing —
 each test's behavior contract and its assertion-quality smells (loose / incidental / overmocked).
 `coverage-review` does it to find gaps, `audit-test` to pick mutation suspects, `prune-tests` to
