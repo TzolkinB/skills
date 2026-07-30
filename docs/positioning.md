@@ -99,6 +99,38 @@ left column and introduce the right one once, in context.
 | flaky test management | detect → quarantine → route | Emphasize what we *refuse* to do: heal it to green. |
 | test quality score | (nothing) | We don't emit scores. Say so plainly; it's a differentiator, not a gap. |
 
+## How to write it — name the technique, don't gesture at it
+
+Four drafts in this repo failed the same way: a pronoun or an abstraction standing in for something
+that has a perfectly good name. Every one had to be caught in review. Catch them while drafting
+instead.
+
+| Gestured at it | Named it |
+|---|---|
+| "Mutation tools can't **close it** above the unit layer" | "break the code a test covers on purpose, then check whether the test fails — mutation tools do exactly this, but only for unit tests" |
+| "`/audit-test` **does it** for browser-driven tests" | "`/audit-test` breaks the code behind a Playwright or Cypress test and checks whether the test notices" |
+| "each stage says *reach for tool X now; if its result survives condition Y, escalate to Z*" | "`prune-tests` won't delete a test it suspects is hollow; it hands that test to `audit-test` to be proven first" |
+| "the map is the product *thesis* but deliberately not the *hook* — judgment has to be earned before it's read" | "New here? Run `audit-test` on one test first. Read this when you want the whole picture." |
+
+Four checks on a draft:
+
+1. **Is a pronoun carrying the load?** `it`, `this`, `the same` — name the thing instead. This is not a
+   ban on pronouns: *"break the code a test covers on purpose, then check whether the test fails.
+   Mutation tools do exactly **this**"* reads cleanly, because the antecedent is named one sentence
+   back. The failure is a pronoun whose antecedent is **distant, missing, or only explained
+   afterwards** — as in "`/audit-test` does **it** for browser-driven tests," where the next sentence
+   had to do the naming.
+2. **Are there placeholder variables?** X / Y / Z means you have a pattern and no example. Use a real
+   one from this repo — there is always one.
+3. **How many abstractions must a reader hold to parse the sentence?** "an opinionated orchestration
+   layer over the ecosystem of free AI-test tools" is three before any meaning arrives.
+4. **Is it competitive framing?** "moat", "commodity", "the hook", "the thesis" — a reader has no stake
+   in our competitive position. That vocabulary belongs **in this file**, which is internal, and not on
+   a reader-facing page.
+
+Check 4 is the general rule behind all of this: **this document may talk about positioning; the
+surfaces it governs may not.** A reader-facing page should never link here.
+
 ## Claims we can make
 
 Each with its label. Never state one above its label.

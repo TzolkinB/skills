@@ -6,7 +6,7 @@ Some of your passing tests would catch a real regression. Some would stay green 
 
 There's a direct way to find out: break the code a test covers on purpose, then check whether the test fails. Mutation tools do exactly this — StrykerJS, Tautest — but only for unit tests. They change your source and re-run it under Vitest or Jest, so a Playwright or Cypress test driving a real browser is out of their reach. And the browser-test tooling pushes the other way: Playwright's and Cypress's own agents write and repair tests *toward* green, and the healer, if it decides the functionality itself is broken, marks the test skipped instead of repairing it.
 
-**[`/audit-test`](./skills/audit-test/SKILL.md)** does it for browser-driven tests. It picks the change most likely to expose the test, applies it to your dev-served app, runs that one test, and reports what happened. A kill confirms the test catches _that specific_ break — not any break; a survivor is execution-grounded proof it's hollow. Findings are labelled **Confirmed** or **Likely**, never an invented score.
+**[`/audit-test`](./skills/audit-test/SKILL.md)** breaks the code behind a Playwright or Cypress test and checks whether the test notices — it picks the change most likely to expose the test, applies it to your dev-served app, runs that one test, and reports what happened. A kill confirms the test catches _that specific_ break — not any break; a survivor is execution-grounded proof it's hollow. Findings are labelled **Confirmed** or **Likely**, never an invented score.
 
 Start there — one test, one command, no adoption required. Behind it sits a seven-stage map of which free tool to reach for at each point in the QA workflow, with these skills filling the gaps those tools leave.
 
