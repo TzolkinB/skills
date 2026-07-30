@@ -44,28 +44,28 @@ Not sure? Run `/ask-sentinel` and describe your situation — it routes you to t
 
 The core of this plugin. A high **test coverage** number and a green suite say a test *ran*; none of them say it would have *failed*.
 
-- **[`/audit-test`](./skills/audit-test/SKILL.md)** — A test passes but you don't trust it: run one targeted, behaviorally-meaningful mutation and report what happened — a killed mutation confirms the test catches _that specific_ break (not any break), a survivor is execution-grounded proof it's hollow. Labels findings **Confirmed** vs **Likely**, never an invented score. Runs on dev-served Playwright/Cypress, not just unit tests. _(Cypress needs single-test isolation for a clean proof — a one-test spec or the `@cypress/grep` plugin; otherwise `cypress run --spec` runs the whole file and the audit falls back to 🟡.)_
-- **[`/coverage-review`](./skills/coverage-review/SKILL.md)** — After AI writes tests: find the missing cases and the assertions too loose to fail.
-- **[`/audit-orchestrator`](./skills/audit-orchestrator/SKILL.md)** — A suspicious passing test: route it to the tool that can actually prove it (Tautest/StrykerJS at the unit layer, `/audit-test` for app-driven tests).
-- **[`/prune-tests`](./skills/prune-tests/SKILL.md)** — The suite feels slow or noisy: cut tests that cost more than they protect (proposes before it deletes).
+- **[`/audit-test`](./skills/audit-test/SKILL.md)** _(user-invoked)_ — A test passes but you don't trust it: run one targeted, behaviorally-meaningful mutation and report what happened — a killed mutation confirms the test catches _that specific_ break (not any break), a survivor is execution-grounded proof it's hollow. Labels findings **Confirmed** vs **Likely**, never an invented score. Runs on dev-served Playwright/Cypress, not just unit tests. _(Cypress needs single-test isolation for a clean proof — a one-test spec or the `@cypress/grep` plugin; otherwise `cypress run --spec` runs the whole file and the audit falls back to 🟡.)_
+- **[`/coverage-review`](./skills/coverage-review/SKILL.md)** _(user-invoked)_ — After AI writes tests: find the missing cases and the assertions too loose to fail.
+- **[`/audit-orchestrator`](./skills/audit-orchestrator/SKILL.md)** _(user-invoked)_ — A suspicious passing test: route it to the tool that can actually prove it (Tautest/StrykerJS at the unit layer, `/audit-test` for app-driven tests).
+- **[`/prune-tests`](./skills/prune-tests/SKILL.md)** _(user-invoked)_ — The suite feels slow or noisy: cut tests that cost more than they protect (proposes before it deletes).
 
 ### Before the code exists
 
-- **[`/test-plan`](./skills/test-plan/SKILL.md)** — Define what to test and at which layer (`unit`/`component`/`integration`/`e2e`).
-- **[`/qa-review`](./skills/qa-review/SKILL.md)** — During code review: catch untestable code before it ships.
-- **[`/threat-model`](./skills/threat-model/SKILL.md)** — Before shipping something risky: what breaks in production, and would you notice — ranked by how long a failure would go unseen.
+- **[`/test-plan`](./skills/test-plan/SKILL.md)** _(user-invoked)_ — Define what to test and at which layer (`unit`/`component`/`integration`/`e2e`).
+- **[`/qa-review`](./skills/qa-review/SKILL.md)** _(user-invoked)_ — During code review: catch untestable code before it ships.
+- **[`/threat-model`](./skills/threat-model/SKILL.md)** _(user-invoked)_ — Before shipping something risky: what breaks in production, and would you notice — ranked by how long a failure would go unseen.
 
 ### Something is red, flaky, or drifting
 
-- **[`/debug-test`](./skills/debug-test/SKILL.md)** — A Playwright test is failing: auto-diagnose and route the fix. Its flake mode detects and **quarantines** rather than healing to green — a healed locator can leave a test passing while silently no longer checking what it was written to check.
-- **[`/contract-guard`](./skills/contract-guard/SKILL.md)** — A frontend suite reddens on backend drift: check the consumer's expectations against the provider's published OpenAPI.
-- **[`/bug-report`](./skills/bug-report/SKILL.md)** — Something broke: structure it into a clean handoff for the team.
+- **[`/debug-test`](./skills/debug-test/SKILL.md)** _(user-invoked)_ — A Playwright test is failing: auto-diagnose and route the fix. Its flake mode detects and **quarantines** rather than healing to green — a healed locator can leave a test passing while silently no longer checking what it was written to check.
+- **[`/contract-guard`](./skills/contract-guard/SKILL.md)** _(user-invoked)_ — A frontend suite reddens on backend drift: check the consumer's expectations against the provider's published OpenAPI.
+- **[`/bug-report`](./skills/bug-report/SKILL.md)** _(user-invoked)_ — Something broke: structure it into a clean handoff for the team.
 
 ### Around a PR
 
-- **[`/e2e-impact`](./skills/e2e-impact/SKILL.md)** — Which user journeys does this PR touch? Maps a diff to the Playwright/Cypress specs it plausibly hits, with an explicit "can't tell, run everything" bucket rather than a confident guess.
-- **[`/sentinel`](./skills/sentinel/SKILL.md)** — Before you merge: one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate).
-- **[`/ask-sentinel`](./skills/ask-sentinel/SKILL.md)** — The front door: describe your situation and get routed to the one skill that answers it, plus where it sits in the flow.
+- **[`/e2e-impact`](./skills/e2e-impact/SKILL.md)** _(user-invoked)_ — Which user journeys does this PR touch? Maps a diff to the Playwright/Cypress specs it plausibly hits, with an explicit "can't tell, run everything" bucket rather than a confident guess.
+- **[`/sentinel`](./skills/sentinel/SKILL.md)** _(model-invoked)_ — Before you merge: one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate).
+- **[`/ask-sentinel`](./skills/ask-sentinel/SKILL.md)** _(model-invoked)_ — The front door: describe your situation and get routed to the one skill that answers it, plus where it sits in the flow.
 
 ## Gate
 
