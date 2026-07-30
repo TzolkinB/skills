@@ -77,6 +77,27 @@ _Avoid_: sacred regression (J-Rig's term for the release-blocking test case, a r
 mechanism; ours keys off `audit-test`/`coverage-review` findings, not a designated failing case),
 critical path (ambiguous, that's a workflow/perf term).
 
+**Judgment skill**:
+One of the seven skills that read an artifact and return a *finding* about it — `test-plan`,
+`qa-review`, `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `sentinel`. They are
+the set that shares the output contract in `skills/shared/`: the `--digest` evidence card and the
+inline `Next:` footer ([ADR-0048](docs/adr/0048-shared-digest-card-and-inline-next-footers.md)). The
+distinguishing property is having something to compress — a finding with evidence and a provenance
+label behind it. The **procedural** skills (`debug-test`, `e2e-impact`, `contract-guard`,
+`bug-report`, `audit-orchestrator`, `gate`) run a fixed check or route, so they take neither.
+_Avoid_: conflating it with **pedagogical skill**, README's `--explain` set, which is a different
+cut of the same list (it includes `bug-report`, which teaches but has no findings to trim);
+"analysis skill" (every skill analyzes something).
+
+**Evidence card**:
+The four-field short form a judgment skill emits under `--digest`: **Risk** (one line) / **Evidence**
+(a checkable observation, not a characterization) / **Action** (one concrete step) / **Confidence**
+(the Confirmed / Likely / Unexamined label the run earned). Generalized from `audit-test`'s
+single-test entry. It is a *trim* of the full report, bound by one rule: compression may drop a
+finding but never upgrade its label.
+_Avoid_: summary (implies it may add or generalize — it may only say less), TL;DR (informal, and
+carries no obligation to keep the provenance label).
+
 **Test debt**:
 The accumulated cost of low-value, redundant, over-mocked, and stale tests that make a suite
 slower, noisier, and less trustworthy without adding confidence. A property of the suite's

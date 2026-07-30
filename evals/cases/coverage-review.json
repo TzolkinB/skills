@@ -34,8 +34,8 @@
           "anchors": { "any": ["delete the test", "deleting the test", "remove the test", "should be deleted", "prune the"] }
         },
         {
-          "claim": "Must NOT prove by mutation or run the suite — it reads coverage or infers statically; proving by mutation is `/audit-test`, and it never runs the suite to generate coverage (SKILL notes).",
-          "anchors": { "any": ["mutation", "mutate the", "ran the suite", "ran the tests", "npx jest", "executed the suite"] }
+          "claim": "Must NOT prove by mutation or run the suite — it reads coverage or infers statically; proving by mutation is `/audit-test`, and it never runs the suite to generate coverage (SKILL notes). NAMING `/audit-test` as the next step is required, not a violation (ADR-0048's `Next:` footer) — what's forbidden is having actually applied a mutation or run the suite here.",
+          "anchors": { "any": ["applied the mutation", "ran the mutation", "mutation survived", "mutation was killed", "i mutated", "mutate the", "ran the suite", "ran the tests", "npx jest", "executed the suite"] }
         }
       ]
     }

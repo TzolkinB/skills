@@ -1,7 +1,7 @@
 ---
 name: coverage-review
 description: Review test coverage and flag untested paths, edge cases, and assertion gaps — reads real coverage instrumentation when present, falls back to static analysis
-argument-hint: "[test file path] [code file path]"
+argument-hint: "[test file path] [code file path] [--digest] [--explain]"
 allowed-tools: [Read, Bash]
 disable-model-invocation: true
 ---
@@ -30,6 +30,7 @@ A test suite that makes green lights doesn't protect you. Coverage review asks: 
 8. Flag untested error paths, boundary conditions, state transitions.
 9. Summarize gaps in order of risk.
 10. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
+11. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the report above — the same gaps, trimmed to the top three as risk / evidence / action / confidence. The confidence ceiling is split, and the split is the point: a line or branch read from a **fresh** instrumentation report is **Confirmed**; static-mode inference, every assertion-quality call (even in instrumentation mode), and anything from a report older than the source are **Likely**.
 
 ## Output Format
 
@@ -61,7 +62,11 @@ A test suite that makes green lights doesn't protect you. Coverage review asks: 
 2. Test booking collision (two simultaneous requests for same room/time)
 3. Test date/time boundary (midnight, month boundary, DST)
 4. Assert exact structure of returned booking object, not just existence
+
+**Next:** `/audit-test booking.spec.js src/booking.js` on the assertions above — this pass names them, only a mutation proves whether they bite
 ```
+
+Close every review — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: loose or incidental assertions route to `/audit-test`; a report with gaps but nothing loose routes on to `/sentinel` once the gaps are closed. The footer **points** — this skill still never runs a mutation ([ADR-0009](../../docs/adr/0009-coverage-review-consumes-coverage-not-produces-it.md)).
 
 ## Explain Mode (`--explain`)
 

@@ -40,6 +40,7 @@ evals/
   lint.mjs                     Tier 0 — static SKILL.md lint
   run-eval.mjs                 Tier 1 — fixture-outcome runner
   changed.mjs                  Phase 2 — diff → affected skills → scoped lint + self-test (report-first)
+                               (a `skills/shared/**` edit fans out to every cased skill — ADR-0048)
   lib/grade.mjs                token asserts + judge dispatch (heuristic | llm)
   lib/judge-llm.mjs            LLM judge — zero-dep fetch to the Messages API, quote-grounded
   cases/<skill>.json           a case = verdict/route token + must_surface + must_not (from expected-findings)

@@ -3,7 +3,9 @@
      the full-refund boundary is untested. Static mode (the fixture ships no coverage output). Used
      by run-eval.mjs --dry-run offline; a representative transcript, not a live capture.
      Deliberately ADDITIVE — recommends tests to add, never proposes deleting a test and never
-     mutates or runs the suite — so the must_not checks read as correctly absent. -->
+     mutates or runs the suite — so the must_not checks read as correctly absent. The closing
+     `Next:` footer NAMES /audit-test as the escalation (ADR-0048): naming the hand-off is the
+     required behaviour, performing the mutation is the boundary violation. -->
 
 ## Coverage Review: refund.js
 **Coverage source:** static inference (no coverage output found)
@@ -34,3 +36,5 @@
 3. Refund on an already-`refunded` order returns `{ ok: false }`.
 4. Full refund (`amount === order.total`) returns `status: 'refunded'`, `remaining: 0`.
 5. Assert the exact shape/values of the returned object, not just its existence.
+
+**Next:** `/audit-test fixtures/coverage-review/refund.spec.js fixtures/coverage-review/refund.js` on the two loose assertions above — this pass names them, only a mutation proves whether they bite

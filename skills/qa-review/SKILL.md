@@ -1,7 +1,7 @@
 ---
 name: qa-review
 description: Review code from a QA/testability angle — is this even testable?
-argument-hint: "[file path to review]"
+argument-hint: "[file path to review] [--digest] [--explain]"
 allowed-tools: [Read, Bash]
 disable-model-invocation: true
 ---
@@ -31,6 +31,7 @@ A code review from QA asks different questions than a general code review. Can I
    - Unclear contracts (what goes in, what comes out?)
 5. Report findings by category
 6. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
+7. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the report above — the same findings, trimmed to the top three as risk / evidence / action / confidence. This skill's confidence ceiling is **Likely**: it reads source and runs nothing.
 
 ## Output Format
 
@@ -62,7 +63,11 @@ A code review from QA asks different questions than a general code review. Can I
 3. Wrap Math.random() or use seedable random library
 4. Document expected inputs/outputs for each function
 5. Add error handling for all async operations
+
+**Next:** fix the seams above, then `/coverage-review booking.spec.ts src/booking/BookingService.ts` — mocking around them locks the coupling in
 ```
+
+Close every review — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: blockers found routes through the seams first; a clean read routes straight to `/coverage-review`.
 
 ## Explain Mode (`--explain`)
 

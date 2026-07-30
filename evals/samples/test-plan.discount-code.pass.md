@@ -39,3 +39,5 @@
 - Shopper is authenticated (single-use is per account).
 - The cart has at least one item and a known subtotal.
 - Seed codes exist: an active percentage code, an active fixed code, an expired code, a single-use code already redeemed by the test account.
+
+**Next:** `/threat-model "discount code redemption"` first — a code that misprices an order moves money, and what breaks in production is a different question than what to test

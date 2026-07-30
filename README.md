@@ -146,6 +146,14 @@ Pedagogical skills — `/qa-review`, `/threat-model`, `/sentinel`, `/coverage-re
 
 Procedural skills — `/debug-test`, `/audit-orchestrator`, `/contract-guard`, `/e2e-impact`, `/gate` — don't support `--explain`; they run a fixed check rather than reasoning toward a teachable finding.
 
+## In a hurry? `--digest`
+
+The judgment skills — `/test-plan`, `/qa-review`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/threat-model`, `/sentinel` — also take a `--digest` flag, the opposite of `--explain`. It replaces the full report with at most three evidence cards, each one line of risk, the specific evidence behind it, one concrete action, and the `Confirmed` / `Likely` / `Unexamined` label that says how well it's known — e.g. `/audit-test tests/booking.spec.ts --digest`. It's a *trim*, not a summary: a digest can only say less than the report it replaces, and it never upgrades a label (a reasoned finding stays `Likely` however short the card gets). The one format is defined once in [`skills/shared/digest-format.md`](./skills/shared/digest-format.md) ([ADR-0048](./docs/adr/0048-shared-digest-card-and-inline-next-footers.md)).
+
+Every judgment report — full or digest — ends with a one-line **`Next:`** footer naming the single step that follows *this* result, so you don't have to run `/ask-sentinel` again to find out what to do with what you're holding. The routing map stays `/ask-sentinel`'s; the footer is the shortcut into it ([`skills/shared/next-footers.md`](./skills/shared/next-footers.md)).
+
+(The `--digest` seven and the `--explain` eight are deliberately different sets: `/bug-report` teaches but has no findings to compress, so it takes `--explain` and not `--digest`.)
+
 Unfamiliar terms in any report (boundary condition, flaky test, loose assertion, etc.) are defined in [`GLOSSARY.md`](./GLOSSARY.md).
 
 If you're a QA professional reviewing this and want to give feedback, see [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the specific questions worth asking.

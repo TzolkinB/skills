@@ -1,7 +1,7 @@
 ---
 name: prune-tests
 description: Review a test file or suite for low-value, redundant, over-mocked, or stale tests and propose a conservative prune / merge / rewrite plan — the subtractive counterpart to coverage-review
-argument-hint: "[test file or directory path]"
+argument-hint: "[test file or directory path] [--digest] [--explain]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
 ---
@@ -31,6 +31,7 @@ This is a **subtractive** skill, so it is deliberately **conservative**: it *pro
 9. Categorize findings with an explicit prune **confidence** (`high` / `medium` / `low`).
 10. Output the plan. **Do not delete or edit tests.** Applying the plan is a separate, gated step — see Apply Mode.
 11. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode). Otherwise omit it — default output stays lean.
+12. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the plan above — the same proposals, trimmed to the three that buy the most, as risk / evidence / action / confidence. This skill's confidence ceiling is **Likely** (a static economy read), and a `Deferred` entry is **Unexamined** — deferring it is precisely the admission that nothing here judged it.
 
 ## Hand-off rule (boundary with `audit-test` and `coverage-review`)
 
@@ -72,9 +73,13 @@ Tests reviewed: N   |   Proposed: X remove / Y merge / Z rewrite / K keep
 
 ### Deferred to audit-test
 - **`test G`** — looks like it may never verify its code; not a redundancy call. Run `/audit-test` to prove or clear it before deciding.
+
+**Next:** `/audit-test tests/cart.spec.ts` on the Deferred entries before deciding — don't delete what only it can clear
 ```
 
 If the suite is already lean, say so plainly and list only "Keep" — do not manufacture prunes to fill the template.
+
+Close every plan — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md); it's the same hand-off the Deferred section makes, generalized so every judgment skill ends with one. Pick the row for the result you actually produced: Deferred entries route to `/audit-test`; a plan with none routes to `--apply` on a clean tree.
 
 ## Apply Mode (`--apply`)
 

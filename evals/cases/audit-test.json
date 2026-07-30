@@ -78,6 +78,47 @@
           "anchors": { "any": ["\"audited\": 2", "\"deepaudited\": 2", "allows non-overlapping bookings"] }
         }
       ]
+    },
+    {
+      "id": "digest-honest-label",
+      "invoke": "/audit-test fixtures/audit-test/booking.spec.js fixtures/audit-test/booking.js --digest",
+      "workspace": "isolated",
+      "fixture_files": [
+        "fixtures/audit-test/booking.spec.js",
+        "fixtures/audit-test/booking.js"
+      ],
+      "dry_run_sample": "samples/audit-test.digest-honest-label.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.digest-honest-label.fail.md",
+      "_note": "Guards the shared --digest card (skills/shared/digest-format.md, ADR-0048). The failure the flag invites is compression that quietly strengthens a claim, so the rubric is: keep the four fields and the footer, keep the evidence a checkable observation, and keep the label the run actually earned. The negative sample is the other half — `--digest` ignored, full report emitted, evidence dropped to a characterization.",
+      "expect_tokens": ["**Confidence:**", "**Next:**"],
+      "must_surface": [
+        {
+          "claim": "The header line carries the denominator — how many tests were triaged versus actually deep-audited — so a short card can never read as \"suite clean\".",
+          "anchors": { "any": ["1 triaged · 1 deep-audited", "triaged · 1 deep-audited"] }
+        },
+        {
+          "claim": "The Risk line is one line naming the specific test and the guard it leaves unprotected, not a category label.",
+          "anchors": { "any": ["rejects nothing", "overlap guard in `booking.js` is unprotected"] }
+        },
+        {
+          "claim": "Evidence is the exact observation the full report would have given — the mutation applied, the single-test command, and the outcome seen — not a characterization of the test.",
+          "anchors": { "any": ["exit 0, still passed", "npx jest -t 'rejects overlapping bookings'"] }
+        },
+        {
+          "claim": "Confidence is the label this run actually earned: Confirmed, because a mutation ran and its outcome was observed — the digest reports the full run's label, it does not re-derive one.",
+          "anchors": { "any": ["**confidence:** confirmed"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT ignore --digest and emit the full report's sections unchanged — under --digest the card REPLACES the report, so `How it fails:` / `A real test would:` must not appear.",
+          "anchors": { "any": ["**how it fails:**", "**a real test would:**"] }
+        },
+        {
+          "claim": "Must NOT drop the evidence to a characterization — \"seems overmocked\" / \"looks weak\" is not evidence, and a Confirmed label behind it would be laundering reasoning as proof.",
+          "anchors": { "any": ["seems overmocked", "looks weak", "reads as hollow", "appears hollow"] }
+        }
+      ]
     }
   ]
 }

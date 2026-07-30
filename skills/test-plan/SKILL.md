@@ -1,7 +1,7 @@
 ---
 name: test-plan
 description: Generate a structured QA test plan from a feature description or ticket
-argument-hint: "[feature description]"
+argument-hint: "[feature description] [--digest] [--explain]"
 allowed-tools: [Read, Bash]
 disable-model-invocation: true
 ---
@@ -19,6 +19,7 @@ A test plan is a contract between you and the code. It says "this behavior will 
 7. Assign a recommended test layer to every case in Happy Path / Edge Cases / Unhappy Paths: `unit`, `component`, `integration`, or `e2e` (use Layer Heuristics below)
 8. Format as a numbered outline or markdown table with the layer label shown on each case
 9. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode below). Otherwise omit it — default output stays lean.
+10. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the plan above — the same cases, trimmed to the riskiest ones as risk / evidence / action / confidence. A plan's confidence ceiling is **Likely**: it's reasoned from a description, not graded against a written spec.
 
 ## Output
 
@@ -47,7 +48,11 @@ A test plan is a contract between you and the code. It says "this behavior will 
 ### Preconditions
 - User must be logged in
 - Database must have seed data
+
+**Next:** `/qa-review src/booking/BookingService.ts` once the code exists — a plan only holds if the code can be tested
 ```
+
+Close every plan — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: the default is `/qa-review`, but a feature touching money, permissions, or stored data routes to `/threat-model` first.
 
 ## Explain Mode (`--explain`)
 

@@ -25,3 +25,5 @@
 2. Pass time in, or use an injectable clock, instead of `new Date()`.
 3. Seed or inject randomness instead of `Math.random()`.
 4. Guard `JSON.parse` and the response shape before reading `surcharge`.
+
+**Next:** fix the seams above, then `/coverage-review pricing.test.js fixtures/qa-review/pricing.js` once tests exist — mocking around them locks the coupling in

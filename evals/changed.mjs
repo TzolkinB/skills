@@ -75,12 +75,12 @@ try {
 function main() {
   const skillsWithCase = discoverCases();
   const files = changedFiles(base);
-  const { affected, coverageGaps, harnessCore, changedSkillMd } = classifyChanges(files, skillsWithCase);
+  const { affected, coverageGaps, harnessCore, sharedContract, changedSkillMd } = classifyChanges(files, skillsWithCase);
 
   const lint = changedSkillMd.length ? runLint(changedSkillMd) : null;
   const evals = affected.map((skill) => ({ skill, ...runSelfTest_(skill) }));
 
-  const md = renderReport({ base, files, affected, coverageGaps, harnessCore, changedSkillMd, lint, evals, gating: flags.has('--gate') });
+  const md = renderReport({ base, files, affected, coverageGaps, harnessCore, sharedContract, changedSkillMd, lint, evals, gating: flags.has('--gate') });
   console.log(md);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, md + '\n');
 
@@ -104,15 +104,24 @@ export function classifyChanges(files, skillsWithCase) {
   const coverageGaps = new Set();
   const changedSkillMd = [];
   let harnessCore = false;
+  let sharedContract = false;
 
   // Core = files whose change can shift EVAL OUTCOMES for every skill: the
   // runner and the graders. Not changed.mjs (it only selects which evals run)
   // and not lint.mjs (it changes lint output, which scoped lint already covers).
   const CORE = /^evals\/run-eval\.mjs$|^evals\/lib\//;
+  // The shared output contract (ADR-0048): `skills/shared/*.md` defines the
+  // --digest card and the Next: footer that SEVEN skills emit, but it matches
+  // no `skills/<name>/SKILL.md` path — so editing it used to select zero evals
+  // while changing every judgment skill's output. Same blast radius as core,
+  // reported separately so the run says WHY everything ran.
+  const SHARED = /^skills\/shared\//;
 
   for (const f of files) {
     let m;
-    if ((m = f.match(/^skills\/([^/]+)\/SKILL\.md$/))) {
+    if (SHARED.test(f)) {
+      sharedContract = true;
+    } else if ((m = f.match(/^skills\/([^/]+)\/SKILL\.md$/))) {
       changedSkillMd.push(f);
       if (skillsWithCase.has(m[1])) affected.add(m[1]);
       else coverageGaps.add(m[1]);
@@ -129,12 +138,13 @@ export function classifyChanges(files, skillsWithCase) {
   // lint.mjs is core-adjacent but changing it doesn't change any skill's
   // behavior — it changes the linter. Re-running scoped lint on changed
   // SKILL.md still covers it; no need to fan out every eval.
-  if (harnessCore) for (const s of skillsWithCase) affected.add(s);
+  if (harnessCore || sharedContract) for (const s of skillsWithCase) affected.add(s);
 
   return {
     affected: [...affected].sort(),
     coverageGaps: [...coverageGaps].sort(),
     harnessCore,
+    sharedContract,
     changedSkillMd,
   };
 }
@@ -207,12 +217,13 @@ function runSelfTest_(skill) {
 
 // ---- reporting ------------------------------------------------------------
 
-function renderReport({ base, affected, coverageGaps, harnessCore, changedSkillMd, lint, evals, gating = false }) {
+function renderReport({ base, affected, coverageGaps, harnessCore, sharedContract, changedSkillMd, lint, evals, gating = false }) {
   const L = [];
   L.push(`## Sentinel skill-eval — changed-skill report`);
   L.push('');
   L.push(`base: \`${base}\` · changed SKILL.md: ${changedSkillMd.length} · affected skills: ${affected.length}` +
-    (harnessCore ? ' · harness core changed → all skills with a case' : ''));
+    (harnessCore ? ' · harness core changed → all skills with a case' : '') +
+    (sharedContract ? ' · shared output contract changed → all skills with a case' : ''));
   L.push('');
 
   if (!affected.length && !coverageGaps.length && !changedSkillMd.length) {
@@ -274,6 +285,19 @@ function runSelfTest() {
   const core = classifyChanges(['evals/lib/grade.mjs'], skillsWithCase);
   const okCore = core.harnessCore === true && eq(core.affected, ['audit-test', 'contract-guard', 'debug-test']);
 
+  // ADR-0048: so does a change to the shared output contract — it defines the
+  // --digest card and the Next: footer every judgment skill emits, but it
+  // lives at skills/shared/, which matches no `skills/<name>/SKILL.md` path.
+  // Before this row, editing it selected ZERO evals. It must also NOT be
+  // counted as a changed SKILL.md (there is none) or as a coverage gap (it is
+  // not a skill), which is what the last two assertions pin down.
+  const shared = classifyChanges(['skills/shared/digest-format.md'], skillsWithCase);
+  const okShared =
+    shared.sharedContract === true &&
+    eq(shared.affected, ['audit-test', 'contract-guard', 'debug-test']) &&
+    shared.changedSkillMd.length === 0 &&
+    eq(shared.coverageGaps, []);
+
   // #148: the classifier checks above are all PURE — synthetic file lists, no
   // real git involved — so they could never have caught a broken REPO_ROOT.
   // Prove the real git-integration seam too: REPO_ROOT must land on the
@@ -291,9 +315,10 @@ function runSelfTest() {
     gitIntegrationError = err.message;
   }
 
-  const passed = okBasic && okCore && okRoot && okGitIntegration;
+  const passed = okBasic && okCore && okShared && okRoot && okGitIntegration;
   console.log(
     `changed.mjs self-test: mapping=${okBasic}, harness-core fan-out=${okCore}, ` +
+      `shared-contract fan-out=${okShared}, ` +
       `repo-root=${okRoot}, git-integration=${okGitIntegration} → ${passed ? 'OK' : 'BROKEN'}`,
   );
   if (!okBasic || !okCore) console.log('  got:', JSON.stringify(got), '\n  core:', JSON.stringify(core));
