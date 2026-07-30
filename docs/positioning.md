@@ -30,12 +30,38 @@ What follows from it:
 
 ## The one-liner
 
-> **Prove your green tests would go red.**
+> **Know which green tests you can trust.**
 
 Longer form, when there's room:
 
 > Every other tool in this space confirms a test *exists*. This one breaks your code and checks the
 > test notices.
+
+**Two rejected drafts, and why — the trap is worth remembering.**
+
+*"Prove your green tests would go red"* was the first attempt. It fails twice. It **drops the
+conditional** — the claim is "would go red *if the code broke*," and without that clause it reads as
+"make your green tests red," which is the inverse of the value. And its frame is
+guilty-until-proven-innocent: we don't want tests going red, we want warranted confidence. For an
+audience that already fights being seen as the "no" department, leading with an accusation is the
+wrong trade — and it maximises the "proof delivers bad news" weakness this very document says to
+manage.
+
+The opposite failure is just as easy: *"confidence you can trust," "release readiness you can rely
+on."* That's the unfalsifiable language Qase and TestResults already use, and it makes us
+interchangeable with them.
+
+**The target is confidence framing with the mechanism still visible.** "Know which" does that — it
+presumes some tests are fine and you want to know which, so it discriminates rather than accuses,
+while "green tests" keeps the concrete object in view.
+
+## Scope note — plugin vs. flagship
+
+*Lead with `audit-test`* governs **narrative order**, not scope description. The
+`.claude-plugin` descriptions and any "what is this?" answer must describe **all fourteen skills** —
+planning, testability and coverage review, audits, flake triage, the gate. A description that only
+describes the mutation check is wrong even though the mutation check is the hook: it undersells
+thirteen skills and misleads on install. Lead with the strongest claim, then state the real scope.
 
 ## What we lead with — and why
 
