@@ -1,5 +1,7 @@
 # audit-test proves false-confidence by running a targeted mutation, not by reasoning alone
 
+**Status: Accepted (2026-07-08).**
+
 Sentinel's `audit-test` skill audits a *passing* test for false confidence — whether it would
 still pass if the code it covers broke. Because Sentinel's whole premise is that a green test is
 not proof, `audit-test` must not rely on AI reasoning alone to judge another test's

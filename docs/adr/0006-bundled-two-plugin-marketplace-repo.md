@@ -1,6 +1,8 @@
 # TzolkinB/skills is a bundled multi-plugin marketplace repo installed via a manifest
 
-> **Superseded by [ADR-0032](0032-flatten-to-single-kimbell-skills-plugin.md) (2026-07-18)** — the repo was flattened to a single `kimbell-skills` plugin at the root (`source: "./"`). Kept as the record of why the nested-marketplace shape originally existed.
+**Status: Superseded by [ADR-0032](0032-flatten-to-single-kimbell-skills-plugin.md) (2026-07-18).**
+Originally accepted 2026-07-09. The repo was flattened to a single `kimbell-skills` plugin at the
+root (`source: "./"`). Kept as the record of why the nested-marketplace shape originally existed.
 
 `TzolkinB/skills` is structured as a bundled multi-plugin repository, not a single plugin at its
 root and not a submission to Anthropic's public catalog. Plugin folders sit directly at the repo

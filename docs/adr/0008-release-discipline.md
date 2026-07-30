@@ -1,5 +1,7 @@
 # Sentinel releases are a version bump landing on the default branch, tracked by a changelog and a shell script
 
+**Status: Accepted (2026-07-09).**
+
 Sentinel is distributed as a plugin through a marketplace manifest, not as an npm
 package. It still needs enough release discipline to answer "what changed, and at
 which version?" without inventing an npm-shaped release pipeline it does not use.

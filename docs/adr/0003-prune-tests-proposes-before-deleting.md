@@ -1,5 +1,7 @@
 # prune-tests is a suite-level maintenance skill that proposes before it deletes
 
+**Status: Accepted (2026-07-08).**
+
 Sentinel's `prune-tests` skill reviews a *standing* test suite for debt — low-value, redundant,
 over-mocked, or stale tests — and proposes removing, merging, or rewriting them. It is the first
 Sentinel skill whose job is periodic maintenance of the suite as it rots over time, rather than

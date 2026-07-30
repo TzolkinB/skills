@@ -1,6 +1,8 @@
 # The skill-eval harness asserts on tokens, judges the prose against the fixture rubric, and never diffs output
 
-**Status: Proposed (2026-07-15).** Prompted by the *"Don't ship skills without evals"* talk
+**Status: Accepted (2026-07-15) — implemented.** The harness ships as `evals/run-eval.mjs`
+(token asserts + judge, no output diffing), with `evals/cases/`, `evals/samples/`, `evals/lint.mjs`,
+`evals/changed.mjs`, and the `skill-evals` CI workflow. Prompted by the *"Don't ship skills without evals"* talk
 (Philipp Schmid, Google DeepMind) and the [skill maturity pass](../../fixtures/README.md) against
 Matt Pocock's *writing-great-skills* rubric. A cross-cutting decision for how the suite protects
 itself against regression on every skill edit — the counterpart to [ADR-0020](0020-suite-trigger-model-leaves-user-invoked.md),

@@ -1,5 +1,7 @@
 # Sentinel produces QA judgment, not release evidence — the evidence pipeline is a separate plugin
 
+**Status: Accepted (2026-07-08).**
+
 Sentinel answers "does this branch deserve QA *trust*?" and outputs categorical human judgment.
 A separate evidence-pipeline plugin answers "what *artifacts* support release confidence?" —
 aggregating CI status, coverage/Playwright reports, a risk score, and signoff into a release

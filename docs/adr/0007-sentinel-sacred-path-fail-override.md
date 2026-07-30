@@ -1,5 +1,7 @@
 # Sentinel keeps CAUTION as its default, but a sacred path forces an un-overridable FAIL
 
+**Status: Accepted (2026-07-09).**
+
 `/sentinel` synthesizes a three-state verdict — PASS / CAUTION / FAIL — and CAUTION is the
 deliberate middle: "shippable with known gaps" ([ARCHITECTURE.md → why a 3-state verdict](../../ARCHITECTURE.md)).
 [ADR-0002](0002-sentinel-is-judgment-not-release-evidence.md) further fixes Sentinel as *categorical
