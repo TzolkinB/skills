@@ -103,15 +103,15 @@ number can never be read as broader than the run that produced it.**
 
 "100/100 health" means nothing if one page of forty was tested — that is the *coverage illusion*
 under another name, and commercial tools now sell the fix as a feature ("pages tested vs pages
-available"). Two of these skills already state their denominator, at opposite ends of the map and
-arrived at independently. The name is here so it stops being re-explained each time — and so the
-place it's **missing** is visible.
+available"). Four places in this repo already state their denominator, arrived at independently and
+never connected to each other; two are worth reading in full. The name is here so the move stops
+being re-explained each time — and so the place it's **missing** is visible.
 
 **Worked example 1 — `gate`'s executed-floor (stage 7).** A framework reports `PASSED` after running
 one test of a thousand: skipped and pending tests sit outside the pass/fail counts, so a discovery,
 filter, or config mistake reads as a clean green. Gate compares tests *executed* against the tests
-the report itself says it *discovered*, and prints that fraction next to **every** execution suite
-that produced a result — red, flaky or green, not only the one it caps:
+the report itself says it *discovered*, and prints that fraction next to every execution suite that
+ran at least one test — red, flaky or green, not only the one it caps:
 `"12 of 180 discovered tests executed — 7%; 168 skipped"`. A suite under the floor (default 50%,
 overridable but never below 25%) is capped at `canary` rather than `ship`
 ([#157](https://github.com/TzolkinB/skills/issues/157); `skills/gate/gate.mjs`, self-tested). The
@@ -126,18 +126,21 @@ primitive) goes there too rather than being resolved into a plausible-looking su
 an edge to *every* spec, not a missing edge, and `debug-test --drift` has to union it back in when it
 inverts the map ([`e2e-impact/SKILL.md`](../skills/e2e-impact/SKILL.md)).
 
-**Same shape, already shipping elsewhere:** gate's **examined-floor** compares deep-audited tests
-against everything the audit triaged, and holds the denominator at *all triaged* precisely so the
-ratio can't be flattered by shrinking it
-([ADR-0038](adr/0038-gate-trust-boundary-and-examined-floor-population.md)); `audit-test` batch mode
-prints its certified scope as a fraction of the suite (`"12 of ~180 suite test files"`) so a scoped
-`ship` can't read as a whole-suite one.
+**Same shape, two more places:** gate's **examined-floor** compares deep-audited tests against
+everything the audit triaged, and pins that denominator at *all triaged* precisely so the ratio can't
+be flattered by shrinking it
+([ADR-0038](adr/0038-gate-trust-boundary-and-examined-floor-population.md), in `gate.mjs` alongside
+the executed-floor). `audit-test` batch mode is instructed to print its certified scope as a fraction
+of the suite (`"12 of ~180 suite test files"`) so a `--changed` `ship` can't read as a whole-suite
+one — and, where that suite count isn't cleanly computable, to name the scope *without* a fraction
+rather than invent one.
 
 **Where it's missing — `coverage-review`.** It is file-pair scoped by contract (`[test file path]
 [code file path]`), so it can tell you which branches of the one file in front of it are unguarded,
 but nothing in its output says how many of the repo's source files were never handed to it at all.
-The per-file line percentage it reports in instrumentation mode is not that number. Supplying the
-repo-level denominator needs a driver that can find an *untested* module — which is exactly the seam
+The line percentage it reports for that one file in instrumentation mode is a *within-file*
+denominator, not a repo-level one. Supplying the repo-level one needs a driver that can find an
+*untested* module — a file with no test to pair it with — which is exactly the seam
 [#180](https://github.com/TzolkinB/skills/issues/180) exists to fill
 ([ADR-0044](adr/0044-repo-level-coverage-inventory-obligation-driver.md)); until it lands, this gap
 is stated rather than papered over.

@@ -91,7 +91,7 @@ left column and introduce the right one once, in context.
 | They say | We say | How to bridge |
 |---|---|---|
 | **coverage illusion** | false-confidence test | Their phrase, and it maps exactly. Use theirs first — it's the single best gift this market has handed us. |
-| pages tested vs pages available | denominator honesty | Their framing of the same move, and it's concrete. Ours already ships in two places ([the map](orchestration-map.md#denominator-honesty)) — say where, and say where it's missing. |
+| pages tested vs pages available | denominator honesty | Lead with a concrete instance, then name it once: *"Gate tells you 12 of 180 discovered tests actually ran — that's denominator honesty."* Never claim it repo-wide: name the place it's missing ([the map](orchestration-map.md#denominator-honesty)) in the same breath. |
 | business risk coverage | — (we have no risk register) | Don't claim it. Say: the risks are only as covered as the tests behind them, and we're what checks those. |
 | traceability matrix / requirements coverage | presence-based coverage | "Presence is not proof" — a requirement is marked covered because a test *exists*, never because it bites. |
 | release readiness | ship / canary / hold | Ours is categorical and advisory, deliberately without a score. |
@@ -144,7 +144,7 @@ Each with its label. Never state one above its label.
 | TEA's `trace` gates on coverage *presence*, so a P0 requirement covered only by a hollow test gates PASS | **Confirmed** (workflow source, v1.19.1) |
 | `audit-test` caught a Playwright-Healer green-locked regression | **Confirmed *with caveat*** — the catch needed intent recoverable from source; pure mechanical mutation alone missed it. Never cite this one without the caveat. |
 | Presence-based coverage is the category default, not a TEA quirk | **Confirmed** for TEA (source) · **Likely** for Qase (docs) · **Unexamined** for closed tools |
-| Our results state the scope they were drawn from — `gate` caps a suite that ran a sliver of what it discovered at `canary`, and `e2e-impact` puts an untraceable changed file in an explicit run-all bucket instead of dropping it | **Confirmed** (shipped code, self-tested; [the map](orchestration-map.md#denominator-honesty)). State the gap with it: `coverage-review` has no repo-level denominator yet ([#180](https://github.com/TzolkinB/skills/issues/180)). |
+| Our results state the scope they were drawn from — "denominator honesty" ([the map](orchestration-map.md#denominator-honesty)) | **Confirmed** for `gate`: the executed-floor caps a suite that ran a sliver of what it discovered at `canary`, in deterministic self-tested code (`gate.mjs`). **Likely** for `e2e-impact`'s run-all bucket: a skill contract read at source, not an observed run. Never merge the two into one Confirmed. State the gap alongside: `coverage-review` has no repo-level denominator yet ([#180](https://github.com/TzolkinB/skills/issues/180)). |
 
 ## Claims we must not make
 
