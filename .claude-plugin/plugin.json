@@ -7,5 +7,5 @@
   },
   "homepage": "https://github.com/TzolkinB/skills",
   "license": "MIT",
-  "keywords": ["testing", "qa", "sdet", "test-coverage", "code-review"]
+  "keywords": ["testing", "qa", "sdet", "test-quality", "mutation", "playwright", "cypress", "e2e", "test-coverage", "flaky-tests"]
 }
