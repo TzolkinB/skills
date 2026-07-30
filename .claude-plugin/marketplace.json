@@ -9,7 +9,7 @@
     {
       "name": "kimbell-skills",
       "source": ".",
-      "description": "Prove your green tests would go red. Runs a real mutation against dev-served Playwright/Cypress tests and reports whether they caught it.",
+      "description": "Know which green tests you can trust. QA judgment skills for Claude Code — test planning, testability and coverage review, mutation-backed test audits, flake triage, and an evidence-based ship gate.",
       "category": "testing",
       "keywords": ["testing", "qa", "sdet", "test-coverage", "code-review"]
     }
