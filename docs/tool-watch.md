@@ -24,12 +24,25 @@ raw-content are not scoped and work for any public repo. See the Notes section.
 | Playwright test agents | raw `microsoft/playwright` `main/docs/src/release-notes-js.md`, top `## Version` block + grep it for `planner`/`generator`/`healer`/`agent`; npm `@playwright/test` dist-tags.latest for the version number | v1.62 (published 2026-07-24; agents feature landed 1.56; 1.62 block has no agent-keyword hit) | 2026-07-27 |
 | Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 15.19.1 at top of changelog | 2026-07-27 |
 | Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; raw `LambdaTest/evidence-cli` `HEAD/package.json` HTTP status (404 = repo still private/absent, 200 = went public); `evidence-cli.dev` DNS | kane-cli 0.6.7; evidence-cli 0.1.7 (6 versions); repo raw-status 404 (still private); DNS NXDOMAIN | 2026-07-27 |
+| Matt Pocock's skills (`diagnosing-bugs` — a **dependency** watch) | raw `mattpocock/skills` `main/README.md`: (a) grep `diagnosing-bugs` — absent means the load-bearing route is gone; (b) diff the `` `/skill-name` `` inventory for a new QA/test-quality-shaped entry | `diagnosing-bugs` present; 9 skills listed — `code-review`, `diagnosing-bugs`, `grill-me`, `grill-with-docs`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `tdd`, `to-spec`, `triage` | 2026-07-31 |
 
 Notes:
 - Playwright and Cypress checks are proxies (whole-product version, not an "agents-only" or
   "AI-only" release channel) — the grep step is what catches an agent/AI-relevant entry inside a
   general release. A version bump alone is low-signal for these two; a keyword hit is the real
   trigger.
+- Matt Pocock's skills is the one **dependency** row, not a competitive one. `debug-test` routes
+  logic failures to `diagnosing-bugs` and calls it load-bearing (README "Dependencies",
+  `ARCHITECTURE.md`), so a rename or removal upstream silently breaks that terminal route — leg (a)
+  is the whole point of the row. Leg (b) is secondary and speculative: nothing in that repo contests
+  this lane today (`/triage` is issue-state-machine triage, not test-failure triage), but it is the
+  most plausible origin for a QA-verification skill, since it's the adjacent workflow system with the
+  distribution. Same proxy caveat as Playwright/Cypress, and here it **undercounts**: the repo ships
+  more skills than its README headlines (`codebase-design`, `domain-modeling`, `research` install but
+  aren't listed), so a skill that never reaches the README won't trip leg (b). `raw` can't list a
+  directory and `api.github.com` is out of scope, so this is the best available signal, not a
+  complete one. **Not a licensing concern** — routing to a skill the user installs themselves copies
+  nothing (mattpocock/skills is MIT); the row exists for breakage, not compliance.
 - A WebSearch sanity pass during setup (2026-07-22) claimed Cypress was at v16.0.0. The raw
   changelog said 15.19.1. The raw source wins — this is why Job 1 is curl-only, no LLM-search
   step, for every known-tool check.
