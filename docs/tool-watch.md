@@ -23,10 +23,19 @@ raw-content are not scoped and work for any public repo. See the Notes section.
 | TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.19.1 | 2026-07-27 |
 | Playwright test agents | raw `microsoft/playwright` `main/docs/src/release-notes-js.md`, top `## Version` block + grep it for `planner`/`generator`/`healer`/`agent`; npm `@playwright/test` dist-tags.latest for the version number | v1.62 (published 2026-07-24; agents feature landed 1.56; 1.62 block has no agent-keyword hit) | 2026-07-27 |
 | Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 15.19.1 at top of changelog | 2026-07-27 |
+| Schema validators (sclavijosuero) — **recommended, not competitor** | npm `cypress-schema-validator`, `playwright-schema-validator`, `core-ajv-schema-validator` dist-tags.latest | cypress-schema-validator 2.0.0 (2026-06-07); playwright-schema-validator 1.0.0 (2025-08-03); core-ajv-schema-validator 1.0.0 (2025-04-06) | 2026-07-31 |
 | Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; raw `LambdaTest/evidence-cli` `HEAD/package.json` HTTP status (404 = repo still private/absent, 200 = went public); `evidence-cli.dev` DNS | kane-cli 0.6.7; evidence-cli 0.1.7 (6 versions); repo raw-status 404 (still private); DNS NXDOMAIN | 2026-07-27 |
 | Matt Pocock's skills (`diagnosing-bugs` — a **dependency** watch) | raw `mattpocock/skills` `main/README.md`: (a) grep `diagnosing-bugs` — absent means the load-bearing route is gone; (b) diff the `` `/skill-name` `` inventory for a new QA/test-quality-shaped entry | `diagnosing-bugs` present; 9 skills listed — `code-review`, `diagnosing-bugs`, `grill-me`, `grill-with-docs`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `tdd`, `to-spec`, `triage` | 2026-07-31 |
 
 Notes:
+- The schema-validator row is the one entry that is **not** a competitor — `contract-guard` Tier 1b
+  ([ADR-0049](adr/0049-contract-guard-test-boundary-validation-tier.md)) *recommends* these packages,
+  so what matters is **liveness, not features**: `core-ajv-schema-validator` is a single-maintainer
+  1.0.0 from 2025-04-06 and is the shared engine under both framework plugins. The trigger to care is
+  a long silence plus an open-issue backlog, or a new major that changes the command surface — not a
+  routine bump. Watch also for a *further* successor: `cypress-ajv-schema-validator` /
+  `playwright-ajv-schema-validator` are already superseded predecessors, and the skill must always
+  name the current package.
 - Playwright and Cypress checks are proxies (whole-product version, not an "agents-only" or
   "AI-only" release channel) — the grep step is what catches an agent/AI-relevant entry inside a
   general release. A version bump alone is low-signal for these two; a keyword hit is the real

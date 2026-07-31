@@ -37,6 +37,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0023](0023-selector-guard-static-testid-drift-check.md) | `selector-guard` — static test-id reconciliation before a browser launches | [#78](https://github.com/TzolkinB/skills/issues/78), post-v1 fast-follow |
 | [0026](0026-live-evals-opt-in-pr-and-scheduled-drift.md) | Live skill-eval runs are opt-in per PR and scheduled for drift | `--live` is wired in `run-eval.mjs`; the CI trigger model is unbuilt |
 | [0044](0044-repo-level-coverage-inventory-obligation-driver.md) | Repo-level obligation-driven coverage inventory as a v2 driver | [mattpocock/skills#654](https://github.com/mattpocock/skills/issues/654) |
+| [0049](0049-contract-guard-test-boundary-validation-tier.md) | `contract-guard` Tier 1b + per-operation drift-coverage reporting | [#217](https://github.com/TzolkinB/skills/issues/217) |
 
 ## Index
 
@@ -90,6 +91,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0046](0046-does-sentinel-become-stateful.md) | Does Sentinel become a stateful tool? | Superseded by [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) |
 | [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) | Statelessness is a write-boundary property, and git is the heal ledger | Accepted 2026-07-30 · supersedes [0046](0046-does-sentinel-become-stateful.md) |
 | [0048](0048-shared-digest-card-and-inline-next-footers.md) | Judgement skills share one `--digest` card and one inline `Next:` footer; compression never upgrades a label | Accepted 2026-07-30 |
+| [0049](0049-contract-guard-test-boundary-validation-tier.md) | `contract-guard` gains a test-boundary validation tier and reports per-spec which drifts that validation can catch | **Proposed** |
 
 ## By area
 
@@ -99,7 +101,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 - **`debug-test`** — [0012](0012-debug-test-flake-mode.md), [0018](0018-debug-test-drift-triage.md), [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)
 - **`prune-tests`** — [0003](0003-prune-tests-proposes-before-deleting.md)
 - **`/sentinel` verdict and the sacred path** — [0007](0007-sentinel-sacred-path-fail-override.md), [0014](0014-sacred-path-integrity-discovery-fails-loud.md)
-- **Drift guards** — [0021](0021-contract-guard-consumer-side-openapi-differ.md), [0023](0023-selector-guard-static-testid-drift-check.md)
+- **Drift guards** — [0021](0021-contract-guard-consumer-side-openapi-differ.md), [0023](0023-selector-guard-static-testid-drift-check.md), [0049](0049-contract-guard-test-boundary-validation-tier.md)
 - **Routing (`ask-sentinel` / `audit-orchestrator`)** — [0025](0025-ask-sentinel-stack-aware-router-reads-manifests.md), [0027](0027-ask-sentinel-orchestrated-sequence-mode.md), [0036](0036-ask-sentinel-audit-orchestrator-confirmed-rename.md), [0048](0048-shared-digest-card-and-inline-next-footers.md)
 - **Gate and the evidence bundle** — [0028](0028-witness-gate-skill-mvp1.md), [0029](0029-witness-parsed-audit-test-graduation.md), [0030](0030-witness-cypress-ingest.md), [0031](0031-witness-evidence-bundle-v0.1-empty-result.md), [0033](0033-witness-internal-identifier-rename.md), [0034](0034-proven-confirmed-taxonomy-rename.md), [0035](0035-gate-examined-floor.md), [0037](0037-gate-evidence-integrity.md), [0040](0040-widen-gate-signed-scope-to-entries.md), [0042](0042-gate-rejected-credibility-state-and-freshness-floor.md), [0043](0043-report-to-commit-provenance-over-git-timestamp.md)
 - **Skill evals** — [0022](0022-skill-eval-harness-asserts-tokens-judges-prose.md), [0024](0024-skill-evals-change-detection-report-first-ci.md), [0026](0026-live-evals-opt-in-pr-and-scheduled-drift.md)
