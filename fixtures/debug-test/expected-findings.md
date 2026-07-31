@@ -67,3 +67,53 @@ Nothing else in the file changes.
 - Route to `/audit-test` — that spends a mutation on the low-risk common case the funnel exists to keep cheap.
 - Suppress the trailer as noise. "This spec has been healed four times for a locator" is exactly the
   repeat-heal pattern the cheap rows make visible to [#194](https://github.com/TzolkinB/skills/issues/194).
+
+---
+
+# Expected findings — debug-test / Step 4.6 repeat-heal check
+
+Rubric source for the `repeat-heal-*` cases in [`evals/cases/debug-test.json`](../../evals/cases/debug-test.json)
+([#194](https://github.com/TzolkinB/skills/issues/194), [ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2).
+**No runnable fixture backs these two either**, for the same reason as the Step 4.5 cases above: reaching
+Step 4.6 needs a real `git log` history of prior heal commits on a spec, which the offline fixture lane
+can't stage. Graded from recorded samples only.
+
+## Case 3 — `repeat-heal-trailer-based` (the pattern the trailer makes visible)
+
+**Staged situation.** `tests/nav.spec.ts` has just been healed a third time in six weeks, each time
+bucketed `locator` by Step 4.5 and each time carrying a `Heal-bucket: locator` trailer on its commit.
+`git log --follow --since="90 days ago"` over the file returns three prior commits, all with the
+trailer, inside the 90-day window.
+
+**What the skill should do**
+- Read the window (90 days) and find every prior commit touching the file carries a `Heal-bucket`
+  trailer — a **bucket-accurate** reading.
+- Count 3 total `locator` heals in the window (2 prior + this one) and, at the 3-heal default
+  threshold, emit **🔁 repeat-heal**, naming the count and the bucket.
+- State plainly that the reading is bucket-accurate (trailers were found on every relevant commit) —
+  not just assert the count.
+
+**What it must NOT do**
+- Report "no repeats" or stay silent about the pattern because each individual heal was the cheap
+  `locator` bucket — the cheap bucket repeating is exactly what this check exists to surface.
+- Claim this required a new store, ledger file, or cache — the count comes from `git log` alone.
+
+## Case 4 — `repeat-heal-churn-fallback` (weaker signal, stated as such)
+
+**Staged situation.** `tests/checkout-flow.spec.ts` has been edited 4 times in the last 90 days, but
+every one of those commits predates #190 (no `Heal-bucket` trailers exist anywhere in its history) —
+or the repo simply never wired trailers into its commit process.
+
+**What the skill should do**
+- Read the window and find **zero** commits carrying a `Heal-bucket` trailer — a **churn-only**
+  reading.
+- Fall back to a plain file-churn count (4 edits in 90 days) with **no bucket breakdown**, and flag
+  it as elevated churn — explicitly labelled as the weaker, trailer-less signal.
+- State the degraded reading out loud (e.g. "no `Heal-bucket` trailers found — falling back to file
+  churn") rather than presenting the churn count as if it were a bucketed repeat-heal finding.
+
+**What it must NOT do**
+- Invent a bucket (`locator`, `assertion-value`, `flow-data`) for edits that carry no trailer.
+- Report "no repeats" — an absent trailer is a weaker read, not evidence of a clean history.
+- Silently skip the check because trailers are missing — the churn fallback must still run and be
+  reported.

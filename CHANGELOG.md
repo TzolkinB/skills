@@ -51,6 +51,30 @@ release heading.
   `heal-classification-locator-cheap-path` (the cheap bucket must stay cheap *and* still emit a trailer).
   Their negative samples record the two ways this goes wrong: reporting the healer's pass as done, and
   suppressing the locator trailer as noise while spending a mutation on it.
+- **`debug-test`: Step 4.6 reads git history for a repeat-heal pattern** — [#194](https://github.com/TzolkinB/skills/issues/194),
+  read side of [ADR-0047](docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2. Right
+  after Step 4.5 classifies a heal, this step reads the test file's own history —
+  `git log --follow` filtered on the `Heal-bucket` trailer #190 writes — and flags 🔁 **repeat-heal**
+  when the same bucket shows up 3+ times in the last 90 days (this heal included), naming the count,
+  bucket, and what each occurrence touched. Nothing new is written or stored:
+  [`skills/debug-test/reference/repeat-heal.md`](skills/debug-test/reference/repeat-heal.md) computes it
+  fresh from git every time. The trailer-coverage read is graded on the two-rung ladder ADR-0047 itself
+  specifies, nothing added: **bucket-accurate** (every relevant commit carries the trailer) or
+  **churn-only** (even one missing trailer degrades the whole read to a plain, bucket-less file-edit
+  count, labelled as the weaker signal — no intermediate "mostly-bucketed" credit). An empty or
+  trailer-less read is never reported as "no repeats" — it always says what history was actually
+  available. **Reads the shared trunk, not just the local branch:** the `git log` starts from the
+  union of `origin/<default-branch>` (resolved dynamically via `git symbolic-ref`, never hardcoded as
+  `main`) and `HEAD`, so a teammate's already-merged heal isn't invisible on an unrebased branch, and
+  a heal already committed on the current branch isn't invisible either. Falls back to `HEAD` alone,
+  stated explicitly, when there's no `origin` remote; flags a shallow clone rather than letting a
+  truncated history read as clean.
+- **`evals`: two `debug-test` repeat-heal cases** — `repeat-heal-trailer-based` (three same-bucket heals,
+  all trailer-tagged, must surface as a named 🔁 finding rather than disappear because each was the cheap
+  bucket) and `repeat-heal-churn-fallback` (an all-trailerless history must degrade to the weaker churn
+  count, not read as "clean"). Their negative samples record the two ways this goes wrong: reporting a
+  matching history as "no repeats found," and treating an untrailered history as clean rather than
+  unreadable.
 - **A shared `--digest` evidence card across the seven judgment skills** (`test-plan`, `qa-review`,
   `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `sentinel`) — [#193](https://github.com/TzolkinB/skills/issues/193),
   [ADR-0048](docs/adr/0048-shared-digest-card-and-inline-next-footers.md). `--digest` replaces the full
