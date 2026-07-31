@@ -1,6 +1,6 @@
 ---
 name: debug-test
-description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs, and classifies what the healer changed before calling it fixed. Also has a flake mode (detects, quarantines, routes flaky tests — Playwright or Cypress) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
+description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs, and classifies what the healer changed before calling it fixed, flagging 🔁 when the same test keeps getting healed for the same reason (read from git history, nothing stored). Also has a flake mode (detects, quarantines, routes flaky tests — Playwright or Cypress) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
 argument-hint: "[test file path or test name] [--flake] [--drift]"
 allowed-tools: [Read, Bash, Task, Skill]
 disable-model-invocation: true
@@ -86,6 +86,11 @@ A healer pass says the test is green; it doesn't say *what the healer changed to
 
 The three buckets and where they land: **selector / timeout / wait only** → done, no mutation spent on the low-risk common case; **expected-value literal changed** → `/audit-test`'s baseline-lock check via the `Skill` tool — the invocation must carry the assertion co-change itself, since the healer's edit is uncommitted and `audit-test` can't resolve it — verdict reported inline before "done"; **setup / fixture / flow changed** → not auto-cleared, diff shown, human review required. All three also **propose** a `Healed-by:` / `Heal-bucket:` commit-trailer block — the durable record of the classification, for a human or a commit template to apply. This skill never creates or amends a commit ([ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2).
 
+### 4.6 Check repeat-heal history
+A single heal is a data point; a pattern across heals is the thing worth a human's attention. Immediately after Step 4.5 classifies this heal, read the test file's history for prior heals of the same kind: `git log --follow` filtered on the `Heal-bucket` trailer #190 writes, falling back to plain file churn when trailers are absent. Three or more heals of the same bucket within the window (this one included) → 🔁 **repeat-heal**, naming the count, bucket, and element/behavior each occurrence touched. → follow [reference/repeat-heal.md](reference/repeat-heal.md).
+
+Nothing is stored — this reads git fresh every time ([#194](https://github.com/TzolkinB/skills/issues/194), [ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2). It always reports what history was available; an empty or trailer-less read is never reported as "no repeats."
+
 ### 5. diagnosing-bugs
 Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md) via the **`Skill`** tool.
 
@@ -143,8 +148,8 @@ Failure type: [locator | wait | data]
 Invoking healer: [test name]
 ```
 
-### Heal classification (Step 4.5)
-Emitted after a healer pass that changed the test file — see [reference/heal-classification.md](reference/heal-classification.md) for the per-bucket dispositions, the trailer rules, and the cases that produce no classification at all (empty diff, pre-dirty tree, edits outside the test file).
+### Heal classification (Step 4.5) + repeat-heal check (Step 4.6)
+Emitted after a healer pass that changed the test file — see [reference/heal-classification.md](reference/heal-classification.md) for the per-bucket dispositions, the trailer rules, and the cases that produce no classification at all (empty diff, pre-dirty tree, edits outside the test file); see [reference/repeat-heal.md](reference/repeat-heal.md) for the read-side rules (window, trailer-coverage tiers, churn fallback) behind the last section.
 ```
 ## debug-test (heal): [Test Name]
 
@@ -161,6 +166,10 @@ Emitted after a healer pass that changed the test file — see [reference/heal-c
 ### Proposed commit trailers  (proposed, not applied — debug-test does not own the commit)
 Healed-by: debug-test
 Heal-bucket: [locator | assertion-value | flow-data]
+
+### Repeat-heal check (Step 4.6)
+History read: [window] · [bucket-accurate | churn-only (missing/no Heal-bucket trailers found) | no prior history]
+[🔁 Repeat-heal — N heals of `[bucket]` in [window], this one included: [what each occurrence touched] | N heals of `[bucket]` in [window], below the 3-heal threshold | 🔁 N total edits to this file in [window] (churn fallback, no bucket data) | first heal on record for this file]
 ```
 
 ### Routing to diagnosing-bugs (Step 5)
@@ -190,5 +199,6 @@ Proceeding with diagnosing-bugs Phase 2...
 - **Self-invoking orchestrator.** debug-test drives its own handoffs across the ADR-0010 seam — the Playwright healer via `Task`, sibling skills via `Skill` — but never owns execution itself. A routed cause is a *lead to confirm*, not a verdict.
 - **A green from a healer is a change, not a result.** Step 4.5 classifies every healer pass from the diff — never from the healer's account of what it did — because the two greens that matter (a re-synced selector, an expected value rewritten to bless a regression) are indistinguishable from the pass alone.
 - **Never commits.** Step 4.5 *proposes* the `Healed-by:` / `Heal-bucket:` trailer block; this skill does not create or amend a commit, and writes no ledger of its own ([ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)).
+- **Repeat-heal is read, not stored.** Step 4.6 computes 🔁 repeat-heal from `git log --follow` + the `Heal-bucket` trailer at read time, every time — never a new store, and it says plainly when trailers are missing and the weaker churn fallback is doing the work instead ([#194](https://github.com/TzolkinB/skills/issues/194)).
 - Scoped to Playwright (flake mode also supports Cypress `@cypress/grep --burn`). For Jest/Vitest/pytest failures, invoke diagnosing-bugs directly.
 - `--explain` is not supported — this skill is procedural, not pedagogical.

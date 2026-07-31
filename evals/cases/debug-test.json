@@ -111,6 +111,78 @@
           "anchors": { "any": ["no trailer", "trailer omitted", "skipping the trailer"] }
         }
       ]
+    },
+    {
+      "id": "repeat-heal-trailer-based",
+      "invoke": "/debug-test tests/nav.spec.ts",
+      "_note": "Step 4.6 (#194, ADR-0047 §2 read side). Rubric from fixtures/debug-test/expected-findings.md → 'Step 4.6 repeat-heal check', Case 3. Sample-graded only, same reason as the Step 4.5 cases: reaching Step 4.6 needs a real multi-commit git history of prior heals, which the offline fixture lane can't stage. Locks the bucket-accurate reading: three same-bucket heals inside the window, all carrying the Heal-bucket trailer, must surface as a named 🔁 repeat-heal, not disappear because each individual heal was the cheap locator bucket.",
+      "dry_run_sample": "samples/debug-test.repeat-heal-trailer.pass.md",
+      "dry_run_negative_sample": "samples/debug-test.repeat-heal-trailer.fail.md",
+      "expect_tokens": ["🔁 Repeat-heal"],
+      "must_surface": [
+        {
+          "claim": "Reads the file's prior heal history via `git log --follow` within a 90-day window.",
+          "anchors": { "any": ["git log --follow", "90 days", "90-day"] }
+        },
+        {
+          "claim": "States the reading is bucket-accurate — every commit touching the file in the window carried a `Heal-bucket` trailer.",
+          "anchors": { "any": ["bucket-accurate"] }
+        },
+        {
+          "claim": "Names the count (3) and the bucket (locator) in the finding.",
+          "anchors": { "all": ["3", "locator"] }
+        },
+        {
+          "claim": "Emits the 🔁 repeat-heal finding rather than treating three cheap-bucket heals as nothing worth reporting.",
+          "anchors": { "any": ["🔁 repeat-heal"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT report 'no repeats' — three locator heals on the same file inside the window is exactly the pattern this check exists to surface.",
+          "anchors": { "any": ["no repeats found", "no repeats.", "clean history", "nothing to report"] }
+        },
+        {
+          "claim": "Must NOT claim this required writing a ledger, store, or cache file.",
+          "anchors": { "any": ["wrote a ledger", "new store", "cache file", "persisted the heal", "saved to a file"] }
+        }
+      ]
+    },
+    {
+      "id": "repeat-heal-churn-fallback",
+      "invoke": "/debug-test tests/checkout-flow.spec.ts",
+      "_note": "Step 4.6 (#194, ADR-0047 §2 read side). Rubric from fixtures/debug-test/expected-findings.md → 'Step 4.6 repeat-heal check', Case 4. Sample-graded only, same reason as above. Locks the degradation ladder's other end: when no commit in the window carries a Heal-bucket trailer, the check must fall back to a plain file-churn count, label it explicitly as the weaker signal, and still report it — never read an all-trailerless history as 'no repeats' (the failure mode #194's acceptance criteria names directly).",
+      "dry_run_sample": "samples/debug-test.repeat-heal-churn.pass.md",
+      "dry_run_negative_sample": "samples/debug-test.repeat-heal-churn.fail.md",
+      "expect_tokens": ["churn-only"],
+      "must_surface": [
+        {
+          "claim": "Finds zero commits carrying a `Heal-bucket` trailer in the window — a churn-only reading.",
+          "anchors": { "any": ["churn-only", "no `heal-bucket` trailers", "no heal-bucket trailers"] }
+        },
+        {
+          "claim": "Falls back to a plain file-churn count with no bucket breakdown.",
+          "anchors": { "any": ["file-churn", "file churn"] }
+        },
+        {
+          "claim": "States the edit count (4) found in the window.",
+          "anchors": { "all": ["4 edits", "churn"] }
+        },
+        {
+          "claim": "Labels the churn fallback explicitly as the weaker signal.",
+          "anchors": { "any": ["weaker signal", "weaker,"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT report 'no repeats' or 'clean' just because trailers are absent — an untrailered history is a weaker read, not a clean one.",
+          "anchors": { "any": ["no repeat-heal history", "clean, done", "no repeats found"] }
+        },
+        {
+          "claim": "Must NOT invent a bucketed repeat-heal count for commits that carry no trailer.",
+          "anchors": { "any": ["bucket-accurate", "heals of `locator` in the last", "3 locator heals"] }
+        }
+      ]
     }
   ]
 }
