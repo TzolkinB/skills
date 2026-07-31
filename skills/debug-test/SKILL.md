@@ -84,7 +84,7 @@ Healer input: [failing test name]
 ### 4.5 Classify the heal
 A healer pass says the test is green; it doesn't say *what the healer changed to get there*. A locator touch-up and an expected value rewritten to match a regression both end in green, and only the second green-locks a bug — the assertion stays live, keeps killing mutations, and now enforces the broken behavior ([ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md)). So don't call it done on the pass alone: `git diff` the test file, bucket what changed, and take that bucket's disposition. → follow [reference/heal-classification.md](reference/heal-classification.md).
 
-The three buckets and where they land: **selector / timeout / wait only** → done, no mutation spent on the low-risk common case; **expected-value literal changed** → `/audit-test`'s baseline-lock check via the `Skill` tool, verdict reported inline before "done"; **setup / fixture / flow changed** → not auto-cleared, diff shown, human review required. All three also **propose** a `Healed-by:` / `Heal-bucket:` commit-trailer block — the durable record of the classification, for a human or a commit template to apply. This skill never creates or amends a commit ([ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2).
+The three buckets and where they land: **selector / timeout / wait only** → done, no mutation spent on the low-risk common case; **expected-value literal changed** → `/audit-test`'s baseline-lock check via the `Skill` tool — the invocation must carry the assertion co-change itself, since the healer's edit is uncommitted and `audit-test` can't resolve it — verdict reported inline before "done"; **setup / fixture / flow changed** → not auto-cleared, diff shown, human review required. All three also **propose** a `Healed-by:` / `Heal-bucket:` commit-trailer block — the durable record of the classification, for a human or a commit template to apply. This skill never creates or amends a commit ([ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2).
 
 ### 5. diagnosing-bugs
 Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md) via the **`Skill`** tool.
@@ -144,13 +144,19 @@ Invoking healer: [test name]
 ```
 
 ### Heal classification (Step 4.5)
-Emitted after every healer pass — see [reference/heal-classification.md](reference/heal-classification.md) for the full block, the per-bucket dispositions, and the trailer rules.
+Emitted after a healer pass that changed the test file — see [reference/heal-classification.md](reference/heal-classification.md) for the per-bucket dispositions, the trailer rules, and the cases that produce no classification at all (empty diff, pre-dirty tree, edits outside the test file).
 ```
 ## debug-test (heal): [Test Name]
+
+### Healer → passed
+[what the healer reported, one line]
 
 ### Heal classification → [Selector / timeout / wait only | Expected-value literal | Setup / fixture / flow]
 `git diff -- [test file]`: [what changed — old → new]
 [bucket disposition: cleared · /audit-test baseline-lock verdict · ⛔ not auto-cleared, human review]
+
+### Healing justification
+[what changed] · [which check ran] · [verdict]
 
 ### Proposed commit trailers  (proposed, not applied — debug-test does not own the commit)
 Healed-by: debug-test

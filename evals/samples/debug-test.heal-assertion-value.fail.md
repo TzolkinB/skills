@@ -13,10 +13,10 @@
 ## debug-test: renders the initial deck
 
 ### Failure
-`expect(cards).toHaveCount(12)` failed — received 10.
+`Timed out 5000ms waiting for expect(locator).toHaveCount(12)` — the deck never reached 12 cards.
 
 ### Routing → Playwright Healer
-Failure type: data
+Failure type: wait
 Invoking healer: renders the initial deck
 
 ### Healer result

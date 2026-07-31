@@ -17,7 +17,7 @@ git diff --name-only         # did it stay inside the test file?
 
 - **Tree was already dirty on that file** → the diff conflates the healer's edit with edits that were there first. Classify best-effort and **say so** — never present a mixed diff as the healer's work. (Same reason `audit-test` and `prune-tests` refuse to run on a dirty tree: an edit you can't attribute is an edit you can't classify.)
 - **Empty diff** → the healer changed nothing, so there is nothing to classify and nothing to record. A pass with no edit means the red was environmental or non-deterministic — go back to Step 1's flake check rather than reporting a clean heal.
-- **Files changed outside the test file** (a page object, a fixture module, production source) → never cleared here. Report the extra paths and require human review: a "heal" that edits production source is a code change wearing a test change's clothes.
+- **Files changed outside the test file** (a page object, a fixture module, production source) → never cleared here. Report the extra paths and require human review: a "heal" that edits production source is a code change wearing a test change's clothes. This is a flag on top of the bucket, not a fourth bucket — the trailer still carries whatever the *test file's* own diff scored (and if the test file didn't change at all, nothing was healed: no bucket, no trailer, just the paths and the review).
 
 ## H2. Bucket the diff — three buckets, one vocabulary
 
@@ -34,7 +34,20 @@ The trailer values are exactly these three; they are the vocabulary [#194](https
 
 ## H3. Expected-value → hand it to audit-test's baseline-lock check
 
-Invoke `/audit-test <test file>` (via the **`Skill`** tool) and ask for the [Baseline-lock check](../../audit-test/reference/baseline-lock-check.md). Don't re-implement it here — `audit-test` owns it, and this is the same self-invoking seam that reaches `diagnosing-bugs` ([ADR-0010](../../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)). The hand-off is cheap because the check's primary signal is the artifact H1 just produced: an expected value changed **in lockstep with** the code change it should have caught.
+Invoke `/audit-test <test file>` (via the **`Skill`** tool) and ask for the [Baseline-lock check](../../audit-test/reference/baseline-lock-check.md) on the co-change. Don't re-implement it here — `audit-test` owns it, and this is the same self-invoking seam that reaches `diagnosing-bugs` ([ADR-0010](../../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)).
+
+**Pass the co-change in the invocation — don't assume `audit-test` can find it.** The check's primary signal is an assertion diff, and it normally reads one that `--changed` resolved from `git diff --name-only main...HEAD` — *committed* changes. The healer's edit is sitting uncommitted in the working tree, so a bare `/audit-test <file>` reaches the check with nothing to read and correctly reports "couldn't run" — on the one case this step exists for. Two more things the invocation has to carry: `audit-test` funnels (only tests flagged in its Step-3 triage advance), and its baseline-lock check hangs off the 🟢 branch of Step 4, so a freshly-healed test that triages clean would never reach it. State the suspicion so the funnel keeps it.
+
+```
+Skill: /audit-test <test file>
+  Suspected baseline-lock (from debug-test Step 4.5) — treat this test as a triage suspect.
+  Assertion co-change, uncommitted, from the Playwright healer:
+    - await expect(cards).toHaveCount(12);
+    + await expect(cards).toHaveCount(10);
+  Pre-heal failure: [the red the healer was handed]
+  Run the Baseline-lock check against this diff (signal 1). If the in-code source of truth
+  disagrees with the new value, that's signal 2.
+```
 
 Report the verdict **inline, before "done"** — one of:
 - **⚠️ Baseline-lock suspected** — show the co-change (`old → new`) and the intent source it contradicts. Not a failed heal: a question for the human — restore the intended value, or update the code's declared intent to match. Never green-locked on this skill's authority.

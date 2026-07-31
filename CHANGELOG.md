@@ -30,7 +30,9 @@ release heading.
   [`skills/debug-test/reference/heal-classification.md`](skills/debug-test/reference/heal-classification.md):
   **selector / timeout / wait only** clears on the diff alone (no mutation spent on the low-risk common
   case), **an expected-value literal changed** routes to `audit-test`'s baseline-lock check via the
-  `Skill` tool with the verdict reported inline before "done", and **setup / fixture / flow changed**
+  `Skill` tool — the invocation carries the assertion co-change itself and names the test as a triage
+  suspect, because the healer's edit is uncommitted and `audit-test` resolves `--changed` from committed
+  history — with the verdict reported inline before "done", and **setup / fixture / flow changed**
   is never auto-cleared — that heals by changing the story, not the mechanics, so it shows the diff and
   requires human review. Mixed diffs are worst-wins (`flow-data` > `assertion-value` > `locator`), and an
   assertion *removed* counts as `flow-data`, not as a value change. Classification reads the diff, never

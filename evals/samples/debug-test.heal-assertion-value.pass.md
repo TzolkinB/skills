@@ -7,6 +7,10 @@
 
 ## debug-test (heal): renders the initial deck
 
+### Failure (Step 1) → Healer (Step 4)
+`Timed out 5000ms waiting for expect(locator).toHaveCount(12)` — a retrying web-first assertion that
+never reached its expected count. Step 3 routes a `Timeout` / `waiting for` red to the healer.
+
 ### Healer → passed
 Healer reports the spec green after one edit to `tests/deck.spec.ts`.
 
@@ -20,7 +24,11 @@ Healer reports the spec green after one edit to `tests/deck.spec.ts`.
 
 An expected literal changed in lockstep with the code change that produced the red is the one bucket a green cannot clear on its own — so this does not stop here.
 
-→ `/audit-test tests/deck.spec.ts` (Baseline-lock check):
+→ `/audit-test tests/deck.spec.ts` — invoked with the co-change above pasted in and the test named as a
+triage suspect, because the healer's edit is uncommitted and `--changed` resolves from committed history,
+so the check would otherwise have nothing to read.
+
+Baseline-lock check:
 **⚠️ Baseline-lock suspected** — the assertion was weakened to match `Main.reducer.ts`, which now slices the deck to 10, while the in-code source of truth still declares 12 (`robots.ts`; `decks.ts` documents "6 pairs = 12 cards"). The test is live — it kills mutations — but it now pins the regressed value and would reject the fix.
 
 Not a verdict on the code: confirm the intended count. Either restore the assertion to 12, or update the code's declared intent if 10 is now correct — don't leave the test blessing a value the source of truth contradicts.
