@@ -1,7 +1,7 @@
 ---
 name: prune-tests
 description: Review a test file or suite for low-value, redundant, over-mocked, or stale tests and propose a conservative prune / merge / rewrite plan — the subtractive counterpart to coverage-review
-argument-hint: "[test file or directory path] [--digest] [--explain]"
+argument-hint: "[test file or directory path] [--digest] [--explain] [--audit-evidence=<path>]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
 ---
@@ -28,10 +28,11 @@ This is a **subtractive** skill, so it is deliberately **conservative**: it *pro
 6. Evaluate **mocking strategy**: prefer real collaborators for *internal* systems (services, model managers, permission classes, serializers, query paths) when integration is cheap; keep mocks only at *external* boundaries (network, third-party APIs, clock/randomness, expensive side effects).
 7. Detect **out-of-sync / stale** tests: name says one behavior but assertions prove another; Given/When/Then comments contradict setup; assertions validate payload shapes or status contracts no longer in use; intent duplicates a newer canonical test with stale assumptions.
 8. Apply the **hand-off rule** (see below) before categorizing — anything that smells like false-confidence rather than redundancy goes to `audit-test`, not into this report's prune list.
-9. Categorize findings with an explicit prune **confidence** (`high` / `medium` / `low`).
-10. Output the plan. **Do not delete or edit tests.** Applying the plan is a separate, gated step — see Apply Mode.
-11. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode). Otherwise omit it — default output stays lean.
-12. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the plan above — the same proposals, trimmed to the three that buy the most, as risk / evidence / action / confidence. This skill's confidence ceiling is **Likely** (a static economy read), and a `Deferred` entry is **Unexamined** — deferring it is precisely the admission that nothing here judged it.
+9. If `--audit-evidence=<path>` is present in $ARGUMENTS, ingest it (see **Audit-evidence ingestion** below) before categorizing. This can promote a Step 8 Deferred entry into the new **Confirmed Prune (mutation-backed)** category; it never removes an entry from Deferred without a matching execution-confirmed record, and it never touches any other category.
+10. Categorize findings with an explicit prune **confidence** (`high` / `medium` / `low`).
+11. Output the plan. **Do not delete or edit tests.** Applying the plan is a separate, gated step — see Apply Mode.
+12. If `--explain` is present in $ARGUMENTS, append a "Why This Matters" section (see Explain Mode). Otherwise omit it — default output stays lean.
+13. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the plan above — the same proposals, trimmed to the three that buy the most, as risk / evidence / action / confidence. This skill's confidence ceiling is **Likely** (a static economy read) — **except** a `Confirmed Prune (mutation-backed)` entry, which carries **Confirmed**: it's grounded in a mutation `audit-test` already ran, not this skill's own static read. A `Deferred` entry is **Unexamined** — deferring it is precisely the admission that nothing here judged it.
 
 ## Hand-off rule (boundary with `audit-test` and `coverage-review`)
 
@@ -41,6 +42,40 @@ This is a **subtractive** skill, so it is deliberately **conservative**: it *pro
 - A *gap* (missing path, loose assertion on untested behavior) → that's `coverage-review`'s additive job, not this skill's. Don't add tests here.
 
 This keeps one question per skill and prevents `prune-tests` from deleting a weak-looking test that is actually the only thing guarding a real behavior.
+
+## Audit-evidence ingestion (`--audit-evidence=<path>`)
+
+Optional, and closes the Hand-off rule's loop. Without it, a human runs `/audit-test` on the Deferred
+list by hand, reads the verdict, then comes back and re-classifies the entry themselves. This flag lets
+a prior `/audit-test --emit-json=<path>` run do that re-classification automatically, by reading the
+same `gate-audit-test/v0.x` emission the Gate skill ingests
+([schema](../gate/schema/audit-test-emission.v0.schema.json)).
+
+1. Read `<path>` and parse it as JSON. Missing file, unreadable, or invalid JSON → behave **exactly** as
+   if the flag were absent: Step 8's Deferred list stands unchanged. Say so in one line rather than
+   dropping it silently — a discarded evidence file is a fact worth reporting, the same way a `Deferred`
+   entry is itself an admission rather than a clean pass.
+2. Validate `schema` is a `gate-audit-test/v0.x` string — the family `/audit-test --emit-json` writes. A
+   missing field, a different family, or a future major version this skill doesn't know is a
+   **schema-version mismatch**: handle it the same as step 1 — unchanged behavior, plus a one-line note
+   naming the mismatch (e.g. "ignored `--audit-evidence`: schema `gate-audit-test/v1.0` is not a
+   recognized v0.x emission"). This is a light shape check, not Gate's full trust-boundary arithmetic
+   ([ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md)) — that consistency-proving is Gate's job
+   at the ship gate, not this proposal-only skill's.
+3. **Only `confirmedHollow` promotes, and only by name.** The emission's counts are aggregate; only its
+   optional `runs[]` trace names *which* test each count belongs to
+   ([ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §3). For each Deferred entry from Step 8,
+   look for a `runs[]` record whose `test` identity (`<file>::<test name>`) matches it, with
+   `outcome: "survived"` (survived = confirmedHollow, per the schema). A match promotes that entry to
+   **Confirmed Prune (mutation-backed)**, carrying the record's `mutation` line as its evidence. No
+   match — because `runs[]` is absent from this emission, or no record names this test — leaves the
+   entry Deferred exactly as Step 8 left it. If the emission reports `confirmedHollow > 0` but nothing in
+   `runs[]` matches a Deferred entry here, say so in one line (real evidence that *something* is hollow,
+   just not *this* test) rather than either promoting on a guess or silently dropping the count.
+4. `likelyHollow` and `baselineLock` never promote — not as a rule this skill has to enforce, but
+   structurally: `audit-test` only ever writes a `runs[]` record for the execution-confirmed subset
+   (confirmedSolid/confirmedHollow); a 🟡 or ⚠️ verdict was never mutated, so it can never appear in
+   `runs[]` to be matched against. Nothing here needs to special-case them.
 
 ## Output Format
 
@@ -74,12 +109,17 @@ Tests reviewed: N   |   Proposed: X remove / Y merge / Z rewrite / K keep
 ### Deferred to audit-test
 - **`test G`** — looks like it may never verify its code; not a redundancy call. Run `/audit-test` to prove or clear it before deciding.
 
+### Confirmed Prune (mutation-backed)
+*(only with `--audit-evidence=<path>` — a Deferred entry `audit-test` already proved hollow, by name. Omit this section when nothing promoted, same rule as every other category: don't manufacture an entry.)*
+- **`test H`** — was Deferred above; `--audit-evidence=<path>` matched it to a `confirmedHollow` record: [the `runs[]` record's `mutation` line, one line]. Zero protection, execution-confirmed — `audit-test`'s own default advice is to strengthen a hollow test rather than delete it; this category names it as a legitimate removal candidate for a team that isn't going to invest in that fix.
+  - confidence: high | action: remove | evidence: `--audit-evidence=<path>` (`gate-audit-test/v0.x`)
+
 **Next:** `/audit-test tests/cart.spec.ts` on the Deferred entries before deciding — don't delete what only it can clear
 ```
 
 If the suite is already lean, say so plainly and list only "Keep" — do not manufacture prunes to fill the template.
 
-Close every plan — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md); it's the same hand-off the Deferred section makes, generalized so every judgment skill ends with one. Pick the row for the result you actually produced: Deferred entries route to `/audit-test`; a plan with none routes to `--apply` on a clean tree.
+Close every plan — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md); it's the same hand-off the Deferred section makes, generalized so every judgment skill ends with one. Pick the row for the result you actually produced: Deferred entries route to `/audit-test`; a plan with none — including one where `--audit-evidence` already promoted every Deferred entry to Confirmed Prune — routes to `--apply` on a clean tree.
 
 ## Apply Mode (`--apply`)
 
@@ -87,7 +127,7 @@ Default output is a proposal only. `--apply` performs the removals/merges/rewrit
 
 1. Refuse to run unless `git status` reports a **clean tree** (or the user points to a scratch copy). Print the reason and stop otherwise.
 2. Show the full proposal and require explicit confirmation before touching any file.
-3. Apply only `high`-confidence `remove`/`merge` actions automatically; leave `medium`/`low` and all `rewrite`s for the developer to review as a diff.
+3. Apply only `high`-confidence `remove`/`merge` actions automatically; leave `medium`/`low` and all `rewrite`s for the developer to review as a diff. A `Confirmed Prune (mutation-backed)` entry is `high`-confidence by construction — it's execution-confirmed, not this skill's own static read — so it applies the same as any other high-confidence remove.
 4. Guarantee revert on error or interrupt — never leave the tree dirty. After applying, run the affected tests once and report the result.
 
 Never delete a test in the same pass that flags it. Propose first, apply second, and only on a clean tree.
@@ -111,3 +151,4 @@ Keep it concept-level. The plan already says *what* to prune; this says *why the
 ## Notes
 
 - **Conservative by default.** When scenario equivalence is uncertain, keep. Low-confidence deletion candidates become `keep` or `rewrite`, never `remove` — matching setup is not matching meaning.
+- **`--audit-evidence` only ever promotes toward removal what `audit-test` already proved by execution.** It never manufactures a new false-confidence claim of its own — a `Deferred` entry with no matching `runs[]` record stays exactly as Step 8 left it, and a missing file or schema mismatch degrades to that same unchanged behavior, never a guess.

@@ -34,6 +34,43 @@
           "anchors": { "any": ["new test", "add a test", "missing path", "untested path", "add coverage", "add tests for"] }
         }
       ]
+    },
+    {
+      "id": "audit-evidence-promotion",
+      "invoke": "/prune-tests fixtures/prune-tests/checkout.spec.js --audit-evidence=fixtures/prune-tests/checkout.audit-evidence.json",
+      "workspace": "isolated",
+      "fixture_files": [
+        "fixtures/prune-tests/checkout.spec.js",
+        "fixtures/prune-tests/checkout.js",
+        "fixtures/prune-tests/checkout.audit-evidence.json"
+      ],
+      "dry_run_sample": "samples/prune-tests.checkout.pass.md",
+      "dry_run_negative_sample": "samples/prune-tests.checkout.fail.md",
+      "_note": "Guards #192 (--audit-evidence ingestion). Rubric from fixtures/prune-tests/expected-findings.md's checkout.spec.js section: neither test is redundant, over-mocked, or stale (the mock is a correct external boundary), so both start as Deferred; the paired evidence file's runs[] trace names `processes payment` confirmedHollow (a mutation ran and survived) and `applies discount code` only likelyHollow (no runs[] record, never executed). A faithful run promotes only the first, by matching test IDENTITY, not by the aggregate confirmedHollow:1 count. `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+      "must_surface": [
+        {
+          "claim": "Promotes `processes payment` to a new Confirmed Prune (mutation-backed) category, naming the evidence's mutation (removed the `amount` argument from `gateway.charge(amount)`) and that the test still passed (survived).",
+          "anchors": { "all": ["confirmed prune", "gateway.charge(amount)"] }
+        },
+        {
+          "claim": "The promoted entry carries `confidence: high` and `action: remove` — the strongest tier this skill has, because it's execution-confirmed by audit-test, not this skill's own static read.",
+          "anchors": { "all": ["confidence: high", "gateway.charge(amount)"] }
+        },
+        {
+          "claim": "`applies discount code` stays under Deferred to audit-test, unpromoted, because the evidence marks it likelyHollow (reasoned only, no runs[] record) rather than confirmedHollow.",
+          "anchors": { "all": ["applies discount code", "deferred"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT promote `applies discount code` to Confirmed Prune — a likelyHollow verdict never earns promotion, only a confirmedHollow one matched by name.",
+          "anchors": { "any": ["so promoted to confirmed prune", "promoted to confirmed prune too"] }
+        },
+        {
+          "claim": "Must NOT claim this skill ran or reasoned out the mutation itself — the mutation is audit-test's evidence, read from the file, not new analysis performed here.",
+          "anchors": { "any": ["i ran the mutation", "i applied the mutation", "this skill ran a mutation", "ran this mutation"] }
+        }
+      ]
     }
   ]
 }
