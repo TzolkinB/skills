@@ -1,0 +1,21 @@
+{
+  "schema": "gate-audit-test/v0.3",
+  "producer": "audit-test",
+  "scope": "fixtures/prune-tests/checkout.spec.js",
+  "audited": 2,
+  "deepAudited": 2,
+  "confirmedSolid": 0,
+  "confirmedHollow": 1,
+  "likelyHollow": 1,
+  "baselineLock": 0,
+  "unexamined": 0,
+  "runs": [
+    {
+      "test": "checkout.spec.js::processes payment",
+      "mutation": "removed the amount argument from gateway.charge(amount) — charges $0 regardless of the cart total",
+      "command": "npx jest -t \"processes payment\" checkout.spec.js",
+      "outcome": "survived",
+      "exitCode": 0
+    }
+  ]
+}

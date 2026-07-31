@@ -32,6 +32,7 @@ the same role: an input whose correct handling is spelled out in `expected-findi
 /coverage-review  fixtures/coverage-review/refund.spec.js fixtures/coverage-review/refund.js
 /audit-test       fixtures/audit-test/booking.spec.js fixtures/audit-test/booking.js
 /prune-tests      fixtures/prune-tests/cart.spec.js
+/prune-tests      fixtures/prune-tests/checkout.spec.js --audit-evidence=fixtures/prune-tests/checkout.audit-evidence.json
 /debug-test       fixtures/debug-test/checkout.spec.ts
 /threat-model     fixtures/threat-model/refund.js
 ```
@@ -46,6 +47,7 @@ Then compare the run to that fixture's `expected-findings.md`.
 | `coverage-review` | `refund.spec.js` + `refund.js` | Loose assertions (`toBeDefined`/`toBeTruthy`) over a happy path; untested guards, error paths, and the full-refund boundary |
 | `audit-test` | `booking.spec.js` + `booking.js` | Overmocked "rejects overlapping bookings" — stubs away the overlap, asserts `save()` was called; passes even if the guard is deleted (mutation-provable) |
 | `prune-tests` | `cart.spec.js` + `cart.js` | Redundant pair to merge, over-mock of an internal collaborator, a stale name/intent mismatch, and one genuine keeper |
+| `prune-tests` (`--audit-evidence`, #192) | `checkout.spec.js` + `checkout.js` + `checkout.audit-evidence.json` | Two hand-off candidates deferred to `audit-test`; the paired `gate-audit-test/v0.3` emission names one `confirmedHollow` by a `runs[]`-matched mutation (promotes to **Confirmed Prune**) and the other only `likelyHollow` (no match, stays **Deferred**) |
 | `debug-test` | `checkout.spec.ts` | Failing Playwright test with a missing `await` on a web-first assertion — caught by Step 2 heuristics, no routing |
 | `threat-model` | `refund.js` | Fire-and-forget refund: silent failure, all-refunds blast radius, hard reversibility (email sent, status flipped) |
 | `test-plan` | `discount-code.md` *(scenario — a ticket)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |

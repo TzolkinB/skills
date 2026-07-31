@@ -41,6 +41,18 @@ Fixture: [`fixtures/prune-tests/`](../fixtures/prune-tests/) ([expected findings
 
 What the run does *not* do: it won't claim any test is confirmed false-confidence (that needs a mutation — hand off to [`audit-test`](./audit-test.md)) and it won't propose new tests for missing paths.
 
+### Closing the loop: `--audit-evidence=<path>`
+
+A `Deferred to audit-test` entry used to be a dead end you had to close by hand: run `/audit-test`,
+read its verdict, come back and re-classify the entry yourself. `--audit-evidence=<path>` reads a prior
+`/audit-test --emit-json=<path>` run and does that re-classification automatically — a test the
+evidence names as **confirmed-hollow** (execution-confirmed: a mutation ran and the test stayed green)
+is promoted from `Deferred` to a new **Confirmed Prune (mutation-backed)** category, the highest
+confidence tier this skill can carry (`--digest` reports it **Confirmed**, not the usual `Likely`).
+It only promotes what the evidence names *by test identity*, never by count alone — a `likelyHollow` or
+`baseline-lock` verdict never promotes, a missing evidence file changes nothing, and a schema mismatch
+is ignored rather than guessed at. Still proposal-only, still gated behind `--apply`.
+
 ## Where it fits
 
 The suite-hygiene step, and the subtractive counterpart to [`coverage-review`](./coverage-review.md). It hands any "does this test actually bite?" question to [`audit-test`](./audit-test.md) and never adds tests itself. It's *not* part of the [`sentinel`](./sentinel.md) ship-gate chain — reach for it when the suite feels slow or noisy, not at the merge gate.

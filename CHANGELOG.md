@@ -53,6 +53,15 @@ release heading.
   `Deferred to audit-test` hand-off pattern rather than adding new analysis, and is omitted entirely when
   there are no loose or incidental assertions to escalate — coverage-review still never runs a mutation
   itself, the section only names the candidate.
+- **`prune-tests`: `--audit-evidence=<path>` ingests an `audit-test` emission to close the Hand-off loop**
+  — [#192](https://github.com/TzolkinB/skills/issues/192). Reads a prior `/audit-test --emit-json=<path>`
+  run and promotes a `Deferred to audit-test` entry to a new **Confirmed Prune (mutation-backed)**
+  category — the highest confidence tier this skill can carry — when the evidence's `runs[]` trace names
+  that exact test as `confirmedHollow`. Deliberately narrow: it matches by test *identity*, never by
+  count alone, so `likelyHollow` and `baseline-lock` verdicts never promote (they never get a `runs[]`
+  record to match against in the first place), a missing evidence file leaves the Deferred list
+  unchanged, and a schema-version mismatch is ignored rather than guessed at. Still proposal-only, still
+  gated behind `--apply`.
 
 ### Fixed
 
