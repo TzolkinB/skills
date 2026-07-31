@@ -1,6 +1,6 @@
 ---
 name: debug-test
-description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs. Also has a flake mode (detects, quarantines, routes flaky tests — Playwright or Cypress) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
+description: Automatically diagnose a failing Playwright test — reads files directly, applies QA heuristics, routes to the Playwright healer or diagnosing-bugs, and classifies what the healer changed before calling it fixed. Also has a flake mode (detects, quarantines, routes flaky tests — Playwright or Cypress) and a drift mode (classifies an already-red test as external drift vs local regression and surfaces the mismatch for a human to dispose).
 argument-hint: "[test file path or test name] [--flake] [--drift]"
 allowed-tools: [Read, Bash, Task, Skill]
 disable-model-invocation: true
@@ -72,12 +72,19 @@ Invoke the Playwright healer subagent (via the **`Task`** tool) with the failing
 
 > Requires `npx playwright init-agents` to have been run in the repo. If not initialized, note it and proceed directly to Step 5.
 
+Before invoking it, record `git status --porcelain -- <test file>` — Step 4.5 needs to know whether the file was already dirty to attribute the healer's edit.
+
 ```
 Healer input: [failing test name]
 ```
 
-- **Healer passes** → done
+- **Healer passes** → **Step 4.5** — a pass is a *change*, not yet a result
 - **Healer skips** (outputs "functionality broken") → Step 5
+
+### 4.5 Classify the heal
+A healer pass says the test is green; it doesn't say *what the healer changed to get there*. A locator touch-up and an expected value rewritten to match a regression both end in green, and only the second green-locks a bug — the assertion stays live, keeps killing mutations, and now enforces the broken behavior ([ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md)). So don't call it done on the pass alone: `git diff` the test file, bucket what changed, and take that bucket's disposition. → follow [reference/heal-classification.md](reference/heal-classification.md).
+
+The three buckets and where they land: **selector / timeout / wait only** → done, no mutation spent on the low-risk common case; **expected-value literal changed** → `/audit-test`'s baseline-lock check via the `Skill` tool — the invocation must carry the assertion co-change itself, since the healer's edit is uncommitted and `audit-test` can't resolve it — verdict reported inline before "done"; **setup / fixture / flow changed** → not auto-cleared, diff shown, human review required. All three also **propose** a `Healed-by:` / `Heal-bucket:` commit-trailer block — the durable record of the classification, for a human or a commit template to apply. This skill never creates or amends a commit ([ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2).
 
 ### 5. diagnosing-bugs
 Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skills/blob/main/skills/engineering/diagnosing-bugs/SKILL.md) via the **`Skill`** tool.
@@ -136,6 +143,26 @@ Failure type: [locator | wait | data]
 Invoking healer: [test name]
 ```
 
+### Heal classification (Step 4.5)
+Emitted after a healer pass that changed the test file — see [reference/heal-classification.md](reference/heal-classification.md) for the per-bucket dispositions, the trailer rules, and the cases that produce no classification at all (empty diff, pre-dirty tree, edits outside the test file).
+```
+## debug-test (heal): [Test Name]
+
+### Healer → passed
+[what the healer reported, one line]
+
+### Heal classification → [Selector / timeout / wait only | Expected-value literal | Setup / fixture / flow]
+`git diff -- [test file]`: [what changed — old → new]
+[bucket disposition: cleared · /audit-test baseline-lock verdict · ⛔ not auto-cleared, human review]
+
+### Healing justification
+[what changed] · [which check ran] · [verdict]
+
+### Proposed commit trailers  (proposed, not applied — debug-test does not own the commit)
+Healed-by: debug-test
+Heal-bucket: [locator | assertion-value | flow-data]
+```
+
 ### Routing to diagnosing-bugs (Step 5)
 ```
 ## debug-test: [Test Name]
@@ -161,5 +188,7 @@ Proceeding with diagnosing-bugs Phase 2...
 
 ## Notes
 - **Self-invoking orchestrator.** debug-test drives its own handoffs across the ADR-0010 seam — the Playwright healer via `Task`, sibling skills via `Skill` — but never owns execution itself. A routed cause is a *lead to confirm*, not a verdict.
+- **A green from a healer is a change, not a result.** Step 4.5 classifies every healer pass from the diff — never from the healer's account of what it did — because the two greens that matter (a re-synced selector, an expected value rewritten to bless a regression) are indistinguishable from the pass alone.
+- **Never commits.** Step 4.5 *proposes* the `Healed-by:` / `Heal-bucket:` trailer block; this skill does not create or amend a commit, and writes no ledger of its own ([ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)).
 - Scoped to Playwright (flake mode also supports Cypress `@cypress/grep --burn`). For Jest/Vitest/pytest failures, invoke diagnosing-bugs directly.
 - `--explain` is not supported — this skill is procedural, not pedagogical.

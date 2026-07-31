@@ -52,7 +52,7 @@ These skills are the gap-fillers; at each of the seven QA stages the *best* tool
 | **5 · Flake** | Is this run stable? | `/debug-test --flake` (detect → quarantine → **route**, never heal-to-hide); Playwright **`flaky` flag** for retry-then-pass | advice · Likely |
 | | | *caveat-lead:* self-healers (Healenium, Cypress self-heal) — **heal to green, can mask a regression** | hazard, not advice |
 | **6 · Triage** | Why did it fail? | `/debug-test`, `/diagnosing-bugs`, `/bug-report`; `/e2e-impact` (which specs a diff hits); `/contract-guard` (contract drift). Evidence sources: Playwright **trace viewer / Test Replay**, **cypress-flaky-test-audit** (per-command runtime, diagnosis-only) | advice · Confirmed |
-| | | *caveat-lead:* Playwright **Healer** agent — heals/skips to green | hazard, not advice |
+| | | *caveat-lead:* Playwright **Healer** agent — heals/skips to green; run `/debug-test` **over** it, which classifies what the heal changed (selector/wait clears cheap · a changed expected value goes to `/audit-test`'s baseline-lock check · a rewritten setup blocks auto-clear) | hazard, not advice |
 | **7 · Gate** | Am I safe to ship? | `/gate` (ingests your PR's existing evidence — E2E results + `audit-test` verdict — into an advisory ship/canary/hold decision; the actual release gate); `/sentinel` (a QA synthesis read across the chain, feeds into it); **TEA** categorical governance gate (PASS/CONCERNS/FAIL/WAIVED + compliance audit trail) | advice · own + TEA **Confirmed** |
 
 ## Steps

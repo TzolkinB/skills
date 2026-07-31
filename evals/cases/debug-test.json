@@ -35,6 +35,82 @@
           "anchors": { "any": ["diagnosing-bugs", "routing → diagnosing", "proceeding with diagnosing"] }
         }
       ]
+    },
+    {
+      "id": "heal-classification-assertion-value",
+      "invoke": "/debug-test tests/deck.spec.ts",
+      "_note": "Step 4.5 (#190, ADR-0047 §2). Rubric from fixtures/debug-test/expected-findings.md → 'Step 4.5 heal classification', Case 1. Sample-graded only (no fixture_files, no isolated workspace): reaching this step live needs an initialized Playwright healer that actually edits the spec, which the offline lane can't stage — same lane as the ask-sentinel routing cases. The riskiest claim — a healer that rewrote an expected literal must NOT collapse into 'done' — is what the rubric locks.",
+      "dry_run_sample": "samples/debug-test.heal-assertion-value.pass.md",
+      "dry_run_negative_sample": "samples/debug-test.heal-assertion-value.fail.md",
+      "expect_tokens": ["Heal-bucket: assertion-value"],
+      "must_surface": [
+        {
+          "claim": "Buckets the heal as expected-value: the healer changed an assertion's expected literal, not a selector or a wait.",
+          "anchors": { "any": ["assertion-value", "expected-value", "expected value literal"] }
+        },
+        {
+          "claim": "Shows the assertion diff it classified from — the old → new expected value.",
+          "anchors": { "all": ["toHaveCount(12)", "toHaveCount(10)"] }
+        },
+        {
+          "claim": "Routes the expected-value bucket to audit-test's baseline-lock check instead of clearing the heal.",
+          "anchors": { "any": ["baseline-lock"] }
+        },
+        {
+          "claim": "Reports the baseline-lock verdict inline before calling the heal done.",
+          "anchors": { "any": ["⚠️ baseline-lock suspected", "baseline-lock suspected"] }
+        },
+        {
+          "claim": "Proposes a `Healed-by: debug-test` commit trailer.",
+          "anchors": { "any": ["healed-by: debug-test"] }
+        },
+        {
+          "claim": "States the trailer block is proposed for a human or a commit template to apply, not written by this skill.",
+          "anchors": { "any": ["not applied", "does not own the commit", "never creates or amends", "proposed, not applied"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT report the healer's pass as done on the strength of the pass alone.",
+          "anchors": { "any": ["healer passes → done", "healer passed → done", "heal cleared", "no further review needed"] }
+        },
+        {
+          "claim": "Must NOT claim to have created or amended the commit carrying the heal.",
+          "anchors": { "any": ["git commit -m", "amended the commit", "committed the heal", "i committed"] }
+        }
+      ]
+    },
+    {
+      "id": "heal-classification-locator-cheap-path",
+      "invoke": "/debug-test tests/nav.spec.ts",
+      "_note": "Rubric from fixtures/debug-test/expected-findings.md → 'Step 4.5 heal classification', Case 2. Sample-graded only, same reason as the case above. The cheap bucket, locked deliberately: a locator-only heal must stay cheap (no mutation, no audit-test hop) AND still emit a trailer, because 'the same spec healed four times for a locator' is exactly the repeat-heal pattern #194 reads.",
+      "dry_run_sample": "samples/debug-test.heal-locator.pass.md",
+      "dry_run_negative_sample": "samples/debug-test.heal-locator.fail.md",
+      "expect_tokens": ["Heal-bucket: locator"],
+      "must_surface": [
+        {
+          "claim": "Buckets the heal as selector/wait only.",
+          "anchors": { "any": ["selector / timeout / wait", "selector/wait", "locator only", "locator-only"] }
+        },
+        {
+          "claim": "Clears the heal without spending a mutation on it.",
+          "anchors": { "any": ["no mutation", "without a mutation", "not worth a mutation"] }
+        },
+        {
+          "claim": "Still proposes the commit trailer for this cheap bucket.",
+          "anchors": { "any": ["healed-by: debug-test"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT route a locator-only heal to audit-test — that spends a mutation on the low-risk common case.",
+          "anchors": { "any": ["/audit-test", "invoking audit-test", "routed to audit-test"] }
+        },
+        {
+          "claim": "Must NOT suppress the trailer for the cheap bucket.",
+          "anchors": { "any": ["no trailer", "trailer omitted", "skipping the trailer"] }
+        }
+      ]
     }
   ]
 }

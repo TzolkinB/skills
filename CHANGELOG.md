@@ -19,6 +19,38 @@ release heading.
 
 ### Added
 
+- **`debug-test`: Step 4.5 classifies the heal instead of trusting the healer's green** —
+  [#190](https://github.com/TzolkinB/skills/issues/190), write side of
+  [ADR-0047](docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2. The old branch
+  logic was "healer passes → done," which collapsed a locator touch-up and *an assertion rewritten to
+  match a regression* into the same outcome — the self-healer failure mode
+  [ADR-0017](docs/adr/0017-audit-test-baseline-lock-suspected.md) exists to catch, and one a mutation
+  can never see (the green-locked assertion still kills mutations). Step 4.5 now `git diff`s the test
+  file after a healer pass and buckets it, in
+  [`skills/debug-test/reference/heal-classification.md`](skills/debug-test/reference/heal-classification.md):
+  **selector / timeout / wait only** clears on the diff alone (no mutation spent on the low-risk common
+  case), **an expected-value literal changed** routes to `audit-test`'s baseline-lock check via the
+  `Skill` tool — the invocation carries the assertion co-change itself and names the test as a triage
+  suspect, because the healer's edit is uncommitted and `audit-test` resolves `--changed` from committed
+  history — with the verdict reported inline before "done", and **setup / fixture / flow changed**
+  is never auto-cleared — that heals by changing the story, not the mechanics, so it shows the diff and
+  requires human review. Mixed diffs are worst-wins (`flow-data` > `assertion-value` > `locator`), and an
+  assertion *removed* counts as `flow-data`, not as a value change. Classification reads the diff, never
+  the healer's account of itself.
+- **`debug-test`: a proposed `Healed-by:` / `Heal-bucket:` commit-trailer block** — the durable half of
+  #190. Step 4.5 runs at exactly the moment a commit is being made, so it emits the trailers that make
+  the classification readable later, with the three buckets as the single vocabulary
+  [#194](https://github.com/TzolkinB/skills/issues/194) will read (`locator` | `assertion-value` |
+  `flow-data`). **All three buckets get a trailer, `locator` included** — "the same spec healed four
+  times for a locator" is precisely the repeat-heal pattern the cheap rows make visible. **Proposed,
+  never applied:** `debug-test` does not create or amend a commit and writes no store of its own — git
+  is the ledger. The accepted limit is named rather than engineered around: a heal that is never
+  committed leaves no record.
+- **`evals`: two `debug-test` heal-classification cases** — `heal-classification-assertion-value` (the
+  `toHaveCount(12)` → `toHaveCount(10)` green-lock must reach the baseline-lock check, not "done") and
+  `heal-classification-locator-cheap-path` (the cheap bucket must stay cheap *and* still emit a trailer).
+  Their negative samples record the two ways this goes wrong: reporting the healer's pass as done, and
+  suppressing the locator trailer as noise while spending a mutation on it.
 - **A shared `--digest` evidence card across the seven judgment skills** (`test-plan`, `qa-review`,
   `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `sentinel`) — [#193](https://github.com/TzolkinB/skills/issues/193),
   [ADR-0048](docs/adr/0048-shared-digest-card-and-inline-next-footers.md). `--digest` replaces the full
