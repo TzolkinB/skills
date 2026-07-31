@@ -87,7 +87,7 @@ A healer pass says the test is green; it doesn't say *what the healer changed to
 The three buckets and where they land: **selector / timeout / wait only** → done, no mutation spent on the low-risk common case; **expected-value literal changed** → `/audit-test`'s baseline-lock check via the `Skill` tool — the invocation must carry the assertion co-change itself, since the healer's edit is uncommitted and `audit-test` can't resolve it — verdict reported inline before "done"; **setup / fixture / flow changed** → not auto-cleared, diff shown, human review required. All three also **propose** a `Healed-by:` / `Heal-bucket:` commit-trailer block — the durable record of the classification, for a human or a commit template to apply. This skill never creates or amends a commit ([ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2).
 
 ### 4.6 Check repeat-heal history
-A single heal is a data point; a pattern across heals is the thing worth a human's attention. Immediately after Step 4.5 classifies this heal, read the test file's history for prior heals of the same kind: `git log --follow` filtered on the `Heal-bucket` trailer #190 writes, falling back to plain file churn when trailers are absent. Three or more heals of the same bucket within the window (this one included) → 🔁 **repeat-heal**, naming the count, bucket, and element/behavior each occurrence touched. → follow [reference/repeat-heal.md](reference/repeat-heal.md).
+A single heal is a data point; a pattern across heals is the thing worth a human's attention. Immediately after Step 4.5 classifies this heal, read the test file's history for prior heals of the same kind: `git log --follow`, filtered on the `Heal-bucket` trailer #190 writes and reading the *union* of the shared trunk (`origin/<default-branch>`, resolved dynamically, never hardcoded as `main`) and the current branch — so a teammate's merged heal isn't invisible on an unrebased branch, and a heal already committed on this branch isn't invisible either. Falls back to plain file churn when trailers are absent, and flags a shallow clone rather than reading a truncated history as clean. Three or more heals of the same bucket within the window (this one included) → 🔁 **repeat-heal**, naming the count, bucket, and element/behavior each occurrence touched. → follow [reference/repeat-heal.md](reference/repeat-heal.md).
 
 Nothing is stored — this reads git fresh every time ([#194](https://github.com/TzolkinB/skills/issues/194), [ADR-0047](../../docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2). It always reports what history was available; an empty or trailer-less read is never reported as "no repeats."
 
@@ -168,7 +168,7 @@ Healed-by: debug-test
 Heal-bucket: [locator | assertion-value | flow-data]
 
 ### Repeat-heal check (Step 4.6)
-History read: [window] · [bucket-accurate | churn-only (missing/no Heal-bucket trailers found) | no prior history]
+History read: [window] from [origin/<default-branch> ∪ HEAD | HEAD only — no origin remote found][ · ⚠️ shallow clone, history may be truncated] · [bucket-accurate | churn-only (missing/no Heal-bucket trailers found) | no prior history]
 [🔁 Repeat-heal — N heals of `[bucket]` in [window], this one included: [what each occurrence touched] | N heals of `[bucket]` in [window], below the 3-heal threshold | 🔁 N total edits to this file in [window] (churn fallback, no bucket data) | first heal on record for this file]
 ```
 

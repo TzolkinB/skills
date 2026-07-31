@@ -21,27 +21,54 @@ decided how: no new store. #190's Step 4.5 already writes the classification as 
   discipline as drift mode's "state the signal is absent, don't fabricate," and #198's denominator
   honesty.
 
-## R1. Read the window
+## R1. Resolve the target and read the window
 
-Default window: **90 days**, adjustable per repo. Read the file's history and pull the
-`Heal-bucket` trailer (and `Healed-by`, as a secondary confirmation) off every commit in range:
+**Read the shared trunk, not just the local branch.** On a team repo, `git log HEAD` alone has a
+blind spot in both directions: a teammate's heal merged into the shared trunk *after* this branch
+diverged is invisible to it, while a heal already committed earlier in *this* branch (unmerged) is
+invisible to reading the trunk alone. Git resolves this natively — pass more than one starting
+commit and `git log` walks the union of everything reachable from either, de-duplicating shared
+ancestry:
+
+```bash
+git fetch origin --quiet
+DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+```
+
+Don't hardcode `main` — repos also use `master` or `trunk`, and guessing wrong silently narrows the
+read. If `DEFAULT_BRANCH` comes back empty (no `origin` remote — a local-only repo, or a fresh clone
+where `origin/HEAD` was never set), the read falls back to `HEAD` alone; **say so explicitly** in the
+report rather than presenting a branch-only read as the full team history.
 
 ```bash
 git log --follow --since="90 days ago" \
   --format='%h %ci%n%(trailers:key=Heal-bucket,valueonly)%n%(trailers:key=Healed-by,valueonly)%n---' \
-  -- <test file>
+  ${DEFAULT_BRANCH:+"origin/$DEFAULT_BRANCH"} HEAD -- <test file>
 ```
 
-Each record is: short SHA, date, `Heal-bucket` value (blank line if the trailer is absent),
-`Healed-by` value (blank line if absent), then the `---` separator. `--follow` matters — a renamed
-spec file still carries its heal history.
+Refs go before `--`, the single pathspec goes after — `--follow` accepts exactly one pathspec, but
+any number of starting commits. Each record is: short SHA, date, `Heal-bucket` value (blank line if
+the trailer is absent), `Healed-by` value (blank line if absent), then the `---` separator.
+`--follow` matters on top of the union — a renamed spec file still carries its heal history.
+
+**Check for a shallow clone before trusting a thin or empty result:**
+
+```bash
+git rev-parse --is-shallow-repository
+```
+
+`true` means history was truncated at clone time — common on CI runners cloning with `--depth`. An
+apparent "no prior history" or a suspiciously low count off a shallow clone is an artifact of the
+clone, not evidence the file is new or clean; report the shallow flag explicitly whenever it's `true`
+rather than letting a truncated clone read as a clean one.
 
 The **current** heal (the one Step 4.5 just classified) is not in git yet — it's uncommitted. Don't
 try to read it back; add it to R2's count directly, from the bucket Step 4.5 already assigned.
 
-If the command returns nothing at all, that's not "clean" — it's **no prior history**: either the
-file is new, or nothing touched it in the window. Say exactly that ("no prior history — first heal
-on record for this file") and stop; there is nothing to bucket or fall back to.
+If the command returns nothing at all, and the repo isn't shallow, that's not "clean" — it's **no
+prior history**: either the file is new, or nothing touched it in the window. Say exactly that ("no
+prior history — first heal on record for this file") and stop; there is nothing to bucket or fall
+back to.
 
 ## R2. Determine which reading applies
 
@@ -90,6 +117,6 @@ whatever values were actually used in the report so the finding is reproducible.
 
 ```
 ### Repeat-heal check (Step 4.6)
-History read: [window] · [bucket-accurate | churn-only (missing/no Heal-bucket trailers found) | no prior history]
+History read: [window] from [origin/<default-branch> ∪ HEAD | HEAD only — no origin remote found][ · ⚠️ shallow clone, history may be truncated] · [bucket-accurate | churn-only (missing/no Heal-bucket trailers found) | no prior history]
 [🔁 Repeat-heal — N heals of `[bucket]` in [window], this one included: [what each occurrence touched] | N heals of `[bucket]` in [window], below the 3-heal threshold | 🔁 N total edits to this file in [window] (churn fallback, no bucket data) | first heal on record for this file]
 ```

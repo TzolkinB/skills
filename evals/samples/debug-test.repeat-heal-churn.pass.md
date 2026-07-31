@@ -31,8 +31,8 @@ Heal-bucket: locator
 ```
 
 ### Repeat-heal check (Step 4.6)
-History read: last 90 days · **churn-only** — no `Heal-bucket` trailers found on any commit touching `tests/checkout-flow.spec.ts` in the window. Either these edits predate #190, or the repo hasn't wired the trailer into its commits yet; either way there's no bucket to read.
+History read: last 90 days from `origin/main` ∪ `HEAD` (not shallow) · **churn-only** — no `Heal-bucket` trailers found on any commit touching `tests/checkout-flow.spec.ts` in the window. Either these edits predate #190, or the repo hasn't wired the trailer into its commits yet; either way there's no bucket to read.
 
-`git log --follow --since="90 days ago" -- tests/checkout-flow.spec.ts` returns 4 commits touching this file in the window, none carrying a `Heal-bucket` trailer — so falling back to a plain file-churn count with no bucket breakdown.
+`git log --follow --since="90 days ago" origin/main HEAD -- tests/checkout-flow.spec.ts` returns 4 commits touching this file in the window (both on `main` and this branch), none carrying a `Heal-bucket` trailer — so falling back to a plain file-churn count with no bucket breakdown.
 
 🔁 Elevated churn (weaker signal, no bucket data) — 4 edits to this file in the last 90 days, un-classified because no trailers exist to read. Worth a manual look at why this spec keeps changing, but this is a floor prompt, not a confirmed repeat-heal pattern — an exact per-bucket count simply isn't available here.

@@ -31,9 +31,9 @@ Heal-bucket: locator
 ```
 
 ### Repeat-heal check (Step 4.6)
-History read: last 90 days · **bucket-accurate** — every commit touching `tests/nav.spec.ts` in the window carries a `Heal-bucket` trailer, so this count is exact, not a floor.
+History read: last 90 days from `origin/main` ∪ `HEAD` (not shallow) · **bucket-accurate** — every commit touching `tests/nav.spec.ts` in the window carries a `Heal-bucket` trailer, so this count is exact, not a floor.
 
-`git log --follow --since="90 days ago" -- tests/nav.spec.ts` returns two prior heal commits before this one, both `Heal-bucket: locator`:
+`git log --follow --since="90 days ago" origin/main HEAD -- tests/nav.spec.ts` returns two prior heal commits before this one — one merged by a teammate on `main`, one already on this branch — both `Heal-bucket: locator`:
 - `a1c9f02` (41 days ago) — narrowed the settings-link locator to a test-id
 - `7e40dd1` (12 days ago) — narrowed the nav-search locator to a test-id
 

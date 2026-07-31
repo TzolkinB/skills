@@ -63,7 +63,12 @@ release heading.
   **churn-only** (even one missing trailer degrades the whole read to a plain, bucket-less file-edit
   count, labelled as the weaker signal — no intermediate "mostly-bucketed" credit). An empty or
   trailer-less read is never reported as "no repeats" — it always says what history was actually
-  available.
+  available. **Reads the shared trunk, not just the local branch:** the `git log` starts from the
+  union of `origin/<default-branch>` (resolved dynamically via `git symbolic-ref`, never hardcoded as
+  `main`) and `HEAD`, so a teammate's already-merged heal isn't invisible on an unrebased branch, and
+  a heal already committed on the current branch isn't invisible either. Falls back to `HEAD` alone,
+  stated explicitly, when there's no `origin` remote; flags a shallow clone rather than letting a
+  truncated history read as clean.
 - **`evals`: two `debug-test` repeat-heal cases** — `repeat-heal-trailer-based` (three same-bucket heals,
   all trailer-tagged, must surface as a named 🔁 finding rather than disappear because each was the cheap
   bucket) and `repeat-heal-churn-fallback` (an all-trailerless history must degrade to the weaker churn
