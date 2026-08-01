@@ -153,9 +153,17 @@ The two gaps are **additive to TEA, not a replacement for it.** "Integration" he
 it and pass evidence between the tools (the repo's *orchestrate-not-absorb* thesis), not to absorb its
 workflows. Two concrete seams, both feeding TEA's gate rather than competing with it:
 
-- **Risk-weighting seam (TEA → Gate).** TEA emits P0–P3 tiers; Gate could use them as the
-  *weight* on aggregated, credibility-adjusted execution evidence — a P0 requirement whose tests
-  `audit-test` flags as hollow contributes ~0 confidence, not a false pass. (Design sketch; see #96.)
+- **Business-risk coverage join (TEA → Gate) — SHIPPED.** `--trace-json` ([#199](https://github.com/TzolkinB/skills/issues/199),
+  [ADR-0045](../adr/0045-business-risk-coverage-is-a-join-not-a-register.md)) reads a `trace`-style
+  matrix and resolves each requirement to mutation-proven / unverified / hollow / not-covered by
+  joining it against `audit-test`'s `runs[]` — the §3 gap, closed. **Not** the same thing as the
+  risk-weighting seam below: this join is purely informational and never touches the
+  ship/canary/hold arithmetic, only reports alongside it.
+- **Risk-weighting seam (TEA → Gate) — still a design sketch, #96.** TEA emits P0–P3 tiers; Gate
+  could use them as the *weight* on aggregated, credibility-adjusted execution evidence — a P0
+  requirement whose tests `audit-test` flags as hollow contributes ~0 confidence, not a false pass.
+  Unlike the join above, this would change the gate's own decision arithmetic — unbuilt, parked
+  with the rest of the calibrated-confidence work.
 - **Calibration feed (TEA → Gate).** TEA's **WAIVED** decisions are already an audit-trailed
   human-override record (evidence → decision → reason) — the closest thing to the labeled data a
   calibration loop needs. Gate would **read** that record where it already lives; per
@@ -176,8 +184,11 @@ You can run TEA for its governance gate and slot `audit-test` in as the mutation
   Credible today: `audit-test`'s mutation proof. Not yet confirmed: Gate's calibrated number.
 - **Integration = orchestration, not code.** TEA is an agent persona, not an API; route to it, pass
   evidence, don't absorb.
-- **Licensing.** TEA is indicated free; confirm its license still permits treating it as an integrable
-  dependency before any map or README leans on it as one.
+- **Licensing — confirmed.** MIT (Copyright (c) 2025 BMad Code, LLC, verified against the repo's
+  `LICENSE` file, 2026-07-31) — permissive, and this repo vendors none of TEA's code: Gate's
+  `--trace-json` join ([#199](https://github.com/TzolkinB/skills/issues/199)) reads its own
+  independently-defined `gate-trace-matrix/v0` shape, informed by TEA's publicly-documented output
+  fields but not copied from its source.
 
 ---
 

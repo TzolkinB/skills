@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gate.local/schema/trace-matrix/v0",
+  "title": "Gate trace-matrix input (v0)",
+  "description": "Gate's OWN minimal shape for a requirement->test traceability matrix (TzolkinB/skills#199, ADR-0045) — not a copy of any external tool's internal format. TEA's `trace` workflow (bmad-testarch-trace, MIT-licensed, BMad Code LLC) is the reference producer: its step-03 marks each requirement FULL/PARTIAL/NONE by mapping matching tests identified by stable identity fields (id/title/file/line), and step-05 writes a gate-decision.json with p0_status/p1_status/overall_status. This schema deliberately does NOT ingest TEA's internal JSON verbatim (orchestrate-don't-couple) — a user (or a small adapter) converts a `trace` run's traceability-matrix.md / gate-decision.json into this shape, one row per requirement, each `tests[]` entry a `<file>::<title>` string matching the join key gate-audit-test/v0.3's `runs[].test` already uses. Gate reads this file only to JOIN it against an audit-test emission (three-state rollup per requirement); it never persists or accumulates a matrix of its own.",
+  "type": "object",
+  "required": ["schema", "requirements"],
+  "properties": {
+    "schema": { "const": "gate-trace-matrix/v0" },
+    "producer": { "type": "string", "description": "informational — e.g. \"TEA trace (bmad-testarch-trace) v1.19.1\"" },
+    "gateStatus": {
+      "enum": ["PASS", "CONCERNS", "FAIL", "WAIVED", "NOT_EVALUATED"],
+      "description": "OPTIONAL passthrough of the producing tool's own categorical gate (e.g. TEA step-05's gate_status) — informational only, displayed for cross-reference, NEVER read to derive Gate's own business-risk rollup or the ship/canary/hold decision."
+    },
+    "requirements": {
+      "type": "array",
+      "description": "One row per requirement/criterion the matrix covers. An empty array is valid (a matrix that legitimately covers nothing) — Gate never synthesizes a row to fill the table.",
+      "items": {
+        "type": "object",
+        "required": ["id", "priority", "status", "tests"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "description": "requirement/criterion identifier, e.g. \"REQ-12\" or an endpoint/spec-item name" },
+          "priority": { "enum": ["P0", "P1", "P2", "P3"] },
+          "status": {
+            "enum": ["FULL", "PARTIAL", "NONE"],
+            "description": "the producing tool's own PRESENCE verdict — a test exists (or doesn't) for this requirement. Gate never overrides this; it only adds a credibility read on TOP of a FULL/PARTIAL row."
+          },
+          "tests": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "description": "matched test identifiers, `<spec-file>::<test title>` — the same join key `gate-audit-test/v0.3`'s `runs[].test` uses. MUST be empty when status is NONE, and MUST be non-empty when status is FULL or PARTIAL (INGEST GUARD: a row violating this is arithmetically impossible — the whole matrix is rejected, never silently accepted, same treatment as an inconsistent audit-test tally)."
+          }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$comment": "INGEST GUARDS (mirrors gate-audit-test/v0.3's ingest guards): `schema` is matched EXACTLY, never a prefix. Every requirement `id` must be unique within the matrix (a duplicate is rejected — same 'never trust a model's counts blind' posture). `tests.length === 0` iff `status === 'NONE'` is enforced both ways. Gate's join (`resolveBusinessRisk`) then buckets each FULL/PARTIAL row into one of three states by looking up its `tests[]` against an audit-test emission's `runs[]` (the execution-confirmed subset only): `mutation-proven` (every mapped test appears as `killed`), `hollow` (any mapped test appears as `survived` — worst-wins, this beats mutation-proven), `unverified` (the default — includes a test with no `runs[]` record at all, i.e. never deep-audited, likely-hollow, or baseline-lock). A `status:'NONE'` row has no test to check and is reported separately as `not-covered`, never folded into the three-state count — that gap is the producing tool's own presence read, not this join's to invent evidence for."
+}

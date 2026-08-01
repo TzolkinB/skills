@@ -1,0 +1,13 @@
+{
+  "schema": "gate-trace-matrix/v0",
+  "producer": "TEA trace (bmad-testarch-trace) v1.19.1",
+  "gateStatus": "PASS",
+  "requirements": [
+    { "id": "REQ-BOOKING-OVERLAP", "priority": "P0", "status": "FULL", "tests": ["booking.spec.ts::rejects overlapping bookings"] },
+    { "id": "REQ-BOOKING-CONFIRM", "priority": "P0", "status": "FULL", "tests": ["booking.spec.ts::confirms a valid booking"] },
+    { "id": "REQ-BOOKING-FEE", "priority": "P1", "status": "FULL", "tests": ["booking.spec.ts::shows the cancellation fee"] },
+    { "id": "REQ-BOOKING-ERROR-LOG", "priority": "P1", "status": "FULL", "tests": ["booking.spec.ts::logs a booking error"] },
+    { "id": "REQ-BOOKING-EXPORT", "priority": "P2", "status": "FULL", "tests": ["booking.spec.ts::exports a booking receipt"] },
+    { "id": "REQ-BOOKING-SLA", "priority": "P3", "status": "NONE", "tests": [] }
+  ]
+}

@@ -1,7 +1,7 @@
 ---
 name: gate
-description: "The Gate stage (stage 7): binds a PR's existing E2E results (Playwright and/or Cypress) plus an audit-test verdict into one evidence bundle, and derives an advisory ship/canary/hold decision by worst-wins. Ship requires the E2E run to clear an executed-floor and the audit-test verdict to clear an examined-floor (see docs/gate.md for the exact thresholds and what each floor does and doesn't catch) — Gate never re-runs anything, carries no confidence number, and is optionally DSSE-signed with a self-signed key (not Sigstore). Use at the end of a PR for one honest release recommendation instead of eyeballing separate reports."
-argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md]"
+description: "The Gate stage (stage 7): binds a PR's existing E2E results (Playwright and/or Cypress) plus an audit-test verdict into one evidence bundle, and derives an advisory ship/canary/hold decision by worst-wins. Ship requires the E2E run to clear an executed-floor and the audit-test verdict to clear an examined-floor (see docs/gate.md for the exact thresholds and what each floor does and doesn't catch) — Gate never re-runs anything, carries no confidence number, and is optionally DSSE-signed with a self-signed key (not Sigstore). Optionally join an external trace-matrix (--trace-json) against the audit-test verdict for a business-risk-coverage read (mutation-proven / unverified / hollow / not-covered per requirement) — purely informational, never a decision input. Use at the end of a PR for one honest release recommendation instead of eyeballing separate reports."
+argument-hint: "[path to Playwright results.json and/or a Cypress result.json] [optional: path to an audit-test emission .json or report .md] [optional: path to a gate-trace-matrix .json for business-risk coverage]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
 ---
@@ -80,6 +80,12 @@ reads `PASSED` and is capped at `canary` by the **executed-floor**, not treated 
     floors at the same `canary` ceiling absence already got, but is never silently identical to "nothing was ever
     sent." A warning still prints; the difference is that the rejection now also survives into the one artifact
     you sign and keep.
+- **Trace matrix** (optional, `--trace-json`) — a requirement→test traceability matrix in Gate's own
+  [`gate-trace-matrix/v0`](./schema/trace-matrix.v0.schema.json) shape (not any external tool's internal
+  format), joined against `--audit-test-json` to answer *"what business risks are actually covered?"*
+  without building a risk register ([#199](https://github.com/TzolkinB/skills/issues/199),
+  [ADR-0045](../../docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). Purely informational —
+  it never affects the ship/canary/hold decision. See Step 4 below.
 - **PR head commit**: `git rev-parse HEAD` — the bundle's subject.
 
 ### 2. Run the deterministic gate
@@ -87,8 +93,8 @@ Run the bundled script from **this skill's base directory** (shown to you when t
 
 ```
 node "<skill base dir>/gate.mjs" (--playwright=<results.json> | --cypress=<cypress-results.json>) \
-     [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--examined-floor=<pct>] \
-     [--executed-floor=<pct>] [--max-age=<minutes>] [--sign-key=<private-key.pem>] --commit=<sha> --out=gate-bundle.json
+     [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--trace-json=<trace-matrix.json>] \
+     [--examined-floor=<pct>] [--executed-floor=<pct>] [--max-age=<minutes>] [--sign-key=<private-key.pem>] --commit=<sha> --out=gate-bundle.json
 ```
 (Pass `--playwright`, `--cypress`, or both — at least one is required. `--examined-floor` defaults to
 `50`; a requested value below the `25` minimum is clamped, with a warning, never silently accepted —
@@ -181,6 +187,18 @@ itself stop a deployment; nothing here enforces anything, so treat the report as
 not as the decision itself (blocking is a future opt-in,
 [ADR-0026](../../docs/adr/0026-live-evals-opt-in-pr-and-scheduled-drift.md)).
 
+### 4. Business-risk coverage (optional, only when `--trace-json` was passed)
+
+If a trace matrix was supplied, present the report's `## Business-risk coverage` section too — it is
+**separate** from the decision above, never folds into it, and reads its own four states per
+requirement: **mutation-proven** (every mapped test execution-confirmed solid), **unverified** (mapped,
+but no execution-confirmed evidence either way), **hollow** (a mapped test survived a mutation — the
+requirement is *not* actually guarded, even though the matrix's own presence read calls it covered),
+and **not-covered** (the matrix itself says so). State plainly that this is a *join*, not a risk
+register the Gate maintains ([ADR-0045](../../docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md))
+— it never appears at all when `--trace-json` wasn't given, and a malformed one renders as `rejected`,
+the same distinct-state treatment a malformed `--audit-test-json` gets.
+
 ## Output Format
 
 Present the script's report verbatim. A `canary` (opaque audit-test) and the earned `ship` (parsed
@@ -238,6 +256,30 @@ signed: ✓ DSSE (ed25519, self-signed) — keyid `2801ebd3ab3cb4fd6944202388352
 Bundle written to gate-bundle.json
 ```
 
+Adding `--trace-json=<trace-matrix.json>` appends a separate section after the decision — here paired
+with a confirmed-hollow audit-test emission, so the decision itself stays `canary` while the join still
+resolves each requirement on its own:
+
+```
+## Business-risk coverage — informational, does not affect the ship/canary/hold decision
+
+trace matrix: 6 requirement(s) · producer: TEA trace (bmad-testarch-trace) v1.19.1 · matrix gate: PASS
+
+| Requirement | Priority | State |
+|---|---|---|
+| REQ-BOOKING-OVERLAP | P0 | 🟢 covered and mutation-proven |
+| REQ-BOOKING-CONFIRM | P0 | 🟢 covered and mutation-proven |
+| REQ-BOOKING-FEE | P1 | 🟢 covered and mutation-proven |
+| REQ-BOOKING-ERROR-LOG | P1 | 🔴 covered by a test we proved hollow — booking.spec.ts::logs a booking error |
+| REQ-BOOKING-EXPORT | P2 | ⚪ covered but unverified |
+| REQ-BOOKING-SLA | P3 | — not covered — no mapped test (the traceability matrix already flags this) |
+
+3 mutation-proven · 1 unverified · 1 hollow · 1 not-covered
+
+> A JOIN over an external traceability matrix + an audit-test verdict, never a risk register this repo
+maintains (ADR-0045) …
+```
+
 ## Notes
 
 - **Ingests, never executes** ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)).
@@ -286,6 +328,21 @@ Bundle written to gate-bundle.json
   `audit-test` line in "Inputs — worst-wins" states either `(N run records cross-checked)` or `(no run trace
   carried — tally unverified against per-test records)`, so two `ship` verdicts of different evidential weight no
   longer read identically apart from an input digest.
+- **Business-risk coverage — the trace-matrix join** ([#199](https://github.com/TzolkinB/skills/issues/199),
+  [ADR-0045](../../docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). Optional `--trace-json`
+  reads a requirement→test traceability matrix in Gate's own [`gate-trace-matrix/v0`](./schema/trace-matrix.v0.schema.json)
+  shape — not TEA's or any other tool's internal format, to avoid coupling tighter than the join needs
+  (orchestrate-don't-absorb) — and joins it against `--audit-test-json`'s `runs[]` on test identity
+  (`<file>::<title>`, the same key `runs[]` already uses). The entry this produces is deliberately kept
+  OUT of `gate()`'s decision loop — it's appended to `bundle.entries` only *after* the ship/canary/hold
+  decision is computed, so it can never become a decision input and a bundle with no `--trace-json` is
+  byte-for-byte unaffected. The join exists because TEA's own `trace` gate is **presence**-based — Verified
+  against the `bmad-testarch-trace` workflow source (v1.19.1, [`comparisons/tea.md`](../../docs/comparisons/tea.md) §3):
+  a requirement is marked covered because a matching test *exists*, never because it would fail if the code
+  broke — so a P0 requirement whose only test is hollow reads as covered and gates PASS. A malformed
+  `--trace-json` is **rejected**, the same distinct-from-absent treatment `--audit-test-json` gets; a valid
+  matrix with no `--audit-test-json` `runs[]` evidence resolves every mapped requirement to `unverified`
+  rather than a stronger claim.
 - **Coverage-aware ship gate — the examined-floor** ([#127](https://github.com/TzolkinB/skills/issues/127),
   [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)). A confirmed-clean verdict alone used to be enough to
   ship, even if `deepAudited` was a small minority of `audited` (the shipped fixture used to be `4 of 12` — 33%).

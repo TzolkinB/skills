@@ -37,6 +37,7 @@
 // Usage:
 //   node gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>) \
 //                    [--audit-test-json=<tally.json>] [--audit-test=<report.md>] \
+//                    [--trace-json=<trace-matrix.json>] \
 //                    [--examined-floor=<pct>] [--executed-floor=<pct>] [--max-age=<minutes>] [--commit=<sha>] \
 //                    [--out=<bundle.json>] [--sign-key=<private-key.pem>]   # ≥1 execution report; both allowed
 //   node gate.mjs --gen-key=<path-prefix>              # writes <prefix>.pem + <prefix>.pub.pem
@@ -53,10 +54,11 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.7'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump; v0.7 = ADDITIVE `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25, ADR-0042) — a rejected audit-test-json emission now renders/persists as its own state, distinct from `absent`
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.8'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump; v0.7 = ADDITIVE `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25, ADR-0042) — a rejected audit-test-json emission now renders/persists as its own state, distinct from `absent`; v0.8 = ADDITIVE optional `business-risk` entry (#199, ADR-0045) — a stateless join of a `--trace-json` traceability matrix against the audit-test emission's `runs[]`, appended to `bundle.entries` AFTER the gate decision is computed so it never becomes a decision input; a bundle with no `--trace-json` is byte-for-byte unchanged from v0.7
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
+const BUSINESS_RISK_PREDICATE = 'https://gate.local/business-risk/v0'; // #199, ADR-0045 — informational join, never an input to the gate() decision
 const DSSE_PAYLOAD_TYPE = 'application/vnd.in-toto+json'; // the in-toto JSON media type (ADR-0037 §1)
 const RANK = { hold: 0, canary: 1, ship: 2 }; // worst-wins ordinal: hold < canary < ship
 // Coverage-aware ship gate (#127, ADR-0035): a confirmed-clean audit-test verdict must ALSO
@@ -331,6 +333,127 @@ export function auditTestRejectedEntry(reason) {
 
 function statement(predicateType, predicate) {
   return { _type: STATEMENT_TYPE, predicateType, subject: [], predicate };
+}
+
+// ---- ingest: trace-matrix + business-risk join (#199, ADR-0045) ------------
+//
+// "What business risks are actually covered?" — answered as a JOIN over an external
+// requirement->test traceability matrix and an audit-test emission, never as a risk register
+// Gate maintains itself (ADR-0045 rejects that option outright: it would duplicate TEA's
+// `trace` workflow, which already owns requirement->test mapping and is free). TEA's matrix is
+// PRESENCE-based — Verified against the `bmad-testarch-trace` workflow source (v1.19.1,
+// 2026-07-29, comparisons/tea.md §3): a requirement is marked covered because a *matching test
+// exists*, never because that test would fail if the code broke. So a P0 requirement whose only
+// test is hollow reads as covered and gates PASS. This join closes exactly that gap by adding a
+// credibility read on top of TEA's presence read — it does not replace or re-derive TEA's own
+// FULL/PARTIAL/NONE call.
+//
+// `gate-trace-matrix/v0` (schema/trace-matrix.v0.schema.json) is Gate's OWN minimal shape, not
+// TEA's internal format (orchestrate-don't-couple) — see that schema file's header for why. A
+// user (or a small adapter) converts a `trace` run's output into this shape.
+const TRACE_MATRIX_SCHEMA = 'gate-trace-matrix/v0';
+const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
+const PRESENCE_STATUSES = ['FULL', 'PARTIAL', 'NONE'];
+const MATRIX_GATE_STATUSES = ['PASS', 'CONCERNS', 'FAIL', 'WAIVED', 'NOT_EVALUATED']; // producer-agnostic — TEA's own vocabulary, but any producer's `gateStatus` must be one of these
+
+// Validate the matrix's shape — same "a producer wrote this, never trust it blind" posture as
+// `parseAuditEmission`. Returns a normalised matrix, or null if malformed so the caller can
+// degrade to a rejected entry rather than crash or silently accept an impossible row.
+export function parseTraceMatrix(raw) {
+  let obj;
+  try {
+    obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch {
+    return null;
+  }
+  if (!obj || typeof obj !== 'object') return null;
+  if (obj.schema !== TRACE_MATRIX_SCHEMA) return null; // exact match, not a prefix (#111's precedent)
+  if (!Array.isArray(obj.requirements)) return null;
+  const seen = new Set();
+  const requirements = [];
+  for (const r of obj.requirements) {
+    if (!r || typeof r !== 'object') return null;
+    if (typeof r.id !== 'string' || !r.id) return null;
+    if (seen.has(r.id)) return null; // duplicate requirement id
+    seen.add(r.id);
+    if (!PRIORITIES.includes(r.priority)) return null;
+    if (!PRESENCE_STATUSES.includes(r.status)) return null;
+    if (!Array.isArray(r.tests) || !r.tests.every((t) => typeof t === 'string' && t)) return null;
+    // status<->tests consistency, enforced both ways: a NONE row claiming a test, or a
+    // FULL/PARTIAL row claiming none, is an arithmetically impossible row — reject the whole
+    // matrix rather than silently guess which field is wrong.
+    if (r.status === 'NONE' && r.tests.length !== 0) return null;
+    if (r.status !== 'NONE' && r.tests.length === 0) return null;
+    requirements.push({ id: r.id, priority: r.priority, status: r.status, tests: r.tests });
+  }
+  const matrix = { requirements };
+  if (obj.producer !== undefined) {
+    if (typeof obj.producer !== 'string') return null;
+    matrix.producer = obj.producer;
+  }
+  if (obj.gateStatus !== undefined) {
+    if (!MATRIX_GATE_STATUSES.includes(obj.gateStatus)) return null;
+    matrix.gateStatus = obj.gateStatus;
+  }
+  return matrix;
+}
+
+// The join itself (ADR-0045 §2): resolve each FULL/PARTIAL requirement into one of three states
+// by looking its mapped tests up against an audit-test emission's EXECUTION-CONFIRMED subset —
+// `tally.runs[]`. A test with no run record (never deep-audited, or deep-audited only as
+// likely-hollow/baseline-lock, which carry no per-test record — see gate-audit-test/v0.3) is
+// NEVER silently upgraded; it stays `unverified`. Worst-wins across a requirement's own tests,
+// the same conservative posture the gate decision itself uses: a requirement is only ever
+// `mutation-proven` when EVERY mapped test was execution-confirmed solid — one hollow test among
+// several mapped ones still makes the requirement `hollow`, because the risk it names is only as
+// covered as its weakest guard, not its strongest.
+export function resolveBusinessRisk(matrix, tally) {
+  const runsByTest = new Map();
+  for (const r of tally?.runs ?? []) runsByTest.set(r.test, r.outcome);
+
+  const rows = matrix.requirements.map((req) => {
+    if (req.status === 'NONE') {
+      // No test to check — this is TEA's own presence gap (already flagged by its PASS/CONCERNS/
+      // FAIL), not this join's to fabricate evidence for. Reported separately, never folded into
+      // the three-state count.
+      return { id: req.id, priority: req.priority, state: 'not-covered', tests: [] };
+    }
+    const tests = req.tests.map((t) => ({ test: t, outcome: runsByTest.get(t) ?? null }));
+    const anyHollow = tests.some((t) => t.outcome === 'survived');
+    const allSolid = tests.every((t) => t.outcome === 'killed');
+    const state = anyHollow ? 'hollow' : allSolid ? 'mutation-proven' : 'unverified';
+    return { id: req.id, priority: req.priority, state, tests };
+  });
+
+  const summary = {
+    mutationProven: rows.filter((r) => r.state === 'mutation-proven').length,
+    unverified: rows.filter((r) => r.state === 'unverified').length,
+    hollow: rows.filter((r) => r.state === 'hollow').length,
+    notCovered: rows.filter((r) => r.state === 'not-covered').length,
+  };
+  return { rows, summary, hasRunTrace: runsByTest.size > 0 };
+}
+
+export function businessRiskEntry(matrix, rollup) {
+  return statement(BUSINESS_RISK_PREDICATE, {
+    stage: 'business-risk',
+    producer: { id: 'gate://gate@0.x' },
+    matrixProducer: matrix.producer ?? null,
+    matrixGateStatus: matrix.gateStatus ?? null,
+    rollup,
+  });
+}
+
+// Rejected, not absent — same distinct-state treatment `auditTestRejectedEntry` gives a
+// malformed audit-test emission (#2, ADR-0042): the file was received and discarded, not never
+// sent, and that disclosure is worth persisting rather than only a stderr warning.
+export function businessRiskRejectedEntry(reason) {
+  return statement(BUSINESS_RISK_PREDICATE, {
+    stage: 'business-risk',
+    producer: { id: 'gate://gate@0.x' },
+    rejected: true,
+    reason,
+  });
 }
 
 // ---- content-address the inputs (#139, B1, ADR-0037 §2) --------------------
@@ -839,6 +962,54 @@ function runTraceNote(bundle) {
     : ` (${n} run record${n === 1 ? '' : 's'} cross-checked)`;
 }
 
+// Business-risk coverage (#199, ADR-0045) — a SEPARATE section appended at the very end of the
+// report, after the ship/canary/hold narrative. Reads `bundle.entries` directly, never through
+// `gateEntry.predicate.inputs`, because the entry is deliberately kept out of the gate's decision
+// inputs (ADR-0045 §3: informational only). Renders nothing when `--trace-json` was never
+// supplied — this is an opt-in extra, not a permanent fixture of every report the way the
+// audit-test axis is.
+function renderBusinessRisk(bundle) {
+  const entry = bundle.entries.find((e) => e.predicate?.stage === 'business-risk');
+  if (!entry) return [];
+  const L = ['', '## Business-risk coverage — informational, does not affect the ship/canary/hold decision', ''];
+  if (entry.predicate.rejected) {
+    L.push(`trace-json was rejected (${entry.predicate.reason}) — business-risk coverage not evaluated; the file was received and discarded, not never sent.`);
+    return L;
+  }
+  const { rollup, matrixProducer, matrixGateStatus } = entry.predicate;
+  const { rows, summary, hasRunTrace } = rollup;
+  const stateIcon = { 'mutation-proven': '🟢', hollow: '🔴', unverified: '⚪', 'not-covered': '—' };
+  L.push(
+    `trace matrix: ${rows.length} requirement(s)` +
+      (matrixProducer ? ` · producer: ${matrixProducer}` : '') +
+      (matrixGateStatus ? ` · matrix gate: ${matrixGateStatus}` : ''),
+  );
+  if (rows.length) {
+    L.push('');
+    L.push('| Requirement | Priority | State |');
+    L.push('|---|---|---|');
+    for (const r of rows) {
+      const detail =
+        r.state === 'not-covered'
+          ? 'not covered — no mapped test (the traceability matrix already flags this)'
+          : r.state === 'hollow'
+            ? `covered by a test we proved hollow — ${r.tests.filter((t) => t.outcome === 'survived').map((t) => t.test).join(', ')}`
+            : r.state === 'mutation-proven'
+              ? 'covered and mutation-proven'
+              : 'covered but unverified';
+      L.push(`| ${r.id} | ${r.priority} | ${stateIcon[r.state]} ${detail} |`);
+    }
+  }
+  L.push('');
+  L.push(`${summary.mutationProven} mutation-proven · ${summary.unverified} unverified · ${summary.hollow} hollow · ${summary.notCovered} not-covered`);
+  L.push('');
+  if (!hasRunTrace) {
+    L.push('> No audit-test run trace (`runs[]`) was available — every covered requirement above reads as unverified presence only, not proof. Pass `/audit-test --emit-json` output via `--audit-test-json` to resolve requirements past `unverified`.');
+  }
+  L.push('> A JOIN over an external traceability matrix + an audit-test verdict, never a risk register this repo maintains (ADR-0045) — a requirement never appears here unless the matrix itself named it. Per-test resolution covers only tests audit-test recorded a run for; a likely-hollow, baseline-lock, or never-audited test reads `unverified`, not cleared (comparisons/tea.md §3).');
+  return L;
+}
+
 export function renderReport(bundle, gateEntry) {
   const d = gateEntry.predicate.decision;
   const icon = { ship: '🟢', canary: '🟡', hold: '🔴' }[d];
@@ -914,6 +1085,7 @@ export function renderReport(bundle, gateEntry) {
     L.push('> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
   L.push('> Advisory / report-first: a recommendation, not a build failure (blocking is a future opt-in, ADR-0026).');
+  L.push(...renderBusinessRisk(bundle));
   return L.join('\n');
 }
 
@@ -974,6 +1146,7 @@ function main(argv) {
   if (flags.has('--help') || !hasExec) {
     console.log('usage: gate.mjs (--playwright=<results.json> | --cypress=<cypress-results.json>)  # ≥1 required, both allowed');
     console.log('                   [--audit-test-json=<tally.json>] [--audit-test=<report.md>] [--commit=<sha>] [--out=<bundle.json>]');
+    console.log('                   [--trace-json=<trace-matrix.json>]  # OPTIONAL business-risk join (#199) — informational, never affects the decision');
     console.log(`                   [--examined-floor=<pct>]  # default ${EXAMINED_FLOOR_DEFAULT}, clamped to a ${EXAMINED_FLOOR_MIN} minimum`);
     console.log(`                   [--executed-floor=<pct>]  # default ${EXECUTED_FLOOR_DEFAULT}, clamped to a ${EXECUTED_FLOOR_MIN} minimum (#157)`);
     console.log('                   [--max-age=<minutes>]  # opt-in freshness check — no default (#3)');
@@ -1014,8 +1187,7 @@ function main(argv) {
   // crash, never silently upgrade. Only bytes that actually made it into an entry are
   // content-addressed — a truly never-sent emission contributes no subject.
   const md = opts['audit-test'] ? readTextFileOrWarn(opts['audit-test'], '--audit-test') : undefined;
-  const auditJsonRaw = opts['audit-test-json'] ? readTextFileOrWarn(opts['audit-test-json'], '--audit-test-json') : undefined;
-  const tally = auditJsonRaw ? parseAuditEmission(auditJsonRaw) : null;
+  const { raw: auditJsonRaw, parsed: tally } = readAndParseOptionalJson('--audit-test-json', opts['audit-test-json'], parseAuditEmission);
   if (tally) {
     entries.push(auditTestParsedEntry(tally, { markdown: md }));
     inputs.push({ name: 'audit-test-json', bytes: auditJsonRaw });
@@ -1036,6 +1208,17 @@ function main(argv) {
   } else if (md) {
     entries.push(auditTestEntry(md));
     inputs.push({ name: 'audit-test-report', bytes: md });
+  }
+
+  // Business-risk coverage (#199, ADR-0045) — OPTIONAL, and deliberately kept OUT of `entries`
+  // here: it must never reach `gate()`'s decision loop (it is not an evidence/credibility axis,
+  // it's a join reported alongside the decision). Ingest + validate now (same read/warn/degrade
+  // shape as --audit-test-json, including content-addressing the rejected bytes), but the actual
+  // entry is built and pushed onto `bundle.entries` AFTER the gate decision is computed, below.
+  const { raw: traceJsonRaw, parsed: traceMatrix } = readAndParseOptionalJson('--trace-json', opts['trace-json'], parseTraceMatrix);
+  if (traceJsonRaw) inputs.push({ name: 'trace-json', bytes: traceJsonRaw });
+  if (traceJsonRaw && !traceMatrix) {
+    console.error('⚠ --trace-json is not a valid gate-trace-matrix emission — rejecting it (recorded as a distinct `rejected` entry, not silently dropped).');
   }
 
   // Coverage-aware ship gate (#127, ADR-0035): disclose when a requested floor gets clamped,
@@ -1060,6 +1243,17 @@ function main(argv) {
   const bundle = assembleBundle({ commit: opts.commit, entries, inputs });
   const { gateEntry } = gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes });
   bundle.entries.push(gateEntry);
+
+  // Business-risk entry, added AFTER the decision (#199, ADR-0045) — never an input to `gate()`
+  // above, only a record alongside it. `traceMatrix` reuses `tally` (the already-validated
+  // audit-test emission, or null if absent/rejected/opaque) as its credibility side; when `tally`
+  // is null or carries no `runs[]`, every mapped test resolves `unverified` rather than fabricating
+  // a stronger claim than the evidence supports.
+  if (traceMatrix) {
+    bundle.entries.push(businessRiskEntry(traceMatrix, resolveBusinessRisk(traceMatrix, tally)));
+  } else if (traceJsonRaw) {
+    bundle.entries.push(businessRiskRejectedEntry('shape/consistency check failed — see the gate-trace-matrix schema'));
+  }
 
   const errors = validateBundle(bundle);
   if (errors.length) {
@@ -1136,6 +1330,16 @@ function readTextFileOrWarn(path, flagName) {
     console.error(`⚠ ${flagName}=${path}: could not read (${err.code ?? err.message}) — ignoring it.`);
     return undefined;
   }
+}
+
+// Shared "read an optional flag's file (or warn+undefined), then parse-or-null" shape —
+// `--audit-test-json` and `--trace-json` both start this way before their downstream handling
+// diverges (audit-test decides its entry immediately; trace-json defers its entry until after
+// `gate()` runs). Factored out once both call sites existed, same threshold `ingestExecutionInput`
+// above was factored out at.
+function readAndParseOptionalJson(flagName, path, parseFn) {
+  const raw = path ? readTextFileOrWarn(path, flagName) : undefined;
+  return { raw, parsed: raw ? parseFn(raw) : null };
 }
 
 // ---- certification sample-draw reproducibility (#171, ADR-0041) -----------
@@ -1248,6 +1452,101 @@ function runCliRobustnessSelfTest(check) {
     check('#2: the rejected bytes are still content-addressed into subject[] (received, not never-sent)',
       rejectedBundleOnDisk.subject.some((s) => s.name === 'audit-test-json'));
     check('#2: the bundle still validates against the current schema', validateBundle(rejectedBundleOnDisk).length === 0);
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// Business-risk coverage (#199, ADR-0045) — subprocess-level proof, same shape as
+// `runCliRobustnessSelfTest` above: real CLI invocations, never crashes, degrades honestly.
+function runBusinessRiskSelfTest(check) {
+  const gatePath = resolve(HERE, 'gate.mjs');
+  const tmpDir = mkdtempSync(join(tmpdir(), 'gate-business-risk-'));
+  try {
+    const run = (args) => spawnSync(process.execPath, [gatePath, ...args], { cwd: tmpDir, encoding: 'utf8' });
+    const goodPw = resolve(HERE, 'fixtures/playwright.passed.json');
+    const goodAudit = resolve(HERE, 'fixtures/audit-test.confirmed-with-runs.json');
+
+    // Baseline — no --trace-json is given at all: byte-for-byte unaffected (no entry, no section).
+    const noTraceOut = join(tmpDir, 'no-trace-bundle.json');
+    const noTraceResult = run([`--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, '--commit=deadbeef', `--out=${noTraceOut}`]);
+    const noTraceBundle = JSON.parse(readFileSync(noTraceOut, 'utf8'));
+    check('#199: no --trace-json → exits 0, no business-risk entry in the bundle',
+      noTraceResult.status === 0 && !noTraceBundle.entries.some((e) => e.predicate?.stage === 'business-risk'));
+    check('#199: no --trace-json → no Business-risk section in the report', !/Business-risk coverage/.test(noTraceResult.stdout ?? ''));
+
+    // A valid matrix reusing audit-test.confirmed-with-runs.json's OWN test names — one mapped
+    // test that fixture recorded as SURVIVED (the presence-gap catch), one it recorded KILLED,
+    // and one requirement with no test at all.
+    const matrix = {
+      schema: 'gate-trace-matrix/v0',
+      producer: 'TEA trace v1.19.1',
+      gateStatus: 'PASS',
+      requirements: [
+        { id: 'REQ-BOOKING-OVERLAP', priority: 'P0', status: 'FULL', tests: ['booking.spec.ts::rejects overlapping bookings'] },
+        { id: 'REQ-BOOKING-ERROR-LOG', priority: 'P1', status: 'FULL', tests: ['booking.spec.ts::logs a booking error'] },
+        { id: 'REQ-NO-TEST', priority: 'P2', status: 'NONE', tests: [] },
+      ],
+    };
+    const matrixPath = join(tmpDir, 'trace-matrix.json');
+    writeFileSync(matrixPath, JSON.stringify(matrix));
+    const withTraceOut = join(tmpDir, 'with-trace-bundle.json');
+    const withTraceResult = run([`--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--trace-json=${matrixPath}`, '--commit=deadbeef', `--out=${withTraceOut}`]);
+    check('#199: valid --trace-json exits 0', withTraceResult.status === 0);
+    const withTraceBundle = JSON.parse(readFileSync(withTraceOut, 'utf8'));
+    const decisionWith = withTraceBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision;
+    const decisionWithout = noTraceBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision;
+    check('#199: a valid --trace-json NEVER changes the ship/canary/hold decision (ADR-0045 §3 — informational only)', decisionWith === decisionWithout);
+    check('#199: the business-risk entry never appears among the gate predicate\'s OWN inputs',
+      !withTraceBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.inputs.some((i) => i.stage === 'business-risk'));
+    const businessRiskEv = withTraceBundle.entries.find((e) => e.predicate?.stage === 'business-risk');
+    check('#199: the bundle carries a distinct business-risk entry', businessRiskEv !== undefined);
+    check('#199: THE presence-gap catch survives end-to-end — the hollow-logged-error requirement reads hollow, not covered',
+      businessRiskEv.predicate.rollup.rows.find((r) => r.id === 'REQ-BOOKING-ERROR-LOG').state === 'hollow');
+    check('#199: the mutation-proven requirement reads mutation-proven',
+      businessRiskEv.predicate.rollup.rows.find((r) => r.id === 'REQ-BOOKING-OVERLAP').state === 'mutation-proven');
+    check('#199: the NONE-status requirement reads not-covered', businessRiskEv.predicate.rollup.rows.find((r) => r.id === 'REQ-NO-TEST').state === 'not-covered');
+    check('#199: the rendered report carries the Business-risk coverage section', /## Business-risk coverage/.test(withTraceResult.stdout ?? ''));
+    check('#199: the report names the hollow row by its mapped test', /logs a booking error/.test(withTraceResult.stdout ?? ''));
+    check('#199: content-addressed — trace-json bytes land in subject[]', withTraceBundle.subject.some((s) => s.name === 'trace-json'));
+    check('#199: the bundle still validates against the current schema', validateBundle(withTraceBundle).length === 0);
+
+    // --trace-json + --sign-key together (ADR-0040 §158's entry-digest-binding widened the DSSE
+    // payload to cover every parsed evidence entry, not just the gate predicate) — the business-risk
+    // entry must ride into that same binding, and tampering with it after signing must be caught,
+    // exactly like tampering with any other evidence entry already is.
+    const demoKey = resolve(HERE, 'fixtures/gate-signing-key.demo.pem');
+    const demoPub = createPublicKey(readFileSync(resolve(HERE, 'fixtures/gate-signing-key.demo.pub.pem'), 'utf8'));
+    const signedTraceOut = join(tmpDir, 'signed-trace-bundle.json');
+    const signedTraceResult = run([`--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--trace-json=${matrixPath}`, '--commit=deadbeef', `--sign-key=${demoKey}`, `--out=${signedTraceOut}`]);
+    check('#199: --trace-json + --sign-key exits 0 and signs', signedTraceResult.status === 0 && /✓ signed/.test(signedTraceResult.stdout ?? ''));
+    const signedTraceBundle = JSON.parse(readFileSync(signedTraceOut, 'utf8'));
+    check('#199: the signed bundle verifies against the demo public key', verifyGateBundle(signedTraceBundle, demoPub).valid === true);
+    const tamperedTraceBundle = JSON.parse(JSON.stringify(signedTraceBundle));
+    tamperedTraceBundle.entries.find((e) => e.predicate?.stage === 'business-risk').predicate.rollup.summary.hollow = 0;
+    check('#199: tampering with the business-risk entry AFTER signing is caught (it rides into the #158 entry-digest binding)',
+      verifyGateBundle(tamperedTraceBundle, demoPub).valid === false);
+
+    // Missing path — warn, never crash, degrades to absent (no entry at all), never rejected.
+    const missingTraceOut = join(tmpDir, 'missing-trace-bundle.json');
+    const missingTraceResult = run([`--playwright=${goodPw}`, '--trace-json=' + join(tmpDir, 'does-not-exist.json'), '--commit=deadbeef', `--out=${missingTraceOut}`]);
+    check('#199: a missing --trace-json path exits 0 (never crashes)', missingTraceResult.status === 0);
+    check('#199: a warning names the missing path', /--trace-json=.*could not read/i.test(missingTraceResult.stderr ?? ''));
+    check('#199: a missing path falls back to absent — no business-risk entry at all',
+      !JSON.parse(readFileSync(missingTraceOut, 'utf8')).entries.some((e) => e.predicate?.stage === 'business-risk'));
+
+    // Malformed/inconsistent matrix — rejected, not absent, same distinct-state treatment #2 gave audit-test.
+    const rejectedMatrixPath = join(tmpDir, 'rejected-trace.json');
+    writeFileSync(rejectedMatrixPath, JSON.stringify({ schema: 'gate-trace-matrix/v0', requirements: [{ id: 'X', priority: 'P0', status: 'FULL', tests: [] }] }));
+    const rejectedTraceOut = join(tmpDir, 'rejected-trace-bundle.json');
+    const rejectedTraceResult = run([`--playwright=${goodPw}`, `--trace-json=${rejectedMatrixPath}`, '--commit=deadbeef', `--out=${rejectedTraceOut}`]);
+    check('#199: a rejected --trace-json exits 0 (advisory — never fails the build)', rejectedTraceResult.status === 0);
+    check('#199: a warning names the rejection', /is not a valid gate-trace-matrix emission — rejecting it/i.test(rejectedTraceResult.stderr ?? ''));
+    check('#199: the rendered report shows the rejection, not silence', /trace-json was rejected/.test(rejectedTraceResult.stdout ?? ''));
+    const rejectedTraceBundle = JSON.parse(readFileSync(rejectedTraceOut, 'utf8'));
+    const rejectedBrEntry = rejectedTraceBundle.entries.find((e) => e.predicate?.stage === 'business-risk');
+    check('#199: the persisted bundle carries a distinct rejected business-risk entry (not silently dropped)', rejectedBrEntry?.predicate?.rejected === true);
+    check('#199: the rejected bytes are still content-addressed (received, not never-sent)', rejectedTraceBundle.subject.some((s) => s.name === 'trace-json'));
   } finally {
     rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -1405,9 +1704,85 @@ function runSelfTest() {
   // Secondary seam — the documented sha256 draw command reproduces the checked-in golden sample.
   runCertifySampleSelfTest(check);
 
+  // ---- business-risk coverage join (#199, ADR-0045) — pure-function truth table -------------
+  const mkMatrix = (requirements, extra = {}) => ({ schema: 'gate-trace-matrix/v0', requirements, ...extra });
+  const validMatrix = mkMatrix(
+    [
+      { id: 'REQ-1', priority: 'P0', status: 'FULL', tests: ['booking.spec.ts::rejects overlapping bookings'] },
+      { id: 'REQ-2', priority: 'P0', status: 'FULL', tests: ['booking.spec.ts::confirms a valid booking'] },
+      { id: 'REQ-3', priority: 'P1', status: 'PARTIAL', tests: ['booking.spec.ts::shows the cancellation fee'] },
+      { id: 'REQ-4', priority: 'P2', status: 'NONE', tests: [] },
+    ],
+    { producer: 'TEA trace v1.19.1', gateStatus: 'PASS' },
+  );
+  check('parseTraceMatrix: a well-formed matrix parses', parseTraceMatrix(JSON.stringify(validMatrix))?.requirements.length === 4);
+  check('parseTraceMatrix: wrong schema string is rejected (exact match, not a prefix, #111\'s precedent)',
+    parseTraceMatrix(JSON.stringify({ ...validMatrix, schema: 'gate-trace-matrix/v999' })) === null);
+  check('parseTraceMatrix: malformed JSON is rejected, not thrown', parseTraceMatrix('{ not json') === null);
+  check('parseTraceMatrix: a FULL row with no tests is an arithmetically impossible row → rejected',
+    parseTraceMatrix(JSON.stringify(mkMatrix([{ id: 'X', priority: 'P0', status: 'FULL', tests: [] }]))) === null);
+  check('parseTraceMatrix: a NONE row WITH a test is an arithmetically impossible row → rejected',
+    parseTraceMatrix(JSON.stringify(mkMatrix([{ id: 'X', priority: 'P0', status: 'NONE', tests: ['a.spec.ts::t'] }]))) === null);
+  check('parseTraceMatrix: a duplicate requirement id is rejected', parseTraceMatrix(JSON.stringify(mkMatrix([
+    { id: 'X', priority: 'P0', status: 'FULL', tests: ['a.spec.ts::t'] },
+    { id: 'X', priority: 'P1', status: 'FULL', tests: ['b.spec.ts::t'] },
+  ]))) === null);
+  check('parseTraceMatrix: an invalid priority is rejected',
+    parseTraceMatrix(JSON.stringify(mkMatrix([{ id: 'X', priority: 'P9', status: 'FULL', tests: ['a.spec.ts::t'] }]))) === null);
+  check('parseTraceMatrix: an empty requirements array is valid — never synthesizes a row to fill the table',
+    parseTraceMatrix(JSON.stringify(mkMatrix([])))?.requirements.length === 0);
+
+  const parsedValidMatrix = parseTraceMatrix(JSON.stringify(validMatrix));
+  const rollupClean = resolveBusinessRisk(parsedValidMatrix, {
+    runs: [
+      { test: 'booking.spec.ts::rejects overlapping bookings', outcome: 'killed' },
+      { test: 'booking.spec.ts::confirms a valid booking', outcome: 'killed' },
+    ],
+  });
+  check('resolveBusinessRisk: a requirement whose every mapped test was killed → mutation-proven',
+    rollupClean.rows.find((r) => r.id === 'REQ-1').state === 'mutation-proven');
+  check('resolveBusinessRisk: a requirement with no run-trace evidence at all → unverified (never fabricated proof)',
+    rollupClean.rows.find((r) => r.id === 'REQ-3').state === 'unverified');
+  check('resolveBusinessRisk: a NONE-status requirement → not-covered, excluded from the 3-state summary',
+    rollupClean.rows.find((r) => r.id === 'REQ-4').state === 'not-covered');
+  check('resolveBusinessRisk: summary tallies match the rows',
+    rollupClean.summary.mutationProven === 2 && rollupClean.summary.unverified === 1 && rollupClean.summary.hollow === 0 && rollupClean.summary.notCovered === 1);
+
+  // THE presence-gap catch (comparisons/tea.md §3): a requirement whose only test SURVIVED a
+  // mutation must read hollow, never covered — this is the entire reason #199 exists.
+  const rollupHollow = resolveBusinessRisk(parsedValidMatrix, {
+    runs: [
+      { test: 'booking.spec.ts::rejects overlapping bookings', outcome: 'survived' },
+      { test: 'booking.spec.ts::confirms a valid booking', outcome: 'killed' },
+    ],
+  });
+  check('resolveBusinessRisk: THE presence-gap catch — a requirement whose only test survived a mutation reads hollow, not covered (comparisons/tea.md §3)',
+    rollupHollow.rows.find((r) => r.id === 'REQ-1').state === 'hollow');
+
+  const twoTestMatrix = parseTraceMatrix(JSON.stringify(mkMatrix([
+    { id: 'REQ-5', priority: 'P0', status: 'FULL', tests: ['a.spec.ts::one', 'a.spec.ts::two'] },
+  ])));
+  const rollupMixed = resolveBusinessRisk(twoTestMatrix, {
+    runs: [
+      { test: 'a.spec.ts::one', outcome: 'killed' },
+      { test: 'a.spec.ts::two', outcome: 'survived' },
+    ],
+  });
+  check('resolveBusinessRisk: worst-wins across a requirement\'s own mapped tests — one hollow test among several still makes the requirement hollow',
+    rollupMixed.rows[0].state === 'hollow');
+
+  const rollupNoTally = resolveBusinessRisk(parsedValidMatrix, null);
+  check('resolveBusinessRisk: null tally (audit-test absent/rejected) → hasRunTrace false, every covered requirement unverified',
+    rollupNoTally.hasRunTrace === false && rollupNoTally.rows.filter((r) => r.state !== 'not-covered').every((r) => r.state === 'unverified'));
+
   // CLI robustness — proves the real subprocess never crashes and persists rejected-vs-absent
   // correctly (#2, #4), not just that the underlying pure functions behave.
   runCliRobustnessSelfTest(check);
+
+  // Business-risk CLI robustness (#199) — same subprocess-level proof: --trace-json never
+  // crashes, degrades honestly (absent vs rejected), and — the load-bearing guarantee — never
+  // changes the ship/canary/hold decision it rides alongside.
+  runBusinessRiskSelfTest(check);
 
   const belowFloorBundle = assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedBelowFloor)] });
   const belowFloorGate = gate(belowFloorBundle);
