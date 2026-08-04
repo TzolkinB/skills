@@ -965,9 +965,10 @@ function runTraceNote(bundle) {
 // Business-risk coverage (#199, ADR-0045) — a SEPARATE section appended at the very end of the
 // report, after the ship/canary/hold narrative. Reads `bundle.entries` directly, never through
 // `gateEntry.predicate.inputs`, because the entry is deliberately kept out of the gate's decision
-// inputs (ADR-0045 §3: informational only). Renders nothing when `--trace-json` was never
-// supplied — this is an opt-in extra, not a permanent fixture of every report the way the
-// audit-test axis is.
+// inputs (ADR-0045 §3: informational only). Renders NO section when `--trace-json` was never
+// supplied — no rollup to show, and never one fabricated to fill the gap — but `renderReport`
+// still prints a one-line discovery hint in that case (below), so the option isn't silently
+// invisible to a reader who never opens `--help`.
 function renderBusinessRisk(bundle) {
   const entry = bundle.entries.find((e) => e.predicate?.stage === 'business-risk');
   if (!entry) return [];
@@ -1085,6 +1086,13 @@ export function renderReport(bundle, gateEntry) {
     L.push('> `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock — an opaque or absent `audit-test` caps credibility at `canary`. Run `/audit-test --emit-json=<path>` and pass it via `--audit-test-json` to raise the ceiling.');
   }
   L.push('> Advisory / report-first: a recommendation, not a build failure (blocking is a future opt-in, ADR-0026).');
+  // Discovery hint (#199) — ONLY when --trace-json was never given at all (not on a rejected one;
+  // that already gets its own explanation in `renderBusinessRisk`). Unlike the audit-test hint
+  // above, this never affects the decision — worded so it can't be misread as a way to reach
+  // `ship`, since it isn't one.
+  if (!bundle.entries.some((e) => e.predicate?.stage === 'business-risk')) {
+    L.push('> Optional: pass `--trace-json=<trace-matrix.json>` for a business-risk coverage read (which covered requirements are mutation-proven vs. merely present) alongside this decision — informational only, never changes ship/canary/hold.');
+  }
   L.push(...renderBusinessRisk(bundle));
   return L.join('\n');
 }
@@ -1473,7 +1481,9 @@ function runBusinessRiskSelfTest(check) {
     const noTraceBundle = JSON.parse(readFileSync(noTraceOut, 'utf8'));
     check('#199: no --trace-json → exits 0, no business-risk entry in the bundle',
       noTraceResult.status === 0 && !noTraceBundle.entries.some((e) => e.predicate?.stage === 'business-risk'));
-    check('#199: no --trace-json → no Business-risk section in the report', !/Business-risk coverage/.test(noTraceResult.stdout ?? ''));
+    check('#199: no --trace-json → no `## Business-risk coverage` HEADING in the report (no fabricated rollup)', !/^## Business-risk coverage/m.test(noTraceResult.stdout ?? ''));
+    check('#199: no --trace-json → a one-line discovery hint IS shown, and it never claims to affect the decision',
+      /Optional: pass `--trace-json/.test(noTraceResult.stdout ?? '') && !/to (unlock|reach) `?ship/i.test(noTraceResult.stdout ?? ''));
 
     // A valid matrix reusing audit-test.confirmed-with-runs.json's OWN test names — one mapped
     // test that fixture recorded as SURVIVED (the presence-gap catch), one it recorded KILLED,
@@ -1508,6 +1518,8 @@ function runBusinessRiskSelfTest(check) {
     check('#199: the NONE-status requirement reads not-covered', businessRiskEv.predicate.rollup.rows.find((r) => r.id === 'REQ-NO-TEST').state === 'not-covered');
     check('#199: the rendered report carries the Business-risk coverage section', /## Business-risk coverage/.test(withTraceResult.stdout ?? ''));
     check('#199: the report names the hollow row by its mapped test', /logs a booking error/.test(withTraceResult.stdout ?? ''));
+    check('#199: the discovery hint does NOT also show once --trace-json was actually supplied (no redundant nagging)',
+      !/Optional: pass `--trace-json/.test(withTraceResult.stdout ?? ''));
     check('#199: content-addressed — trace-json bytes land in subject[]', withTraceBundle.subject.some((s) => s.name === 'trace-json'));
     check('#199: the bundle still validates against the current schema', validateBundle(withTraceBundle).length === 0);
 
@@ -1543,6 +1555,8 @@ function runBusinessRiskSelfTest(check) {
     check('#199: a rejected --trace-json exits 0 (advisory — never fails the build)', rejectedTraceResult.status === 0);
     check('#199: a warning names the rejection', /is not a valid gate-trace-matrix emission — rejecting it/i.test(rejectedTraceResult.stderr ?? ''));
     check('#199: the rendered report shows the rejection, not silence', /trace-json was rejected/.test(rejectedTraceResult.stdout ?? ''));
+    check('#199: a REJECTED --trace-json does not also show the "you never tried this" discovery hint (it was tried)',
+      !/Optional: pass `--trace-json/.test(rejectedTraceResult.stdout ?? ''));
     const rejectedTraceBundle = JSON.parse(readFileSync(rejectedTraceOut, 'utf8'));
     const rejectedBrEntry = rejectedTraceBundle.entries.find((e) => e.predicate?.stage === 'business-risk');
     check('#199: the persisted bundle carries a distinct rejected business-risk entry (not silently dropped)', rejectedBrEntry?.predicate?.rejected === true);

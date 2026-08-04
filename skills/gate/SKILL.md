@@ -226,6 +226,7 @@ signed: ✗ unsigned — in-toto-shaped, not a signed attestation (pass --sign-k
 - worst-wins over {ship, canary} → canary
 
 > `ship` needs a *parsed* confirmed-clean `audit-test` verdict to unlock … Advisory / report-first.
+> Optional: pass --trace-json for a business-risk coverage read … never changes ship/canary/hold.
 
 Bundle written to gate-bundle.json
 ```
@@ -252,6 +253,7 @@ signed: ✓ DSSE (ed25519, self-signed) — keyid `2801ebd3ab3cb4fd6944202388352
 - worst-wins over {ship} → ship
 
 > `ship` earned: playwright passed and `audit-test` found no hollow tests among the deep-audited subset (6 of 12 triaged tests mutation-audited; 6 unexamined — not evidence of health). Advisory / report-first.
+> Optional: pass --trace-json for a business-risk coverage read … never changes ship/canary/hold.
 
 Bundle written to gate-bundle.json
 ```
