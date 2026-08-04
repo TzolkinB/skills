@@ -175,15 +175,18 @@ Bootstrap is intentionally lightweight. You do not need to classify the entire l
 
 `/gate` and `/audit-test` deliberately shipped narrower than they could be — see
 [`docs/roadmap.md`](./docs/roadmap.md) for what's deferred, why, and the order it's being
-picked back up. Three of four items are closed (a taxonomy-wording fix, coverage-aware ship
-semantics, real evidence signing); two v2 builds remain:
+picked back up. Four of the original items are closed (a taxonomy-wording fix, coverage-aware
+ship semantics, real evidence signing, and report-to-commit provenance); one build remains:
 
 - **Calibration loop** — a real confidence number instead of a bare category.
-- **Report-to-commit provenance** — have the test producer record the git SHA it ran against so
-  Gate can reject a report generated for a _different_ commit than the one it's gating. (A
-  git-timestamp cross-check was considered and **rejected** — timestamps are too flaky
-  and don't even catch the wrong-commit case; the [roadmap](./docs/roadmap.md) explains why, and
-  what replaces it.)
+
+Report-to-commit provenance shipped ([#177](https://github.com/TzolkinB/skills/issues/177)):
+the Playwright/Cypress ingest adapters and the `audit-test` emission now record the git commit
+they ran against, and Gate caps an otherwise-`ship` report at `canary` when that recorded commit
+doesn't match `--commit` — a report about a _different_ commit than the one being gated. (A
+git-timestamp cross-check was considered and **rejected** as the mechanism — timestamps are too
+flaky and don't even catch the wrong-commit case; the [roadmap](./docs/roadmap.md) explains why,
+and what shipped instead.)
 
 Separately, not built yet on the authoring side:
 

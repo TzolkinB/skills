@@ -54,7 +54,7 @@ import { tmpdir } from 'node:os';
 const HERE = dirname(fileURLToPath(import.meta.url));
 
 // ---- constants (gate:// namespace everywhere — plugin-neutral, contract Q9) ----
-const SCHEMA_VERSION = 'gate-evidence-bundle/v0.8'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump; v0.7 = ADDITIVE `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25, ADR-0042) — a rejected audit-test-json emission now renders/persists as its own state, distinct from `absent`; v0.8 = ADDITIVE optional `business-risk` entry (#199, ADR-0045) — a stateless join of a `--trace-json` traceability matrix against the audit-test emission's `runs[]`, appended to `bundle.entries` AFTER the gate decision is computed so it never becomes a decision input; a bundle with no `--trace-json` is byte-for-byte unchanged from v0.7
+const SCHEMA_VERSION = 'gate-evidence-bundle/v0.9'; // v0.1 = v0 (LOCKED, #102) + ADDITIVE `EMPTY` (#111, ADR-0031); v0.2 = witness:// -> gate:// internal rename (ADR-0033); v0.3 = proven -> confirmed taxonomy rename (#126, ADR-0034); v0.4 = ADDITIVE per-input sha256 subjects (#139, ADR-0037 §2); v0.5 = ADDITIVE optional DSSE envelope (#141, ADR-0037 §1); v0.6 = ADDITIVE — the DSSE payload (when signed) also digest-binds each parsed evidence entry + producedOn/schemaVersion (#158, ADR-0040) — a v0.6 signature is a STRONGER claim than a v0.5 one, not just a shape bump; v0.7 = ADDITIVE `rejected` boolean on a gate-predicate input (hostile-review finding #2, 2026-07-25, ADR-0042) — a rejected audit-test-json emission now renders/persists as its own state, distinct from `absent`; v0.8 = ADDITIVE optional `business-risk` entry (#199, ADR-0045) — a stateless join of a `--trace-json` traceability matrix against the audit-test emission's `runs[]`, appended to `bundle.entries` AFTER the gate decision is computed so it never becomes a decision input; a bundle with no `--trace-json` is byte-for-byte unchanged from v0.7; v0.9 = ADDITIVE `commitSha`/`dirty` on an evidence entry's `producer` (#177, the mature closure ADR-0043 pointed at over ADR-0042 §3's rejected git-timestamp idea) — the Playwright/Cypress ingest adapters and the audit-test emission each record the git commit their evidence ran against, and `gate()` cross-checks it against `--commit`, prose-only (no new gate-predicate field — honesty guard #1/#3 unaffected, same discipline as `--max-age`/the floors)
 const STATEMENT_TYPE = 'https://in-toto.io/Statement/v1';
 const EVIDENCE_PREDICATE = 'https://gate.local/evidence/qa-stage/v0';
 const GATE_PREDICATE = 'https://gate.local/gate/v0';
@@ -92,18 +92,33 @@ export function deriveResult(stats = {}) {
   return 'PASSED';
 }
 
-export function playwrightEntry(report, { uri = 'test-results/results.json' } = {}) {
+export function playwrightEntry(report, { uri = 'test-results/results.json', producerCommit } = {}) {
   const stats = report.stats ?? {};
   const metrics = ['expected', 'unexpected', 'flaky', 'skipped']
     .filter((n) => stats[n] !== undefined)
     .map((n) => ({ name: n, value: Number(stats[n]) }));
   return statement(EVIDENCE_PREDICATE, {
     stage: 'playwright',
-    producer: { id: 'gate://playwright@1.x', startedOn: stats.startTime },
+    producer: withProducerCommit({ id: 'gate://playwright@1.x', startedOn: stats.startTime }, producerCommit),
     verdict: { result: deriveResult(stats), metrics }, // raw counts only; NO confidence (Q6)
     byproducts: [{ name: 'playwright-json', uri, mediaType: 'application/json' }],
     annotations: {},
   });
+}
+
+// Producer-recorded commit provenance (#177, ADR-0043 — the mature closure ADR-0042 §3 deferred
+// over a rejected git-timestamp cross-check, see `recordedCommitMismatch` below). One shared shape
+// every producer (Playwright, Cypress, audit-test) records under `producer.commitSha`/`producer.dirty`,
+// so `gate()` reads one place regardless of which producer supplied it. Purely additive: a caller
+// that never supplies `producerCommit` (or supplies `{ sha: undefined, dirty: undefined }`, e.g. no
+// git available at capture time) gets exactly the `producer` object it always did — no evidence
+// either way, never a fabricated field.
+function withProducerCommit(producer, producerCommit) {
+  if (!producerCommit) return producer;
+  const out = { ...producer };
+  if (producerCommit.sha) out.commitSha = producerCommit.sha;
+  if (producerCommit.dirty !== undefined) out.dirty = producerCommit.dirty;
+  return out;
 }
 
 // ---- ingest: Cypress (Module API CypressRunResult — mechanical fact-restatement) --
@@ -141,7 +156,7 @@ export function deriveCypressResult(result = {}) {
   return 'PASSED';
 }
 
-export function cypressEntry(result, { uri = 'cypress-results.json' } = {}) {
+export function cypressEntry(result, { uri = 'cypress-results.json', producerCommit } = {}) {
   const metrics = [
     ['totalTests', result.totalTests],
     ['totalPassed', result.totalPassed],
@@ -156,7 +171,7 @@ export function cypressEntry(result, { uri = 'cypress-results.json' } = {}) {
   metrics.push({ name: 'flakyDerived', value: countCypressFlaky(result) });
   return statement(EVIDENCE_PREDICATE, {
     stage: 'cypress',
-    producer: { id: 'gate://cypress@1.x', startedOn: result.startedTestsAt },
+    producer: withProducerCommit({ id: 'gate://cypress@1.x', startedOn: result.startedTestsAt }, producerCommit),
     verdict: { result: deriveCypressResult(result), metrics },
     byproducts: [{ name: 'cypress-json', uri, mediaType: 'application/json' }],
     annotations: {},
@@ -185,7 +200,7 @@ export function auditTestEntry(markdown) {
 // the label HERE (not trusting a skill-supplied label) is what makes the theater
 // guard structural: a run that deep-audited nothing derives `unexamined` → the gate
 // floors it at canary, so a parsed-but-vacuous audit still cannot reach `ship`.
-const AUDIT_EMISSION_SCHEMA = 'gate-audit-test/v0.3'; // exact match — the published schema pins `schema` to this const; v0.3 = ADDITIVE optional `runs[]` trace (#140/#142, ADR-0037 §3)
+const AUDIT_EMISSION_SCHEMA = 'gate-audit-test/v0.4'; // exact match — the published schema pins `schema` to this const; v0.3 = ADDITIVE optional `runs[]` trace (#140/#142, ADR-0037 §3); v0.4 = ADDITIVE optional `commitSha`/`dirty` (#177, ADR-0043) — the git commit the audit ran against, captured by the model at audit time via `git rev-parse HEAD`/`git status --porcelain`
 const AUDIT_COUNTS = ['audited', 'deepAudited', 'confirmedSolid', 'confirmedHollow', 'likelyHollow', 'baselineLock', 'unexamined'];
 
 // Any confirmed-hollow test is a confirmed credibility FAILURE; a likely-hollow or a
@@ -249,6 +264,21 @@ export function parseAuditEmission(raw) {
     tally.scope = obj.scope;
   }
 
+  // `commitSha`/`dirty` (#177, ADR-0043) — OPTIONAL producer-recorded commit provenance: the git
+  // commit the audit actually ran against (`git rev-parse HEAD` at audit time), plus whether the
+  // worktree was dirty when it did. Same disclosure-only treatment as `scope` — `gate()` cross-checks
+  // `commitSha` against `--commit` in prose only (no new gate-predicate field, honesty guard #1/#3
+  // untouched); a dirty worktree is disclosed, never rejected outright (a mutation audit legitimately
+  // runs against uncommitted changes).
+  if (obj.commitSha !== undefined) {
+    if (typeof obj.commitSha !== 'string' || !obj.commitSha) return null;
+    tally.commitSha = obj.commitSha;
+  }
+  if (obj.dirty !== undefined) {
+    if (typeof obj.dirty !== 'boolean') return null;
+    tally.dirty = obj.dirty;
+  }
+
   // Run trace (#142, B2, ADR-0037 §3) — OPTIONAL, additive: an emission with no `runs` is
   // unaffected (behaves exactly as v0.2). When present, it's a per-test record of an
   // EXECUTED mutation (killed|survived) and must agree with the tally it rides alongside —
@@ -304,7 +334,11 @@ export function auditTestParsedEntry(tally, { markdown } = {}) {
   if (tally.scope) verdict.scope = tally.scope;
   return statement(EVIDENCE_PREDICATE, {
     stage: 'audit-test',
-    producer: { id: 'gate://audit-test@0.x' },
+    // commitSha/dirty (#177) ride on `producer`, same shape as the Playwright/Cypress adapters —
+    // this is audit-test's OWN producer-recorded commit (captured by the model at audit time), not
+    // the CLI wrapper's `resolveProducerCommit()` (that only applies to Playwright/Cypress, whose
+    // report formats carry no such field of their own).
+    producer: withProducerCommit({ id: 'gate://audit-test@0.x' }, { sha: tally.commitSha, dirty: tally.dirty }),
     verdict,
     byproducts,
     annotations: {},
@@ -763,6 +797,33 @@ export function resolveMaxAgeMinutes(requested) {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
+// Report-to-commit provenance (#177, ADR-0043 — the mature closure ADR-0042 §3 pointed at, over a
+// git-timestamp cross-check that was considered and REJECTED: a report regenerated NOW for the wrong
+// commit has `startedOn ≈ now` ≥ any commit timestamp, so timestamps never even catch the target case).
+// The producer (Playwright/Cypress ingest adapters, or the audit-test emission) records the git commit
+// it ran against on its own entry's `producer.commitSha`; this compares that, exactly, against the
+// commit this bundle is actually gating (`bundle.subject[0].digest.gitCommit`, i.e. `--commit`).
+// Returns `true` (mismatch), `false` (match), or `null` (nothing to compare — either the entry recorded
+// no commit, or the bundle was never told one via `--commit`) — the SAME "necessary, not sufficient"
+// treatment content-addressing (ADR-0037 §2) and the examined/executed floors already get: absence of
+// this signal is never itself evidence of anything. Exact string equality, not a signature — a producer
+// CAN lie about its own SHA (but then the content-addressed input bytes wouldn't correspond either).
+function recordedCommitMismatch(entry, gatedCommit) {
+  const recorded = entry?.predicate?.producer?.commitSha;
+  if (!recorded || !gatedCommit || gatedCommit === 'unknown') return null;
+  return recorded !== gatedCommit;
+}
+
+// Dirty-worktree disclosure (#177) — shared by the execution and credibility axes below, so the
+// wording can't drift between the two call sites. Independent of `recordedCommitMismatch`: a report
+// captured against uncommitted changes has no single commit that fully describes it, disclosed here,
+// never a cap on its own (only an actual SHA mismatch caps `proposed`).
+function pushDirtyDisclosure(rationale, stage, entry) {
+  if (entry?.predicate?.producer?.dirty === true) {
+    rationale.push(`${stage}'s recorded producer commit was captured against a DIRTY worktree — no single commit fully describes what actually ran (disclosed, not capped; #177).`);
+  }
+}
+
 export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {}) {
   const floor = resolveExaminedFloor(examinedFloor);
   const execFloor = resolveExecutedFloor(executedFloor);
@@ -771,6 +832,7 @@ export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {
   const known = new Set([...EXECUTION_STAGES, 'audit-test', 'gate']);
   const execEntries = entries.filter((e) => EXECUTION_STAGES.has(stageOf(e)));
   const audit = entries.find((e) => stageOf(e) === 'audit-test');
+  const gatedCommit = bundle.subject?.[0]?.digest?.gitCommit; // the `--commit` this bundle is gating (#177)
 
   const inputs = [];
   const rationale = [];
@@ -808,6 +870,11 @@ export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {
       const stale = maxAgeMinutes != null ? staleMinutes(e, bundle, maxAgeMinutes) : null;
       if (proposed === 'ship' && stale !== null) proposed = 'canary';
 
+      // Report-to-commit provenance (#177, ADR-0043) — checked last, after the executed-floor and
+      // staleness caps above: only matters when this entry would otherwise still propose `ship`.
+      const mismatch = recordedCommitMismatch(e, gatedCommit);
+      if (proposed === 'ship' && mismatch === true) proposed = 'canary';
+
       // No new field needed to mark this: `result === 'PASSED'` with `proposed === 'canary'` is
       // otherwise unreachable on the execution axis (pre-#157, PASSED always proposed `ship`), so
       // it's a sufficient, schema-stable signal for the report to key off — same treatment
@@ -825,8 +892,12 @@ export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {
                 ? `${stage} PASSED but only executed ${counts.executed} of ${counts.discovered} discovered tests (${executedPct}% — ${counts.skipped} skipped) → canary (execution incomplete — below the ${execFloor}% executed-floor, #157)`
                 : stale !== null
                   ? `${stage} PASSED${scope} but its report started ${Math.round(stale)}min before this bundle was produced — over the ${maxAgeMinutes}min --max-age → canary (stale evidence: looks like a report left over from an earlier run, #3)`
-                  : `${stage} PASSED${scope} → ship-baseline`,
+                  : mismatch === true
+                    ? `${stage} PASSED${scope} but its recorded producer commit \`${e.predicate.producer.commitSha}\` does not match the gated commit \`${gatedCommit}\` → canary (this report is evidence about a DIFFERENT commit — producer-recorded SHA provenance, #177)`
+                    : `${stage} PASSED${scope} → ship-baseline`,
       );
+
+      pushDirtyDisclosure(rationale, stage, e);
     }
   }
 
@@ -845,21 +916,29 @@ export function gate(bundle, { examinedFloor, executedFloor, maxAgeMinutes } = {
     // Integer-domain comparison (deepAudited*100 vs floor*audited) — avoids float rounding
     // ever letting a borderline fraction slip past the floor it was just short of.
     const floorMet = confirmedClean && m.audited > 0 && m.deepAudited * 100 >= floor * m.audited;
-    const proposed = confirmedClean && floorMet ? 'ship' : 'canary';
+    // Report-to-commit provenance (#177, ADR-0043) — only relevant when this verdict would otherwise
+    // clear every other bar (confirmed-clean AND the examined-floor); it never independently opens or
+    // closes a path the floor/label checks above didn't already open.
+    const wouldShip = confirmedClean && floorMet;
+    const mismatch = recordedCommitMismatch(audit, gatedCommit);
+    const proposed = wouldShip && mismatch !== true ? 'ship' : 'canary';
     inputs.push({ stage: 'audit-test', result: auditResult, label, proposed });
     rationale.push(
       proposed === 'ship'
         ? `audit-test PASSED + confirmed → ship-eligible — no hollow tests among ${auditScope(audit)} (${examinedPct}% examined, clears the ${floor}% examined-floor)`
-        : confirmedClean
-          ? `audit-test PASSED + confirmed but only ${examinedPct}% examined (${m.deepAudited} of ${m.audited} triaged tests) → canary (a diagnostic run — no problems found among the suspects it examined, which is not a certification of the whole suite; below the ${floor}% examined-floor — coverage-aware ship gate, #127)`
-          : auditResult === 'FAILED'
-            ? 'audit-test FAILED (confirmed false-confidence) → canary (a hollow test — fix it; not a red build)'
-            : auditResult === 'WARNED'
-              ? 'audit-test WARNED (likely-hollow / baseline-lock) → canary (credibility concern — a human must confirm)'
-              : label === 'unexamined'
-                ? 'audit-test PASSED but examined nothing (deep-audited 0) → canary (no proof of credibility — theater guard)'
-                : 'audit-test PASSED but reasoning-only (env not runnable) → canary (short of execution proof)',
+        : wouldShip && mismatch === true
+          ? `audit-test PASSED + confirmed and clears the ${floor}% examined-floor, but its recorded producer commit \`${audit.predicate.producer.commitSha}\` does not match the gated commit \`${gatedCommit}\` → canary (this report is evidence about a DIFFERENT commit — producer-recorded SHA provenance, #177)`
+          : confirmedClean
+            ? `audit-test PASSED + confirmed but only ${examinedPct}% examined (${m.deepAudited} of ${m.audited} triaged tests) → canary (a diagnostic run — no problems found among the suspects it examined, which is not a certification of the whole suite; below the ${floor}% examined-floor — coverage-aware ship gate, #127)`
+            : auditResult === 'FAILED'
+              ? 'audit-test FAILED (confirmed false-confidence) → canary (a hollow test — fix it; not a red build)'
+              : auditResult === 'WARNED'
+                ? 'audit-test WARNED (likely-hollow / baseline-lock) → canary (credibility concern — a human must confirm)'
+                : label === 'unexamined'
+                  ? 'audit-test PASSED but examined nothing (deep-audited 0) → canary (no proof of credibility — theater guard)'
+                  : 'audit-test PASSED but reasoning-only (env not runnable) → canary (short of execution proof)',
     );
+    pushDirtyDisclosure(rationale, 'audit-test', audit);
   } else if (audit && audit.predicate?.verdict?.rejected) {
     // Rejected, not absent (#2, hostile-review finding #2, 2026-07-25, ADR-0042): the emission was received
     // and failed a shape/consistency check — a distinct, disclosed state from `absent` (nothing
@@ -1063,9 +1142,21 @@ export function renderReport(bundle, gateEntry) {
   // audit-test. An opaque/absent audit-test still caps credibility at `canary`.
   const audit = gateEntry.predicate.inputs.find((i) => i.stage === 'audit-test');
   const auditOpaqueOrAbsent = audit && !('label' in audit);
-  // PASSED + confirmed + proposed canary is reachable only one way: confirmed-clean but the
-  // deep-audited fraction fell short of the examined-floor (#127, ADR-0035).
-  const belowExaminedFloor = audit?.result === 'PASSED' && audit?.label === 'confirmed' && audit?.proposed === 'canary';
+  // Report-to-commit provenance (#177, ADR-0043) — recomputed directly from `bundle.entries` rather
+  // than a new gate-predicate field (honesty guard #1/#3): `gate()` already exposed this pure
+  // helper, so `renderReport` re-derives the SAME mismatch it used to decide, purely for accurate
+  // disclosure. Covers every stage (execution + audit-test) uniformly.
+  const gatedCommitForReport = bundle.subject?.[0]?.digest?.gitCommit;
+  const mismatchedEntries = bundle.entries.filter(
+    (e) => (EXECUTION_STAGES.has(e.predicate?.stage) || e.predicate?.stage === 'audit-test') && recordedCommitMismatch(e, gatedCommitForReport) === true,
+  );
+  const auditCommitMismatch = mismatchedEntries.some((e) => e.predicate?.stage === 'audit-test');
+  // PASSED + confirmed + proposed canary is reachable two ways: confirmed-clean but the deep-audited
+  // fraction fell short of the examined-floor (#127, ADR-0035), OR confirmed-clean AND floor-clearing
+  // but capped for a commit mismatch instead (#177) — excluded here so the (wrong, in that case)
+  // "lower your examined-floor" advice below never fires over a report that's about a different
+  // commit entirely; the mismatch banner below covers that case on its own.
+  const belowExaminedFloor = audit?.result === 'PASSED' && audit?.label === 'confirmed' && audit?.proposed === 'canary' && !auditCommitMismatch;
   // Execution-completeness (#157): a PASSED suite capped at canary because it executed only a
   // sliver of what was discovered (skipped/pending dominate) — pre-#157, PASSED always proposed
   // `ship`, so this combination is otherwise unreachable and needs no dedicated field to detect,
@@ -1076,6 +1167,10 @@ export function renderReport(bundle, gateEntry) {
     .map((i) => i.stage);
   if (incompleteStages.length) {
     L.push(`> execution incomplete: ${incompleteStages.join(' + ')} executed only a small fraction of the tests it discovered — skipped/pending dominate the report, so a green result here is not evidence the rest of the suite ran (see rationale above; #157).`);
+  }
+  if (mismatchedEntries.length) {
+    const names = mismatchedEntries.map((e) => e.predicate.stage).join(' + ');
+    L.push(`> commit mismatch: ${names} recorded a producer commit that does not match the gated \`${gatedCommitForReport}\` — this evidence is about a DIFFERENT commit, capped at canary regardless of its own result (necessary-not-sufficient signal, not adversary-proof; producer-recorded SHA provenance, #177).`);
   }
   if (d === 'ship') {
     const execStages = gateEntry.predicate.inputs.filter((i) => EXECUTION_STAGES.has(i.stage)).map((i) => i.stage);
@@ -1181,10 +1276,17 @@ function main(argv) {
   // actually readable (nothing to hash when the path itself didn't resolve). Playwright and
   // Cypress ingestion are structurally identical apart from which flag/entryFn/subject-name they
   // use, so both route through this one helper rather than repeating the read/warn/degrade shape.
+  // Producer-recorded commit provenance (#177, ADR-0043) — resolved ONCE per invocation and applied
+  // to every Playwright/Cypress entry ingested this run: neither report format carries a git SHA of
+  // its own, and this is the one place in the process that already talks to the filesystem/git (same
+  // discipline as `--commit` itself, which the orchestrator resolves via `git rev-parse HEAD` before
+  // calling this script — see gate/SKILL.md Step 1). See `resolveProducerCommit`'s own comment for why
+  // this reads as the honest signal it is, not a guaranteed exact-test-time capture.
+  const producerCommit = resolveProducerCommit();
   const ingestExecutionInput = (flagName, path, entryFn, subjectName) => {
     const { raw, parsed, readError } = readJsonInputForCli(path);
     if (readError) console.error(`⚠ ${flagName}=${path}: ${readError} — treating as no execution evidence (EMPTY → hold) rather than crashing.`);
-    entries.push(entryFn(parsed ?? {}, { uri: path }));
+    entries.push(entryFn(parsed ?? {}, { uri: path, producerCommit }));
     if (raw !== null) inputs.push({ name: subjectName, bytes: raw });
   };
   const entries = [];
@@ -1301,6 +1403,34 @@ function main(argv) {
 
 function abs(p) {
   return isAbsolute(p) ? p : resolve(process.cwd(), p);
+}
+
+// Resolve the commit context to record on THIS invocation's freshly-ingested Playwright/Cypress
+// entries (#177, ADR-0043 — the mature closure ADR-0042 §3 deferred, over a rejected git-timestamp
+// cross-check). Preferring `GITHUB_SHA` (or an equivalent CI-supplied SHA env var — the checked-out
+// SHA in CI is authoritative) over `git rev-parse HEAD` (the honest local signal), plus a
+// dirty-worktree flag from `git status --porcelain`.
+//
+// Honest about what this is and isn't: neither Playwright's JSON reporter nor Cypress's Module API
+// result carries a git SHA of its own, so this is the CLI wrapper's own environment at ingest time —
+// not a guarantee that this exact process is what ran the tests. In the ordinary flow (one CI job:
+// checkout → test → gate, or a local `test && gate` in the same shell) that environment IS the one
+// the tests ran in, so it is a genuine, if not adversary-proof, signal — the same "necessary, not
+// sufficient" posture content-addressing (ADR-0037 §2) and the examined/executed floors already take.
+// Never throws: an environment with no git available, or one that isn't a repo at all (the self-test's
+// own tmpdir sandboxes, deliberately), resolves to `{ sha: undefined, dirty: undefined }` — no
+// evidence either way, the same "unaffected, not flagged" treatment every other optional signal here
+// gets. Exported so a self-test can call it directly rather than only through a subprocess.
+export function resolveProducerCommit(env = process.env, cwd = process.cwd()) {
+  const sha = (env.GITHUB_SHA && env.GITHUB_SHA.trim()) || gitOutput(['rev-parse', 'HEAD'], cwd);
+  const status = gitOutput(['status', '--porcelain'], cwd);
+  return { sha: sha || undefined, dirty: status === null ? undefined : status.length > 0 };
+}
+
+function gitOutput(args, cwd) {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  if (result.error || result.status !== 0 || typeof result.stdout !== 'string') return null;
+  return result.stdout.trim();
 }
 
 // Reads a JSON input file once, keeping the raw bytes alongside the parsed form — the raw
@@ -1451,7 +1581,7 @@ function runCliRobustnessSelfTest(check) {
 
     // #2 — a well-formed-JSON-but-inconsistent emission must persist as `rejected`, not `absent`.
     const rejectedJsonPath = join(tmpDir, 'rejected-audit.json');
-    writeFileSync(rejectedJsonPath, JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 }));
+    writeFileSync(rejectedJsonPath, JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 }));
     const rejectedOut = join(tmpDir, 'rejected-bundle.json');
     const rejectedResult = run([`--playwright=${goodPw}`, `--audit-test-json=${rejectedJsonPath}`, '--commit=deadbeef', `--out=${rejectedOut}`]);
     check('#2: a rejected audit-test-json exits 0 (advisory — never fails the build)', rejectedResult.status === 0);
@@ -1564,6 +1694,97 @@ function runBusinessRiskSelfTest(check) {
     const rejectedBrEntry = rejectedTraceBundle.entries.find((e) => e.predicate?.stage === 'business-risk');
     check('#199: the persisted bundle carries a distinct rejected business-risk entry (not silently dropped)', rejectedBrEntry?.predicate?.rejected === true);
     check('#199: the rejected bytes are still content-addressed (received, not never-sent)', rejectedTraceBundle.subject.some((s) => s.name === 'trace-json'));
+  } finally {
+    rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
+// Real CLI git-capture proof (#177) — same "prove the real subprocess, not a reimplementation"
+// pattern as `runCliRobustnessSelfTest`/`runBusinessRiskSelfTest` above. The pure `gate()` truth
+// table in `runSelfTest` injects a recorded SHA directly and never touches git at all; this instead
+// sets up a real small git repo and spawns the actual CLI against it, proving `resolveProducerCommit`
+// genuinely reads `git rev-parse HEAD` / `git status --porcelain` / `GITHUB_SHA`, not just that the
+// right pure function gets called with the right arguments.
+function runProducerCommitSelfTest(check) {
+  const gatePath = resolve(HERE, 'gate.mjs');
+  const hasGit = spawnSync('sh', ['-c', 'command -v git']).status === 0;
+  if (!hasGit) {
+    check('#177: git is on PATH to run the producer-commit CLI proof', false);
+    return;
+  }
+  const tmpDir = mkdtempSync(join(tmpdir(), 'gate-producer-commit-'));
+  try {
+    const git = (args) => spawnSync('git', args, { cwd: tmpDir, encoding: 'utf8' });
+    git(['init', '-q']);
+    git(['config', 'user.email', 'gate-self-test@example.com']);
+    git(['config', 'user.name', 'gate self-test']);
+    const trackedFile = join(tmpDir, 'tracked.txt');
+    writeFileSync(trackedFile, 'v1\n');
+    git(['add', 'tracked.txt']);
+    git(['commit', '-q', '-m', 'initial commit']);
+    const headSha = git(['rev-parse', 'HEAD']).stdout.trim();
+    check('#177 setup: the temp git repo produced a real 40-hex-char HEAD sha', /^[0-9a-f]{40}$/.test(headSha));
+
+    const run = (args, env) => spawnSync(process.execPath, [gatePath, ...args], { cwd: tmpDir, encoding: 'utf8', env: { ...process.env, ...env } });
+    const goodPw = resolve(HERE, 'fixtures/playwright.passed.json');
+    const goodAudit = resolve(HERE, 'fixtures/audit-test.confirmed.json');
+
+    // Matching --commit — the ordinary flow: gate.mjs runs in the same checkout the tests ran in.
+    const matchOut = join(tmpDir, 'match-bundle.json');
+    const matchResult = run([`--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--commit=${headSha}`, `--out=${matchOut}`]);
+    check('#177: gate.mjs run inside a real git repo with a matching --commit exits 0', matchResult.status === 0);
+    const matchBundle = JSON.parse(readFileSync(matchOut, 'utf8'));
+    const matchPwEntry = matchBundle.entries.find((e) => e.predicate?.stage === 'playwright');
+    check('#177: the captured producer.commitSha is the REAL `git rev-parse HEAD` of the temp repo', matchPwEntry.predicate.producer.commitSha === headSha);
+    check('#177: a freshly-committed, untouched repo captures dirty:false', matchPwEntry.predicate.producer.dirty === false);
+    check('#177: matching commit → ship decision (real end-to-end)', matchBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision === 'ship');
+
+    // Mismatched --commit — the target scenario: a stale/foreign report gated against a different commit.
+    const otherSha = '0123456789abcdef0123456789abcdef01234567';
+    const mismatchOut = join(tmpDir, 'mismatch-bundle.json');
+    const mismatchResult = run([`--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--commit=${otherSha}`, `--out=${mismatchOut}`]);
+    check('#177: a --commit that does not match the real captured HEAD still exits 0 (advisory, never crashes)', mismatchResult.status === 0);
+    const mismatchBundle = JSON.parse(readFileSync(mismatchOut, 'utf8'));
+    check('#177: real end-to-end mismatch caps the decision at canary', mismatchBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision === 'canary');
+    check('#177: the rendered report carries the commit-mismatch banner', /commit mismatch/.test(mismatchResult.stdout ?? ''));
+
+    // GITHUB_SHA env var takes precedence over `git rev-parse HEAD` (the checked-out SHA in CI is
+    // authoritative) — set it to something the temp repo's real HEAD is NOT, and confirm THAT wins.
+    const ciSha = 'fedcba9876543210fedcba9876543210fedcba9';
+    const ciOut = join(tmpDir, 'ci-bundle.json');
+    run([`--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--commit=${ciSha}`, `--out=${ciOut}`], { GITHUB_SHA: ciSha });
+    const ciBundle = JSON.parse(readFileSync(ciOut, 'utf8'));
+    check('#177: GITHUB_SHA env var overrides `git rev-parse HEAD` for the captured commit',
+      ciBundle.entries.find((e) => e.predicate?.stage === 'playwright').predicate.producer.commitSha === ciSha);
+    check('#177: with GITHUB_SHA matching --commit, the decision ships', ciBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision === 'ship');
+
+    // Dirty worktree — modify the tracked file without committing, prove `git status --porcelain`
+    // is genuinely re-read (not cached from the earlier clean-tree run above).
+    writeFileSync(trackedFile, 'v2 — uncommitted\n');
+    const dirtyOut = join(tmpDir, 'dirty-bundle.json');
+    const dirtyResult = run([`--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--commit=${headSha}`, `--out=${dirtyOut}`]);
+    const dirtyBundle = JSON.parse(readFileSync(dirtyOut, 'utf8'));
+    check('#177: an uncommitted change makes the real `git status --porcelain` capture dirty:true',
+      dirtyBundle.entries.find((e) => e.predicate?.stage === 'playwright').predicate.producer.dirty === true);
+    check('#177: a dirty worktree at capture time is disclosed but does not cap the decision on its own (SHA still matches)',
+      dirtyResult.status === 0 && dirtyBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision === 'ship');
+    check('#177: dirty disclosure reaches the rendered report', /DIRTY worktree/.test(dirtyResult.stdout ?? ''));
+    git(['checkout', '--', 'tracked.txt']); // clean the tree back up
+
+    // Outside any git repo at all — `resolveProducerCommit` resolves to no evidence, decision unaffected.
+    const outsideDir = mkdtempSync(join(tmpdir(), 'gate-no-git-'));
+    try {
+      const outsideOut = join(outsideDir, 'outside-bundle.json');
+      const outsideResult = spawnSync(process.execPath, [gatePath, `--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--commit=${headSha}`, `--out=${outsideOut}`], { cwd: outsideDir, encoding: 'utf8' });
+      check('#177: run outside any git repo exits 0', outsideResult.status === 0);
+      const outsideBundle = JSON.parse(readFileSync(outsideOut, 'utf8'));
+      check('#177: outside a repo, no producer.commitSha is recorded at all (no git to ask)',
+        !('commitSha' in outsideBundle.entries.find((e) => e.predicate?.stage === 'playwright').predicate.producer));
+      check('#177: outside a repo, the decision still ships (no evidence either way, never flagged)',
+        outsideBundle.entries.find((e) => e.predicate?.stage === 'gate').predicate.decision === 'ship');
+    } finally {
+      rmSync(outsideDir, { recursive: true, force: true });
+    }
   } finally {
     rmSync(tmpDir, { recursive: true, force: true });
   }
@@ -1901,6 +2122,97 @@ function runSelfTest() {
   const staleRationale = gate(staleBundleAt('2026-07-21T12:00:00.000Z'), { maxAgeMinutes: 60 }).gateEntry.predicate.rationale;
   check('stale rationale names the staleness and the #3 issue', staleRationale.some((r) => /stale/i.test(r) && /--max-age/.test(r)));
 
+  // ---- report-to-commit provenance (#177, ADR-0043 — the mature closure ADR-0042 §3 deferred, over
+  // a rejected git-timestamp cross-check). Pure gate() truth table: inject a recorded SHA directly
+  // via `playwrightEntry`'s own `producerCommit` option rather than shelling out to git in the pure
+  // core — mirroring how `--max-age` above is truth-tabled against an injected `producedOn`, not a
+  // real wall clock.
+  const matchingPw = playwrightEntry({ stats: { expected: 12, unexpected: 0, flaky: 0, skipped: 0 } }, { producerCommit: { sha: 'abc123' } });
+  const mismatchedPw = playwrightEntry({ stats: { expected: 12, unexpected: 0, flaky: 0, skipped: 0 } }, { producerCommit: { sha: 'def456' } });
+  check('commit provenance: recorded SHA matching --commit still ships',
+    gate(assembleBundle({ commit: 'abc123', entries: [matchingPw, auditTestParsedEntry(T.confirmedClean)] })).decision === 'ship');
+  check('commit provenance THE FIX: recorded SHA differing from --commit caps a would-be ship at canary (evidence about a DIFFERENT commit)',
+    gate(assembleBundle({ commit: 'abc123', entries: [mismatchedPw, auditTestParsedEntry(T.confirmedClean)] })).decision === 'canary');
+  check('commit provenance: no recorded SHA at all is unaffected either way (nothing to compare, not flagged) — pre-existing entries unchanged',
+    gate(assembleBundle({ commit: 'abc123', entries: [mkPw('PASSED'), auditTestParsedEntry(T.confirmedClean)] })).decision === 'ship');
+  check('commit provenance: a recorded SHA but no --commit at all (unresolved pr-head) is unaffected — nothing to compare against',
+    gate(assembleBundle({ commit: undefined, entries: [mismatchedPw, auditTestParsedEntry(T.confirmedClean)] })).decision === 'ship');
+
+  const mismatchGate = gate(assembleBundle({ commit: 'abc123', entries: [mismatchedPw, auditTestParsedEntry(T.confirmedClean)] }));
+  check('commit-mismatch rationale names both the recorded and the gated commit, and #177',
+    mismatchGate.gateEntry.predicate.rationale.some((r) => /def456/.test(r) && /abc123/.test(r) && /#177/.test(r)));
+  check('commit provenance: no new field on the gate predicate\'s input row (honesty guard #1/#3 — prose only, not a new predicate field)',
+    Object.keys(mismatchGate.gateEntry.predicate.inputs.find((i) => i.stage === 'playwright')).every((k) => ['stage', 'result', 'proposed'].includes(k)));
+  check('commit provenance: a mismatched gate entry still validates (no numeric field, valid decision)', validateGateEntry(mismatchGate.gateEntry).length === 0);
+
+  // audit-test axis gets the same cross-check, independent of the execution axis — only matters
+  // when the verdict would otherwise clear both confirmed-clean AND the examined-floor.
+  const mismatchedAuditTally = { ...T.confirmedClean, commitSha: 'def456' };
+  const matchingAuditTally = { ...T.confirmedClean, commitSha: 'abc123' };
+  check('commit provenance (audit-test axis): a confirmed-clean, floor-clearing verdict whose recorded commit mismatches --commit still caps at canary',
+    gate(assembleBundle({ commit: 'abc123', entries: [mkPw('PASSED'), auditTestParsedEntry(mismatchedAuditTally)] })).decision === 'canary');
+  check('commit provenance (audit-test axis): a matching recorded commit still ships',
+    gate(assembleBundle({ commit: 'abc123', entries: [mkPw('PASSED'), auditTestParsedEntry(matchingAuditTally)] })).decision === 'ship');
+
+  // Dirty-worktree — disclosed in rationale, never a cap on its own (only an actual SHA mismatch caps).
+  const dirtyMatchingPw = playwrightEntry({ stats: { expected: 12, unexpected: 0, flaky: 0, skipped: 0 } }, { producerCommit: { sha: 'abc123', dirty: true } });
+  const dirtyGate = gate(assembleBundle({ commit: 'abc123', entries: [dirtyMatchingPw, auditTestParsedEntry(T.confirmedClean)] }));
+  check('commit provenance: a DIRTY worktree at capture time is disclosed but never caps on its own (SHA still matches → ship)',
+    dirtyGate.decision === 'ship' && dirtyGate.gateEntry.predicate.rationale.some((r) => /DIRTY/.test(r) && /#177/.test(r)));
+
+  // renderReport disclosure — the commit-mismatch banner, and the belowExaminedFloor message must
+  // NOT fire over a commit mismatch (misleading: "lower your examined-floor" is the wrong fix for
+  // "this report is about the wrong commit").
+  const mismatchBundleFull = assembleBundle({ commit: 'abc123', entries: [mismatchedPw, auditTestParsedEntry(T.confirmedClean)] });
+  mismatchBundleFull.entries.push(mismatchGate.gateEntry);
+  const mismatchReport = renderReport(mismatchBundleFull, mismatchGate.gateEntry);
+  check('report: commit-mismatch banner names the affected stage and #177', /commit mismatch/.test(mismatchReport) && /playwright/.test(mismatchReport) && /#177/.test(mismatchReport));
+
+  const mismatchedAuditBundle = assembleBundle({ commit: 'abc123', entries: [mkPw('PASSED'), auditTestParsedEntry(mismatchedAuditTally)] });
+  const mismatchedAuditGate = gate(mismatchedAuditBundle);
+  mismatchedAuditBundle.entries.push(mismatchedAuditGate.gateEntry);
+  const mismatchedAuditReport = renderReport(mismatchedAuditBundle, mismatchedAuditGate.gateEntry);
+  check('report: a commit-mismatched confirmed-clean audit-test does NOT get the misleading "lower your examined-floor" advice',
+    !/needs a \*certification\*-scope/.test(mismatchedAuditReport));
+  check('report: it DOES get the commit-mismatch banner instead, naming audit-test',
+    /commit mismatch/.test(mismatchedAuditReport) && /audit-test/.test(mismatchedAuditReport));
+
+  // producer.commitSha/dirty ride into the #158 entry-digest binding for free (no special-casing) —
+  // `entrySubjects` canonicalizes the WHOLE entry, producer included.
+  check('entry-digest binding: a producer.commitSha edit changes the entry digest (rides the existing #158 canonicalize)',
+    entrySubjects([matchingPw])[0].digest.sha256 !== entrySubjects([mismatchedPw])[0].digest.sha256);
+
+  // withProducerCommit / playwrightEntry / cypressEntry — additive: no producerCommit given at all
+  // (the pre-#177 call shape) produces the exact same `producer` object as before.
+  check('playwrightEntry: no producerCommit option → no commitSha/dirty keys at all (byte-for-byte unaffected)',
+    !('commitSha' in mkPw('PASSED').predicate.producer) && !('dirty' in mkPw('PASSED').predicate.producer));
+  const cyWithCommit = cypressEntry({ totalTests: 1, totalPassed: 1, totalFailed: 0 }, { producerCommit: { sha: 'abc123', dirty: false } });
+  check('cypressEntry: producerCommit option records commitSha + dirty:false on producer',
+    cyWithCommit.predicate.producer.commitSha === 'abc123' && cyWithCommit.predicate.producer.dirty === false);
+  check('withProducerCommit: an entirely absent producerCommit leaves producer unaffected',
+    !('commitSha' in playwrightEntry({ stats: { expected: 1 } }).predicate.producer));
+
+  // ---- `commitSha`/`dirty` emission parsing (#177) — same disclosure-only treatment as `scope` ----
+  const commitEmission = JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, commitSha: 'abc123', dirty: true, ...T.confirmedClean });
+  const commitTally = parseAuditEmission(commitEmission);
+  check('parseAuditEmission: commitSha + dirty are passed through to the parsed tally', commitTally?.commitSha === 'abc123' && commitTally?.dirty === true);
+  check('parseAuditEmission: a non-string commitSha rejects the whole emission',
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, commitSha: 123, ...T.confirmedClean })) === null);
+  check('parseAuditEmission: an empty-string commitSha rejects the whole emission (non-empty per the SHA cross-check)',
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, commitSha: '', ...T.confirmedClean })) === null);
+  check('parseAuditEmission: a non-boolean dirty rejects the whole emission',
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, dirty: 'yes', ...T.confirmedClean })) === null);
+  check('parseAuditEmission: absent commitSha/dirty leaves the tally unaffected (purely additive)',
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean })).commitSha === undefined);
+  const commitEntry = auditTestParsedEntry(commitTally);
+  check('auditTestParsedEntry: commitSha/dirty ride onto the audit-test entry\'s own producer',
+    commitEntry.predicate.producer.commitSha === 'abc123' && commitEntry.predicate.producer.dirty === true);
+  check('auditTestParsedEntry: no commitSha/dirty in the tally → no such keys on producer (additive-only)',
+    !('commitSha' in auditTestParsedEntry(T.confirmedClean).predicate.producer));
+
+  // Secondary seam — the real CLI wrapper's own git-capture mechanism, proven end to end.
+  runProducerCommitSelfTest(check);
+
   // #111 — empty/impossible evidence can never ship (the two disclosed exploits, defeated)
   const emptyPw = playwrightEntry({}); // `{}` → EMPTY
   check('empty Playwright report alone → hold (not a pass)', gate(assembleBundle({ commit: 'x', entries: [emptyPw] })).decision === 'hold');
@@ -2131,15 +2443,17 @@ function runSelfTest() {
   // emission robustness — a model produced it, so never trust it blind
   check('parseAuditEmission: rejects non-JSON', parseAuditEmission('not json {') === null);
   check('parseAuditEmission: rejects missing/foreign schema', parseAuditEmission(JSON.stringify({ confirmedSolid: 1 })) === null);
-  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', confirmedSolid: -1 })) === null);
-  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', confirmedSolid: 1.5 })) === null);
-  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })) !== null);
+  check('parseAuditEmission: rejects a negative count', parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, confirmedSolid: -1 })) === null);
+  check('parseAuditEmission: rejects a fractional count', parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, confirmedSolid: 1.5 })) === null);
+  check('parseAuditEmission: accepts a well-formed emission', parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean })) !== null);
   // #111 — exact schema version (not a prefix) + cross-field consistency
   check('parseAuditEmission: rejects a bogus version (v999 — exact match, not prefix)', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v999', ...T.confirmedClean })) === null);
-  check('parseAuditEmission: rejects impossible confirmedSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
-  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects impossible confirmedSolid>deepAudited', parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 0, deepAudited: 0, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+  check('parseAuditEmission: rejects audited≠deepAudited+unexamined', parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 12, deepAudited: 4, confirmedSolid: 4, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
   check('parseAuditEmission: the old v0.2 string is no longer accepted (exact-match, not backward-compatible aliasing)',
     parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.2', ...T.confirmedClean })) === null);
+  check('parseAuditEmission: the old v0.3 string (pre-#177 commitSha/dirty) is no longer accepted either — same exact-match discipline',
+    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })) === null);
 
   // ---- run trace (`runs[]`) cross-check (#142, B2, ADR-0037 §3) — optional, additive; a tally
   // that disagrees with its own trace is rejected the SAME way an arithmetically-impossible
@@ -2149,52 +2463,52 @@ function runSelfTest() {
   const killedRuns = (n) => Array.from({ length: n }, (_, i) => mkRun(`t${i}`, 'killed'));
 
   check('parseAuditEmission: consistent tally + trace is accepted (THE UNLOCK)',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(4) })) !== null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: killedRuns(4) })) !== null);
   check('parseAuditEmission: absent `runs[]` remains valid — unaffected (additive, behaves exactly as v0.2)',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })) !== null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean })) !== null);
   check('parseAuditEmission: confirmedSolid ≠ killed-record count → rejected (degrades to opaque)',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(3) })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: killedRuns(3) })) === null);
   check('parseAuditEmission: confirmedHollow ≠ survived-record count → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: killedRuns(3) })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedHollow, runs: killedRuns(3) })) === null);
   check('parseAuditEmission: runs.length > deepAudited → rejected (over-count)',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(5) })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: killedRuns(5) })) === null);
   check('parseAuditEmission: a malformed run record (bad outcome) → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [{ test: 't0', mutation: 'm', command: 'c', outcome: 'ambiguous', exitCode: 1 }] })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: [{ test: 't0', mutation: 'm', command: 'c', outcome: 'ambiguous', exitCode: 1 }] })) === null);
   check('parseAuditEmission: `runs` present but not an array → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: 'nope' })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: 'nope' })) === null);
 
   // ---- exact outcome accounting (#155/F1): Σ(outcomes) === deepAudited, not ≤. Every claimed deep
   // audit must land in exactly one outcome class — an unaccounted-for deep audit is rejected.
   check('parseAuditEmission #155/F1: unclassified deep audits (deepAudited:100, confirmedSolid:1, rest:0) → rejected (the F1 exploit)',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 100, deepAudited: 100, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 100, deepAudited: 100, confirmedSolid: 1, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 0 })) === null);
   check('parseAuditEmission #155/F1: Σ(outcomes) < deepAudited (deepAudited:4, one class short) → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', audited: 7, deepAudited: 4, confirmedSolid: 3, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 3 })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, audited: 7, deepAudited: 4, confirmedSolid: 3, confirmedHollow: 0, likelyHollow: 0, baselineLock: 0, unexamined: 3 })) === null);
   check('parseAuditEmission #155/F1: Σ(outcomes) === deepAudited (every deep audit classified) → accepted',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })) !== null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean })) !== null);
 
   // ---- run-trace exit-signal consistency + uniqueness (#155/F3) --------------------------------
   // `mkRun` already takes an explicit exitCode (3rd arg), so it covers the contradictory-exit and
   // duplicate-identity cases directly — no separate helper needed.
   check('parseAuditEmission #155/F3: killed record with exitCode:0 (failed-as-it-should but green exit) → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), mkRun('t3', 'killed', 0)] })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: [...killedRuns(3), mkRun('t3', 'killed', 0)] })) === null);
   check('parseAuditEmission #155/F3: survived record with non-zero exitCode → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived', 1)] })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived', 1)] })) === null);
   check('parseAuditEmission #155/F3: four identical (test,mutation,command) killed records satisfying killed===confirmedSolid:4 → rejected (the F3 dup exploit)',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: Array.from({ length: 4 }, () => mkRun('dup', 'killed', 1)) })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: Array.from({ length: 4 }, () => mkRun('dup', 'killed', 1)) })) === null);
   check('parseAuditEmission #155/F3: distinct killed records with non-zero exits still accepted (regression guard)',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(4) })) !== null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: killedRuns(4) })) !== null);
 
   // ---- non-empty run-record content (#171 review) — a bare `typeof === 'string'` check let a
   // blank `test`/`mutation`/`command` through, diluting `runsVerified` with content-free rows.
   check('parseAuditEmission: a run record with an empty `test` string → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), { test: '', mutation: 'm', command: 'c', outcome: 'killed', exitCode: 1 }] })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: [...killedRuns(3), { test: '', mutation: 'm', command: 'c', outcome: 'killed', exitCode: 1 }] })) === null);
   check('parseAuditEmission: a run record with an empty `mutation` string → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), { test: 't3', mutation: '', command: 'c', outcome: 'killed', exitCode: 1 }] })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: [...killedRuns(3), { test: 't3', mutation: '', command: 'c', outcome: 'killed', exitCode: 1 }] })) === null);
   check('parseAuditEmission: a run record with an empty `command` string → rejected',
-    parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: [...killedRuns(3), { test: 't3', mutation: 'm', command: '', outcome: 'killed', exitCode: 1 }] })) === null);
+    parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: [...killedRuns(3), { test: 't3', mutation: 'm', command: '', outcome: 'killed', exitCode: 1 }] })) === null);
 
   const consistentHollowTally = parseAuditEmission(JSON.stringify({
-    schema: 'gate-audit-test/v0.3', ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived')],
+    schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedHollow, runs: [...killedRuns(3), mkRun('t3', 'survived')],
   }));
   check('parseAuditEmission: killed+survived trace matching confirmedSolid+confirmedHollow is accepted',
     consistentHollowTally !== null && consistentHollowTally.runs.length === 4);
@@ -2202,10 +2516,10 @@ function runSelfTest() {
   // Run-trace numbers live in the audit-test EVIDENCE entry, not the gate predicate (honesty
   // guard #3 stays scoped to the `gate` stage only) — `runsVerified` is a metric on the
   // audit-test entry, exactly alongside the counts it was cross-checked against.
-  const withRunsEntry = auditTestParsedEntry(parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean, runs: killedRuns(4) })));
+  const withRunsEntry = auditTestParsedEntry(parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean, runs: killedRuns(4) })));
   check('auditTestParsedEntry: a verified trace surfaces as `runsVerified` on the audit-test entry',
     withRunsEntry.predicate.verdict.metrics.some((m) => m.name === 'runsVerified' && m.value === 4));
-  const noRunsEntry = auditTestParsedEntry(parseAuditEmission(JSON.stringify({ schema: 'gate-audit-test/v0.3', ...T.confirmedClean })));
+  const noRunsEntry = auditTestParsedEntry(parseAuditEmission(JSON.stringify({ schema: AUDIT_EMISSION_SCHEMA, ...T.confirmedClean })));
   check('auditTestParsedEntry: no `runs[]` → no `runsVerified` metric (additive-only)',
     !noRunsEntry.predicate.verdict.metrics.some((m) => m.name === 'runsVerified'));
   const runsGateEntry = gate(assembleBundle({ commit: 'x', entries: [mkPw('PASSED'), withRunsEntry] })).gateEntry;

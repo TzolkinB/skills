@@ -97,7 +97,7 @@ Close every report — single-test, batch, or `--digest` ([shared card](../share
 ## Structured emission (`--emit-json=<path>`) — for the Gate skill
 
 When `--emit-json=<path>` is present in $ARGUMENTS, **also** write the run's provenance tally as a small
-`gate-audit-test/v0.3` JSON file at that path — *in addition to* the human report, which is unchanged. This is
+`gate-audit-test/v0.4` JSON file at that path — *in addition to* the human report, which is unchanged. This is
 the **parsed** credibility input the Gate skill (`/gate`) ingests: a *parsed* confirmed-clean verdict is
 the only thing that lets Gate lift a release decision to `ship` (the B→A graduation,
 [ADR-0029](../../docs/adr/0029-witness-parsed-audit-test-graduation.md)). Emit **only the counts** — never a
@@ -106,9 +106,11 @@ prose scrape and never a confidence number; Gate derives the category itself
 
 ```json
 {
-  "schema": "gate-audit-test/v0.3",
+  "schema": "gate-audit-test/v0.4",
   "producer": "audit-test",
   "scope": "--changed",
+  "commitSha": "a1b2c3d4e5f6...",
+  "dirty": false,
   "audited": 47,
   "deepAudited": 5,
   "confirmedSolid": 2,
@@ -138,6 +140,20 @@ particular, if you deep-audited nothing, `deepAudited` is `0` (Gate derives `une
 never reach `ship`). For an **INCONCLUSIVE** run (no recognized test files), emit all-zero counts. Emission is
 mechanical bookkeeping of the verdicts you already assigned — it introduces **no** new judgment, so it works in
 single-test mode too (the tally is just that one test's class).
+
+### Commit provenance (`commitSha`/`dirty`) — optional, for Gate's report-to-commit cross-check
+
+Alongside the counts, run `git rev-parse HEAD` and `git status --porcelain` once and include the results as
+`commitSha` (the SHA string) and `dirty` (`true` if `git status --porcelain` printed anything, `false`
+otherwise) ([#177](https://github.com/TzolkinB/skills/issues/177),
+[ADR-0043](../../docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md)). This is the honest signal
+only you, the producer, have at audit time — Gate cross-checks `commitSha` against its own `--commit` and caps
+an otherwise-`ship`-eligible verdict at `canary` when they don't match (this report is evidence about a
+*different* commit than the one being gated), named in Gate's rationale, never a reason for `/audit-test` itself
+to change its verdict. Both fields are optional and purely additive: omitting them leaves the emission exactly
+as it behaves without this section. `dirty: true` is not a problem to fix before emitting — a mutation audit
+legitimately runs against uncommitted changes; it only means Gate discloses that no single commit fully
+describes this run, never a reason to cap on its own.
 
 A **certification** run (`--certify`, [Batch mode](reference/batch-mode.md)) emits the same shape with **no**
 schema change — a floor-clearing tally Gate ingests exactly as any other. Two `scope`-side additions keep it
