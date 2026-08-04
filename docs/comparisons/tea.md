@@ -87,12 +87,19 @@ calibrating against an override history it *reads*, never one it accumulates its
 
 ### 3. `trace` gates on coverage *presence*, so a hollow test reads as covered
 
-Verified against the workflow **source** (not the docs) on 2026-07-29 — `bmad-testarch-trace`, v1.19.1:
+Verified against the workflow **source** (not the docs) on 2026-07-29 — `bmad-testarch-trace`, v1.19.1
+— and **re-verified unchanged at v1.21.4 on 2026-08-04** while building the `trace`→Gate conversion
+([#220](https://github.com/TzolkinB/skills/issues/220)); the two corrections that re-read turned up are
+noted below.
 
 - **`steps-c/step-03-map-criteria.md`** marks each oracle item **FULL / PARTIAL / NONE** by mapping a
   *matching test*. Every validation rule it applies is a presence check — endpoint, auth, error-path
   and UI-state coverage "present or missing", plus a not-happy-path-only rule. None inspects whether
   a mapped test would fail if the code broke.
+  **Correction (v1.21.4):** the vocabulary is *five*-valued, not three — step-03 §1 marks
+  "FULL / PARTIAL / NONE / **UNIT-ONLY** / **INTEGRATION-ONLY**", and step-05 §3b treats all four
+  non-NONE values as coverage-eligible. This doesn't touch the presence claim (all five are presence
+  calls), but it is the vocabulary anything converting TEA's output has to handle.
 - **`steps-c/step-05-gate-decision.md`** is deterministic JS over the resulting percentages:
   `if (p0Coverage < 100) → FAIL`; `P1 >= 90 && overall >= 80 && P0 === 100 → PASS`. `p0Coverage` is
   `covered/total` straight out of Step 3's mapping.
@@ -120,8 +127,26 @@ is exactly that shape — "rejects overlapping bookings" asserts only that `save
 
 > **How to check:** read `src/workflows/testarch/bmad-testarch-trace/steps-c/step-03-map-criteria.md`
 > and `step-05-gate-decision.md`, then grep the workflow tree for `mutation`. (Verified 2026-07-29
-> against `main`, v1.19.1.) **Falsifier:** a TEA release that adds a credibility input to Step 5's
-> arithmetic.
+> against `main`, v1.19.1; re-verified 2026-08-04 against `main`, v1.21.4 — unchanged.)
+> **Falsifier:** a TEA release that adds a credibility input to Step 5's arithmetic.
+
+#### What `trace` actually writes (the machine-readable side)
+
+Relevant because Gate *joins* against this output, so what it does and doesn't contain decides what a
+conversion can honestly produce. Read at v1.21.4 on 2026-08-04:
+
+| Artifact | Where it's written | Per-requirement rows? | Per-test **title**? |
+|---|---|---|---|
+| `e2e-trace-summary.json` | step-05 §3b | no — `coverage.inventory`, `priority_breakdown`, `by_level`, test counts | no |
+| `gate-decision.json` | step-05 §3b, gate-eligible runs only | no — `gate_status` + `p0`/`p1`/`overall` status | no |
+| `traceability-matrix.md` | step-03/05 (`trace-template.md`) | **yes** | **no** — `Detailed Mapping` renders each test as `` `id` `` - `file`:`line` |
+| Phase-1 coverage-matrix JSON | step-04 §5–6 → `/tmp/tea-trace-coverage-matrix-<ts>.json`, path recorded in the `.md` frontmatter as `tempCoverageMatrixPath` | **yes** | **yes** — `tests[]` carry `id`, `title`, `file`, `line`, `level`, skip flags |
+
+**Correction to an earlier reading:** the durable Markdown report is *not* the only per-requirement
+artifact — the Phase-1 JSON is real, machine-readable, and is what TEA's own step-05 §1 reads back. It
+is also a **temp** file, which is the one real fragility in consuming it. That is what
+[`tea-to-trace-matrix.mjs`](../../skills/gate/tea-to-trace-matrix.mjs) converts, and why it never parses
+the Markdown ([ADR-0050](../adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
 
 **This is not a TEA-specific flaw — and shouldn't be pitched as one.** Presence-based coverage is the
 category default: Qase's requirements-traceability report links test cases to issues, and the same

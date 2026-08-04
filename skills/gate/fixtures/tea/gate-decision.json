@@ -1,0 +1,20 @@
+{
+  "_fixture": "TEA `trace`'s optional gate-signal artifact, shaped from step-05-gate-decision.md §3b (v1.21.4). Written only when the run is gate-eligible (`allow_gate: true` AND collection_status COLLECTED AND the decision is one of PASS/CONCERNS/FAIL/WAIVED). Carries the categorical gate and per-criterion MET/PARTIAL/NOT_MET flags — and NO per-requirement rows, which is why it can only supply `gateStatus` to the conversion, never the matrix itself. e2e-trace-summary.json carries the same `gate_status` alongside its aggregates and is accepted interchangeably here.",
+  "schema_version": "0.1.0",
+  "evaluated_at": "2026-08-04T09:15:04.000Z",
+  "repo": "mosaic-room-booking",
+  "target": { "type": "story", "id": "BOOK-14", "label": "Room booking" },
+  "collection_status": "COLLECTED",
+  "gate_basis": "priority_thresholds",
+  "gate_status": "CONCERNS",
+  "rationale": "P0 coverage is complete at 100%, but P1 coverage (67%) falls below the 90% target and overall coverage (63%) is under the 80% minimum.",
+  "p0_status": "MET",
+  "p1_status": "NOT_MET",
+  "overall_status": "NOT_MET",
+  "critical_open": 0,
+  "links": {
+    "trace_report_path": "docs/test-artifacts/traceability-matrix.md",
+    "trace_report_url": "",
+    "artifact_url": ""
+  }
+}

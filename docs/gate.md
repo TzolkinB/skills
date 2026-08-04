@@ -36,8 +36,9 @@ floor and still have a real gap the floor doesn't check for:
 register Gate maintains itself ([#199](https://github.com/TzolkinB/skills/issues/199),
 [ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). Pass an optional
 requirement→test traceability matrix (`--trace-json`, [`gate-trace-matrix/v0`](../skills/gate/schema/trace-matrix.v0.schema.json)
-— Gate's **own** minimal shape, not any external tool's internal format; a small adapter converts a
-`trace` run's output into it) alongside `--audit-test-json`, and Gate resolves each requirement into
+— Gate's **own** minimal shape, not any external tool's internal format;
+[`tea-to-trace-matrix.mjs`](../skills/gate/tea-to-trace-matrix.mjs) converts a TEA `trace` run into it,
+see below) alongside `--audit-test-json`, and Gate resolves each requirement into
 one of four states instead of the bare presence bit a traceability matrix alone gives you:
 
 - **covered and mutation-proven** — every test mapped to the requirement was execution-confirmed to
@@ -66,6 +67,37 @@ doesn't change its state here — only an executed mutation does.
 node "<skill base dir>/gate.mjs" --playwright=results.json --audit-test-json=tally.json \
      --trace-json=trace-matrix.json --commit=<sha> --out=gate-bundle.json
 ```
+
+### Getting that matrix out of a TEA `trace` run
+
+Don't hand-author it ([#220](https://github.com/TzolkinB/skills/issues/220),
+[ADR-0050](./adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)):
+
+```
+node "<skill base dir>/tea-to-trace-matrix.mjs" --trace-md=docs/test-artifacts/traceability-matrix.md \
+     --gate-json=docs/test-artifacts/gate-decision.json --audit-test-json=tally.json \
+     --out=trace-matrix.json
+```
+
+TEA writes four artifacts and only one is convertible. `e2e-trace-summary.json` and `gate-decision.json`
+carry aggregates and a gate signal, no requirement rows. `traceability-matrix.md` carries the rows but
+identifies each mapped test as `` `id` `` - `file`:`line` — **no test title** — and Gate's join key is
+`<file>::<title>`, so a key transcribed from it would be fabricated or guessed from a line number that
+goes stale on the next edit, joining to nothing and rendering as plausible `unverified` coverage. What
+*is* convertible is the **Phase-1 coverage-matrix JSON** TEA's own step-05 reads back: per-requirement
+rows with per-test `title`/`file`/`line`/`level`, written to `/tmp` with its path recorded in the `.md`'s
+frontmatter as `tempCoverageMatrixPath`. `--trace-md` follows that pointer; `--coverage-matrix` takes the
+file directly.
+
+The converter refuses rather than approximates — an unrecognized coverage value, a missing priority, a
+test with no title, a contradictory row, each names the row and writes nothing (exit 2). It flattens
+TEA's five-valued vocabulary into Gate's three (`UNIT-ONLY`/`INTEGRATION-ONLY` → `PARTIAL`, never `FULL`
+— a conversion may not widen TEA's own presence call), keeping the verbatim value on each row as
+`teaCoverage`. Passing `--audit-test-json` cross-checks how many keys actually join **before** you gate:
+TEA spells files as repo paths while an `audit-test` emission may use basenames, and a zero-match matrix
+produces a complete, plausible report in which every requirement reads `unverified`. `--test-key=basename`
+is the disclosed fix, and it refuses when two directories share a spec basename (a wrong join is worse
+than no join). Because the input is a temp file, convert in the same session as the `trace` run.
 
 ## When to use it
 

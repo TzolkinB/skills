@@ -55,6 +55,13 @@ jobs:
       - name: Gate golden self-test (gating)
         run: node skills/gate/gate.mjs --self-test
 
+      # Same reasoning for the TEA conversion (#220, ADR-0050): deterministic code, so it
+      # earns a golden fixture pair rather than an LLM-judged eval. It also runs both CLIs
+      # end to end as subprocesses — TEA fixture in, Gate's business-risk rollup out — so
+      # this step is what catches the converter and gate.mjs's ingest guards drifting apart.
+      - name: TEA trace-matrix conversion self-test (gating)
+        run: node skills/gate/tea-to-trace-matrix.mjs --self-test
+
       # Gate: run only the affected skills' self-tests + scoped lint, write the
       # job summary, then fail the check if any self-test stopped discriminating
       # or lint errored. Trust established via per-case LLM-judge meta-evals.
