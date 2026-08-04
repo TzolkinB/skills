@@ -1,6 +1,6 @@
 # `contract-guard` gains a test-boundary validation tier that routes to an external plugin, and reports per-spec which drifts that validation can actually catch
 
-**Status: Proposed (2026-07-31).** Backed by
+**Status: Accepted (2026-08-04).** Backed by
 [EXPERIMENT-0049](../experiments/EXPERIMENT-0049-schema-permissiveness.md) (two arms, both Confirmed).
 Tracked by [#217](https://github.com/TzolkinB/skills/issues/217). Amends — does not supersede —
 [ADR-0021](0021-contract-guard-consumer-side-openapi-differ.md), whose tier order and verdict

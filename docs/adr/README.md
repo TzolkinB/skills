@@ -37,7 +37,6 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0023](0023-selector-guard-static-testid-drift-check.md) | `selector-guard` — static test-id reconciliation before a browser launches | [#78](https://github.com/TzolkinB/skills/issues/78), post-v1 fast-follow |
 | [0026](0026-live-evals-opt-in-pr-and-scheduled-drift.md) | Live skill-eval runs are opt-in per PR and scheduled for drift | `--live` is wired in `run-eval.mjs`; the CI trigger model is unbuilt |
 | [0044](0044-repo-level-coverage-inventory-obligation-driver.md) | Repo-level obligation-driven coverage inventory as a v2 driver | [mattpocock/skills#654](https://github.com/mattpocock/skills/issues/654) |
-| [0049](0049-contract-guard-test-boundary-validation-tier.md) | `contract-guard` Tier 1b + per-operation drift-coverage reporting | [#217](https://github.com/TzolkinB/skills/issues/217) |
 
 ## Index
 
@@ -91,7 +90,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0046](0046-does-sentinel-become-stateful.md) | Does Sentinel become a stateful tool? | Superseded by [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) |
 | [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) | Statelessness is a write-boundary property, and git is the heal ledger | Accepted 2026-07-30 · supersedes [0046](0046-does-sentinel-become-stateful.md) |
 | [0048](0048-shared-digest-card-and-inline-next-footers.md) | Judgement skills share one `--digest` card and one inline `Next:` footer; compression never upgrades a label | Accepted 2026-07-30 |
-| [0049](0049-contract-guard-test-boundary-validation-tier.md) | `contract-guard` gains a test-boundary validation tier and reports per-spec which drifts that validation can catch | **Proposed** |
+| [0049](0049-contract-guard-test-boundary-validation-tier.md) | `contract-guard` gains a test-boundary validation tier and reports per-spec which drifts that validation can catch | Accepted 2026-08-04 |
 | [0050](0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md) | A TEA `trace` run converts into `gate-trace-matrix/v0` from its Phase-1 JSON, never its Markdown | Accepted 2026-08-04 |
 
 ## By area

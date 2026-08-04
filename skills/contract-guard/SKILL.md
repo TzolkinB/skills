@@ -1,6 +1,6 @@
 ---
 name: contract-guard
-description: Consumer-side contract check for the stranded frontend team Pact can't serve — tiered, cheapest-first — detect existing response validation, else recommend/scaffold client-side validation, else differ the shape the frontend expects against the provider's published OpenAPI/Swagger. Carries the deliberate-vs-accidental oracle; surfaces for human disposition, never green-locks.
+description: Consumer-side contract check for the stranded frontend team Pact can't serve — tiered, cheapest-first — detect existing response validation, else recommend/scaffold client-side validation (and, if a published spec is available, also recommend test-boundary validation with its per-operation drift-coverage), else differ the shape the frontend expects against the provider's published OpenAPI/Swagger. Carries the deliberate-vs-accidental oracle; surfaces for human disposition, never green-locks.
 argument-hint: "[endpoint or red spec, and the published spec as a path/URL — e.g. GET /api/rooms ./openapi.json]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
@@ -18,15 +18,34 @@ It is **tiered, cheapest-first** — because the heavy differ only earns its kee
 ### 0. Resolve inputs — the endpoint, the consumer code, the published spec
 - **Endpoint under suspicion.** From `$ARGUMENTS` (an endpoint or a red spec) or the situation. If handed a red spec, find the endpoint it depends on: the `page.route`/`cy.intercept` it stubs, the URL it drives, or the fetch in the code path it exercises. `/e2e-impact`'s source→spec map already links a spec to the consumer code behind it — reuse it, don't rebuild it.
 - **Consumer code.** The frontend module that fetches and *reads* that response (the `fetch`/axios call and the property accesses / destructuring on its result).
-- **Published spec (optional but the Tier-2 oracle).** An OpenAPI/Swagger document as a **local path** (`Read`) or a **URL** (`Bash` `curl` — fetching a published static document is *consumption*, not execution, [ADR-0010]). Absent → Tier 2 degrades to `no-spec` (below), never a fabricated match.
+- **Published spec (optional but the Tier-1b/Tier-2 oracle).** An OpenAPI/Swagger document as a **local path** (`Read`) or a **URL** (`Bash` `curl` — fetching a published static document is *consumption*, not execution, [ADR-0010]). Absent → Tier 1b's drift-coverage and Tier 2 both degrade to `no-spec` (below), never a fabricated match or coverage claim.
 
 ### 1. Tier 0 — is drift already self-revealing? (detect existing validation)
 Does the consumer **validate the response against a schema** at the fetch boundary — a Zod `safeParse`, `io-ts`, `yup`, a typed decoder, an explicit runtime shape check? If **yes**, that schema *is* a consumer-side contract: a drift breaks it loudly and `/debug-test --drift` reads it as its oracle. **Recommend nothing new** — adding a differ here is redundant. Report Tier 0 and stop, unless the user explicitly wants the published-spec cross-check anyway.
 
 ### 2. Tier 1 — no validation? recommend (and scaffold) it — the light play
-If the consumer reads **untyped JSON** (raw `.json()` result, no runtime check), the cheapest durable fix is **response-schema validation at the fetch boundary**. **Propose** it, and **scaffold** a starter schema from the shape the consumer actually reads (the fields it destructures/accesses, inferred types). This makes *future* drift self-diagnosing — promoting the frontend into the Tier-0 case — and is more on-domain than a bespoke snapshot guard. **Proposed, never applied** — the human adopts it ([ADR-0002](../../docs/adr/0002-sentinel-is-judgment-not-release-evidence.md), [ADR-0003](../../docs/adr/0003-prune-tests-proposes-before-deleting.md)).
+If the consumer reads **untyped JSON** (raw `.json()` result, no runtime check), the cheapest durable fix is **response-schema validation at the fetch boundary**. **Propose** it, and **scaffold** a starter schema from the shape the consumer actually reads (the fields it destructures/accesses, inferred types). This makes *future* drift self-diagnosing — promoting the frontend into the Tier-0 case — and is more on-domain than a bespoke snapshot guard. **Proposed, never applied** — the human adopts it ([ADR-0002](../../docs/adr/0002-sentinel-is-judgment-not-release-evidence.md), [ADR-0003](../../docs/adr/0003-prune-tests-proposes-before-deleting.md)). Tier 1 keeps precedence over Tier 1b below — fetch-boundary validation is still the better durable fix wherever the team can actually merge it.
 
-### 3. Tier 2 — differ the expected shape against the published spec
+### 3. Tier 1b — a published spec is available too? also recommend test-boundary validation
+Fires under the **same condition as Tier 1** (untyped JSON) *plus* a published spec being available. The frontend/QA-SDET frequently **can't merge** into the application repo to land Tier 1 — that's the backend or app-review team's queue. Test-boundary validation is the complement: a one-line assertion **inside the suite the SDET already owns**, validating the live response against the provider's published document — zero production code, nothing to get another team's sign-off on ([ADR-0049](../../docs/adr/0049-contract-guard-test-boundary-validation-tier.md)).
+
+**Propose** it, naming the plugin matching the consumer suite's runner — the *current* packages, not their more-downloaded superseded predecessors:
+- Cypress → `cypress-schema-validator` (not `cypress-ajv-schema-validator`, which it supersedes)
+- Playwright → `playwright-schema-validator` (not `playwright-ajv-schema-validator`, which it supersedes)
+
+Both are MIT and wrap `core-ajv-schema-validator` as their engine — named here as what a user adopting the plugin gets transitively, **never** a dependency of this skill's own. **Proposed, never installed or run** ([ADR-0003](../../docs/adr/0003-prune-tests-proposes-before-deleting.md), [ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)): show the one-line assertion shape (`cy.request(...).validateSchema(openApiDoc, { endpoint, method, status })`); never run `npm install` or execute anything.
+
+**Every Tier 1b recommendation carries its drift-coverage — read `required` on the resolved operation.** For the response schema of the operation the endpoint maps to (the same resolution Tier 2 performs below), read its `required` array and state **categorically** which of the three named drifts (rename, drop, retype) the proposed validation would actually catch on *this* operation, naming the uncovered fields — no percentage, no global claim ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)):
+- **Fields in `required`** — retype, drop, *and* rename are all caught (a missing/renamed required field fails validation on its own).
+- **Fields not in `required`** — only retype is caught. A drop or rename of that field survives silently, because its absence was already schema-valid.
+
+> *This validation will catch **retypes**. It will **not** catch a drop or rename of `label`, `capacity`, `notes` — the schema declares no `required`.*
+
+This is the **same `required` read** that flags optional/nullable fields below — computed once per resolved operation, reused by both.
+
+**Honest degrade.** If the endpoint can't be resolved to an operation, or the document is malformed, the coverage line degrades to `no-spec` the same way Tier 2 does: state that coverage can't be determined — **never** a fabricated catches/misses claim.
+
+### 4. Tier 2 — differ the expected shape against the published spec
 For the segment the light play can't resolve *in the moment* — an **empty-diff drift** (the consumer repo changed nothing, yet the suite is red) with **no** response validation — compare, statically:
 - **Consumer-expected shape** = the fields/types the frontend reads (or its in-code schema if one exists — that's both the Tier-0 signal and a precise expectation source).
 - **Published shape** = the response schema of the **operation** the endpoint maps to. Resolve `METHOD + path` to the OpenAPI path item + operation, then its success-response schema (`components/schemas` `$ref`s followed). If the endpoint can't be located, or the document is malformed → **honest degrade** to `no-spec` (do **not** guess a match).
@@ -36,9 +55,9 @@ The verdict turns on **whether the published spec still matches what the consume
 - **`suspected-break`** — **S still matches E, yet the test is red**: the live response is deviating from the provider's *own* published contract (an *undocumented* change) → route to `/bug-report` (via the `Skill` tool) pointing at the field. Do **not** green-lock the consumer to the drifted value.
 - **`no-spec`** — no published spec, endpoint unlocatable, or malformed doc → cannot confirm intent → treat as **suspected break** (never green-lock); recommend Tier 1 and a cross-team ask. Never a fabricated verdict.
 
-Also flag, independently of the verdict, any field the consumer treats as required that S marks **optional/nullable** — a latent intermittent break the current red may not have surfaced yet.
+**Optional/nullable — first-class output, not a footnote.** The `required` read from Tier 1b above is reused here: any field the consumer treats as always-present that S marks **optional/nullable** (absent from `required`) is a latent intermittent break the current red may not have surfaced yet. EXPERIMENT-0049 found this is the **majority case across published response schemas, not an edge one** — so report it in the output alongside the verdict every time a spec resolves, independently of which verdict fires.
 
-### 4. Surface — challenger's flag, never a decision
+### 5. Surface — challenger's flag, never a decision
 Present the verdict, the field-level diff, and **both** dispositions (accept-and-update / stop-and-escalate). The **decision is always the human's** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)): `contract-guard` never silently heals the test, never silently edits the consumer, and never unilaterally blames the backend. `/debug-test --drift` consumes this verdict to classify and route the red; the win is **shift-left** — surfacing the mismatch early, from the consumer side, with the evidence a human needs.
 
 ## Output Format
@@ -46,15 +65,21 @@ Present the verdict, the field-level diff, and **both** dispositions (accept-and
 ```
 ## contract-guard: [METHOD /endpoint] · [spec: path/URL | none]
 
-### Tier → [0 already-validated | 1 recommend-validation | 2 differ]
+### Tier → [0 already-validated | 1 recommend-validation | 1b recommend-test-boundary-validation | 2 differ]
 [Tier 0] Consumer safeParses this response (`RoomSchema`) — drift is self-revealing, no new guard needed. `/debug-test --drift` reads it as the oracle.
 [Tier 1] Consumer reads untyped JSON. Proposed (lighter than a standing differ — it makes future drift self-diagnosing at the fetch boundary): response-schema validation. Scaffold:
   <starter schema from the fields the consumer reads>  (proposed — you apply it)
+[Tier 1b] Published spec available too. Also proposed: test-boundary validation inside the suite — `<cypress-schema-validator | playwright-schema-validator>`. Proposed, never installed or run:
+  <cy.request(...).validateSchema(openApiDoc, { endpoint, method, status })>  (proposed — you adopt it)
 [Tier 2] Verdict → stale-consumer | suspected-break | no-spec
+
+### Drift-coverage — read off `required` for [METHOD /endpoint]  (Tier 1b, degrades to no-spec)
+Catches: retype (every validated field). Catches drop/rename of: `<fields in required>`.
+Does **not** catch drop/rename of: `<fields not in required>` — the schema doesn't require them.
 
 ### Field-level diff — consumer-expected (E) vs published spec (S)  (Tier 2)
 - `label` → E reads `.label`; S `GET /api/rooms` 200 has `name` (S moved: renamed) — stale-consumer
-- `capacity` → E reads `.capacity`; S marks it optional/nullable — latent intermittent break
+- `capacity` → E reads `.capacity`; S marks it optional/nullable — latent intermittent break (same `required` read as the drift-coverage line above)
 
 ### Disposition  (challenger's flag — human decides)
 [stale-consumer] Deliberate evolution (spec documents the new shape) → consumer is stale. Proposed update: <diff>. Accept only if the change was intended.
@@ -64,6 +89,7 @@ Present the verdict, the field-level diff, and **both** dispositions (accept-and
 ## Notes
 
 - **Tiered by evidence, not by default.** EXPERIMENT-0018 (n=2 apps, blinded, injected drift) found the differ's value **conditional** — redundant where the frontend already validates responses, load-bearing only for the untyped + empty-diff segment. The tiers *are* that finding; **no large-N / rate claim** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
+- **Tier 1b is qualified, not a flat recommendation.** EXPERIMENT-0049 mutation-tested published response schemas and found test-boundary validation reliably catches retypes but is selectively blind to drop/rename wherever the operation's schema declares no `required` — a bimodal, not rare, condition. Recommending the plugin unqualified would print a false ✅ on exactly the drift this skill's own worked example uses (a rename). The per-operation drift-coverage line is how Tier 1b stays honest about a tool it recommends but never runs ([ADR-0049](../../docs/adr/0049-contract-guard-test-boundary-validation-tier.md)).
 - **Static-judgment only** ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)). Reads source, in-code schemas, and the **published** contract (file or URL). Snapshotting a **live** response is an execution-layer artifact (Gate), out of scope — and a snapshot carries no deliberate-vs-accidental signal anyway; the published spec does.
 - **Composes, doesn't duplicate.** `/debug-test --drift` keeps its lightweight *inline* contract check for the schema-at-hand case and **recommends** `contract-guard` for the harder job (locate/parse the published spec, derive the expected shape, resolve the operation). Classifier stays in drift-mode; the contract comparison lives here.
 - **REST + OpenAPI/Swagger in v0.** GraphQL and other contract formats are a later increment — stated as a gap, not faked.
