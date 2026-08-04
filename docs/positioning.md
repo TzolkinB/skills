@@ -172,12 +172,15 @@ one costs exactly the trust this audience is slowest to give.
   external traceability matrix against `audit-test` — requirement→test mapping stays TEA `trace`'s
   turf, and there is no claim to make without a matrix someone actually ran. Never say "business-risk
   coverage" as a standalone capability; always name the join (trace matrix + audit-test) and that a
-  requirement never appears unless the matrix named it first. The path is runnable end to end as of
-  [#220](https://github.com/TzolkinB/skills/issues/220) — `tea-to-trace-matrix.mjs` converts a real TEA
-  `trace` run into the matrix, so "run TEA `trace`, convert, gate" is a demo, not a description. Say
-  *converted from a TEA run*, never *integrated with TEA*: nothing calls TEA, and the conversion reads
-  one temp artifact TEA never published as a schema
-  ([ADR-0050](adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
+  requirement never appears unless the matrix named it first. As of
+  [#220](https://github.com/TzolkinB/skills/issues/220) the hand-conversion step is gone —
+  `tea-to-trace-matrix.mjs` turns a `trace` run's own output into the matrix. Claim that at its real
+  strength and no higher: the convert→gate half runs end to end in CI against a fixture, but the
+  fixture is built from TEA's **source**, not captured from an observed `trace` run — **Confirmed at
+  source, Unexamined at runtime**. So "you can run TEA `trace` and gate its output" is fair; "we ran
+  TEA and it worked" is not, until someone does. Say *converted from a TEA run*, never *integrated
+  with TEA*: nothing calls TEA, and the conversion reads one temp artifact TEA never published as a
+  schema ([ADR-0050](adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
 
 ## The honest weaknesses
 

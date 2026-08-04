@@ -351,10 +351,13 @@ function statement(predicateType, predicate) {
 // `gate-trace-matrix/v0` (schema/trace-matrix.v0.schema.json) is Gate's OWN minimal shape, not
 // TEA's internal format (orchestrate-don't-couple) — see that schema file's header for why. A
 // user (or a small adapter) converts a `trace` run's output into this shape.
-const TRACE_MATRIX_SCHEMA = 'gate-trace-matrix/v0';
-const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
+// Exported (#220) so `tea-to-trace-matrix.mjs` reuses these vocabularies rather than keeping a
+// second copy that could drift: a converter that refuses a `gateStatus` Gate would have accepted
+// is a silent, one-sided break. No behaviour here changes — only the visibility of the constants.
+export const TRACE_MATRIX_SCHEMA = 'gate-trace-matrix/v0';
+export const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
 const PRESENCE_STATUSES = ['FULL', 'PARTIAL', 'NONE'];
-const MATRIX_GATE_STATUSES = ['PASS', 'CONCERNS', 'FAIL', 'WAIVED', 'NOT_EVALUATED']; // producer-agnostic — TEA's own vocabulary, but any producer's `gateStatus` must be one of these
+export const MATRIX_GATE_STATUSES = ['PASS', 'CONCERNS', 'FAIL', 'WAIVED', 'NOT_EVALUATED']; // producer-agnostic — TEA's own vocabulary, but any producer's `gateStatus` must be one of these
 
 // Validate the matrix's shape — same "a producer wrote this, never trust it blind" posture as
 // `parseAuditEmission`. Returns a normalised matrix, or null if malformed so the caller can

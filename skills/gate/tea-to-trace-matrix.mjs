@@ -55,18 +55,16 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 
-// The one import that matters: the conversion's output is validated by the EXACT function that
-// will ingest it (`gate.mjs`'s own `parseTraceMatrix`), not by a second copy of those rules that
-// could drift away from it. If Gate would reject the bytes, this script refuses to write them.
-import { parseTraceMatrix } from './gate.mjs';
+// The imports that matter: the conversion's output is validated by the EXACT function that will
+// ingest it (`gate.mjs`'s own `parseTraceMatrix`), and it checks values against the EXACT
+// vocabularies Gate checks them against — not by a second copy of either that could drift away.
+// A converter that refuses a `gateStatus` Gate would have accepted is a silent, one-sided break.
+import { parseTraceMatrix, TRACE_MATRIX_SCHEMA, PRIORITIES, MATRIX_GATE_STATUSES } from './gate.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
-const TRACE_MATRIX_SCHEMA = 'gate-trace-matrix/v0';
 const ADAPTER_ID = 'tea-to-trace-matrix/v0';
 const TEA_PHASE_SENTINEL = 'PHASE_1_COMPLETE'; // step-05 §1 checks this exact value before trusting the file
-const PRIORITIES = ['P0', 'P1', 'P2', 'P3'];
-const MATRIX_GATE_STATUSES = ['PASS', 'CONCERNS', 'FAIL', 'WAIVED', 'NOT_EVALUATED'];
 const TEST_KEY_MODES = ['path', 'basename'];
 
 // TEA's coverage vocabulary is FIVE-valued, not three (step-03 §1: "Mark coverage status: FULL /
@@ -242,6 +240,12 @@ export function convertTeaCoverageMatrix(tea, { testKey = 'path', gateStatus = n
     // A basename key is only safe while basenames are unique across the mapped files. Two
     // `booking.spec.ts` in different directories collapse into one key that could join to the
     // WRONG test's run record — a false mutation-proven, the worst failure this repo can ship.
+    //
+    // KNOWN LIMIT, and it is not closeable here: this sees only the files TEA mapped. If the
+    // ambiguity lives on the `audit-test` side — its emission already spells files as basenames,
+    // so the directory that would distinguish them is gone before this script ever sees it — no
+    // check on either side can detect it, and the cross-check below would count a wrong match as a
+    // match. That is the real cost of basename keys, and why `path` is the default.
     for (const [base, paths] of dirsByBasename) {
       if (paths.size > 1) {
         errors.push(
@@ -323,8 +327,15 @@ export function parseTeaGateStatus(raw) {
 // requirement renders `unverified`, and the report LOOKS like an honest coverage answer. So
 // measure the overlap and say it out loud. It never rewrites a key: forcing keys to match would
 // manufacture exactly the join this repo exists to make trustworthy.
+//
+// A DIAGNOSTIC MUST NEVER BE FATAL. The tally arrives as whatever JSON the user pointed at — it is
+// NOT validated by `parseAuditEmission` here (Gate does that later, and rejecting it is Gate's call
+// to make, not this script's). So read it defensively: a `runs` that isn't an array, or a record
+// with no string `test`, degrades to "no records to compare against" — never a stack trace that
+// kills a conversion which had already passed every real guard.
 export function crossCheckJoinKeys(matrix, tally) {
-  const runKeys = new Set((tally?.runs ?? []).map((r) => r.test));
+  const runs = Array.isArray(tally?.runs) ? tally.runs : [];
+  const runKeys = new Set(runs.map((r) => (typeof r?.test === 'string' ? r.test : null)).filter(Boolean));
   const runBasenames = new Set([...runKeys].map(basenameKey));
   const mapped = [...new Set(matrix.requirements.flatMap((r) => r.tests))];
   const matched = mapped.filter((k) => runKeys.has(k));
@@ -342,10 +353,12 @@ function basenameKey(key) {
 // ---- CLI ------------------------------------------------------------------
 
 function main(argv) {
+  // Same argv shape as gate.mjs's `main()`, including the `s` flag: a value containing a newline
+  // is still a value, not a bare flag.
   const opts = {};
   const flags = new Set();
   for (const a of argv) {
-    const m = a.match(/^--([^=]+)=(.*)$/);
+    const m = a.match(/^--([^=]+)=([\s\S]*)$/s);
     if (m) opts[m[1]] = m[2];
     else flags.add(a);
   }
@@ -483,7 +496,11 @@ function reportCrossCheck({ mapped, matched, unmatched, basenameRescuable, runRe
     );
   }
   if (testKey === 'basename') {
-    console.error('ℹ keys=basename: the matrix identifies tests by filename only. That is fine while filenames are unique (the conversion checked), but it is a weaker identity than a path.');
+    console.error(
+      'ℹ keys=basename: the matrix identifies tests by filename only. The conversion checked that the files TEA mapped have unique ' +
+        'basenames — it CANNOT check the audit-test side, whose own identifiers already dropped the directory, so a same-named spec ' +
+        'in two directories there would join to the wrong record undetected. Prefer --test-key=path once both sides agree on paths.',
+    );
   }
 }
 
@@ -523,40 +540,40 @@ function runSelfTest() {
     { id: 'REQ-BOOKING-SLA', priority: 'P3', status: 'NONE', tests: [], teaCoverage: 'NONE' },
   ];
 
-  const base = convertTeaCoverageMatrix(fixture(), { testKey: 'basename', gateStatus: 'CONCERNS' });
-  check('fixture converts with no errors', base.errors.length === 0 && base.matrix !== null);
+  const basenameKeyed = convertTeaCoverageMatrix(fixture(), { testKey: 'basename', gateStatus: 'CONCERNS' });
+  check('fixture converts with no errors', basenameKeyed.errors.length === 0 && basenameKeyed.matrix !== null);
   check('every row matches the golden expectation (order, ids, priorities, mapped statuses, keys)',
-    JSON.stringify(base.matrix?.requirements) === JSON.stringify(EXPECTED_BASENAME_ROWS));
-  check('the output declares Gate\'s schema, not TEA\'s', base.matrix?.schema === TRACE_MATRIX_SCHEMA);
-  check('gateStatus rides through as an informational passthrough', base.matrix?.gateStatus === 'CONCERNS');
+    JSON.stringify(basenameKeyed.matrix?.requirements) === JSON.stringify(EXPECTED_BASENAME_ROWS));
+  check('the output declares Gate\'s schema, not TEA\'s', basenameKeyed.matrix?.schema === TRACE_MATRIX_SCHEMA);
+  check('gateStatus rides through as an informational passthrough', basenameKeyed.matrix?.gateStatus === 'CONCERNS');
   check('producer names TEA, the oracle basis, the key mode, and this adapter',
-    /TEA trace \(bmad-testarch-trace\)/.test(base.matrix?.producer ?? '') &&
-      /oracle formal_requirements\/high/.test(base.matrix?.producer ?? '') &&
-      /keys=basename/.test(base.matrix?.producer ?? '') &&
-      base.matrix.producer.includes(ADAPTER_ID));
+    /TEA trace \(bmad-testarch-trace\)/.test(basenameKeyed.matrix?.producer ?? '') &&
+      /oracle formal_requirements\/high/.test(basenameKeyed.matrix?.producer ?? '') &&
+      /keys=basename/.test(basenameKeyed.matrix?.producer ?? '') &&
+      basenameKeyed.matrix.producer.includes(ADAPTER_ID));
 
   // The whole point of the belt-and-braces check in main(): Gate's own ingest must accept it.
   check("the converted matrix passes gate.mjs's OWN parseTraceMatrix (not a second copy of those rules)",
-    parseTraceMatrix(JSON.stringify(base.matrix)) !== null);
+    parseTraceMatrix(JSON.stringify(basenameKeyed.matrix)) !== null);
 
   // TEA's 5-value vocabulary -> Gate's 3-value one, and the verbatim value preserved on the row.
-  const fee = base.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-FEE');
-  const exp = base.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-EXPORT');
+  const fee = basenameKeyed.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-FEE');
+  const exp = basenameKeyed.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-EXPORT');
   check('UNIT-ONLY maps to PARTIAL, never FULL (never widens TEA\'s own presence call)', fee.status === 'PARTIAL' && fee.teaCoverage === 'UNIT-ONLY');
   check('INTEGRATION-ONLY maps to PARTIAL, and TEA\'s verbatim value survives on the row', exp.status === 'PARTIAL' && exp.teaCoverage === 'INTEGRATION-ONLY');
   check('a test titled with TEA\'s `name` alias is keyed, not dropped', exp.tests[0] === 'booking.spec.ts::exports a booking receipt');
-  const roomlist = base.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-ROOMLIST');
+  const roomlist = basenameKeyed.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-ROOMLIST');
   check('a test mapped twice in one row is deduped to one key, order preserved', roomlist.tests.length === 2 && roomlist.tests[0].endsWith('renders the room list'));
   check('a skipped test is KEPT in the matrix (dropping it would rewrite TEA\'s presence call)',
-    base.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-A11Y').tests.length === 1);
+    basenameKeyed.matrix.requirements.find((r) => r.id === 'REQ-BOOKING-A11Y').tests.length === 1);
   check('…and is disclosed as a note, because a test that never runs can never be mutation-proven',
-    base.notes.some((n) => /skipped\/fixme\/pending/.test(n) && /unverified/.test(n)));
+    basenameKeyed.notes.some((n) => /skipped\/fixme\/pending/.test(n) && /unverified/.test(n)));
 
   // --test-key: the same fixture, both spellings.
-  const path = convertTeaCoverageMatrix(fixture(), { testKey: 'path' });
+  const pathKeyed = convertTeaCoverageMatrix(fixture(), { testKey: 'path' });
   check('--test-key=path (the default) keys tests by the file path TEA recorded',
-    path.errors.length === 0 && path.matrix.requirements[0].tests[0] === 'tests/e2e/booking.spec.ts::rejects overlapping bookings');
-  check('--test-key is recorded in producer, so a reader can tell which spelling produced the matrix', /keys=path/.test(path.matrix.producer));
+    pathKeyed.errors.length === 0 && pathKeyed.matrix.requirements[0].tests[0] === 'tests/e2e/booking.spec.ts::rejects overlapping bookings');
+  check('--test-key is recorded in producer, so a reader can tell which spelling produced the matrix', /keys=path/.test(pathKeyed.matrix.producer));
   check('an unknown --test-key is refused, not silently defaulted', convertTeaCoverageMatrix(fixture(), { testKey: 'nope' }).errors.length === 1);
 
   // Basename-collision guard — the one way a basename key can join to the WRONG test.
@@ -627,21 +644,34 @@ function runSelfTest() {
     parseTeaGateStatus({ schema_version: '0.1.0', collection_status: 'INVENTORY_ONLY' }).status === 'NOT_EVALUATED');
   check('an out-of-vocabulary gate_status is rejected, not passed through', parseTeaGateStatus({ gate_status: 'GREEN' }).error !== null);
   check('an unrelated JSON file is rejected', parseTeaGateStatus({ hello: 'world' }).error !== null);
+  check('every gateStatus Gate accepts is accepted here too — the vocabularies are one shared constant, not two copies that can drift',
+    MATRIX_GATE_STATUSES.every((s) => parseTeaGateStatus({ gate_status: s }).status === s));
 
   // Join-key cross-check — the diagnostic that catches the path-vs-basename miss.
   const tally = JSON.parse(readFileSync(resolve(HERE, 'fixtures/audit-test.confirmed-with-runs.json'), 'utf8'));
-  const xBase = crossCheckJoinKeys(base.matrix, tally);
+  const xBase = crossCheckJoinKeys(basenameKeyed.matrix, tally);
   check('cross-check: basename keys match 6 of the 8 mapped tests against the audit-test fixture\'s runs[]',
     xBase.matched.length === 6 && xBase.mapped.length === 8);
-  const xPath = crossCheckJoinKeys(path.matrix, tally);
+  const xPath = crossCheckJoinKeys(pathKeyed.matrix, tally);
   check('cross-check: path keys match NOTHING against a basename-spelled emission — the silent-unverified trap',
     xPath.matched.length === 0);
   check('…and it is diagnosed as rescuable by basename rather than left to look like real "unverified" coverage',
     xPath.basenameRescuable.length === 6);
   check('cross-check never rewrites a key (the matrix is unchanged after the check)',
-    path.matrix.requirements[0].tests[0] === 'tests/e2e/booking.spec.ts::rejects overlapping bookings');
+    pathKeyed.matrix.requirements[0].tests[0] === 'tests/e2e/booking.spec.ts::rejects overlapping bookings');
   check('cross-check against an emission with no runs[] reports zero available records, not zero matches',
-    crossCheckJoinKeys(base.matrix, { runs: [] }).runRecords === 0);
+    crossCheckJoinKeys(basenameKeyed.matrix, { runs: [] }).runRecords === 0);
+  // A DIAGNOSTIC MUST NOT BE FATAL: the tally is whatever JSON the user pointed at — this script
+  // never validates it (that is Gate's call), so every malformed shape has to degrade, not throw.
+  const malformedTallies = [{ runs: {} }, { runs: [null] }, { runs: [{ test: 42 }] }, { runs: 'nope' }, {}, null, 'not-an-object'];
+  check('cross-check survives every malformed audit-test shape (a diagnostic must never kill a conversion that already passed every guard)',
+    malformedTallies.every((t) => {
+      try {
+        return crossCheckJoinKeys(basenameKeyed.matrix, t).runRecords === 0;
+      } catch {
+        return false;
+      }
+    }));
 
   // The committed golden file is what the tool actually produces today.
   const golden = JSON.parse(readFileSync(resolve(HERE, 'fixtures/tea/trace-matrix.from-tea.json'), 'utf8'));
@@ -697,6 +727,19 @@ function runEndToEndSelfTest(check) {
       rollup?.rows?.find((r) => r.state === 'hollow')?.id === 'REQ-BOOKING-ERROR-LOG');
     check("e2e: TEA's own categorical gate rides through to Gate's report as a cross-reference",
       /matrix gate: CONCERNS/.test(gate.stdout ?? ''));
+
+    // …and the same thing through the CLI: a malformed tally must cost the cross-check, not the conversion.
+    const junkTally = join(tmpDir, 'junk-tally.json');
+    writeFileSync(junkTally, JSON.stringify({ schema: 'gate-audit-test/v0.3', runs: { nope: true } }));
+    const junkOut = join(tmpDir, 'still-written.json');
+    const junkRun = run(self, [
+      `--coverage-matrix=${resolve(HERE, 'fixtures/tea/coverage-matrix.phase1.json')}`,
+      `--audit-test-json=${junkTally}`,
+      '--test-key=basename',
+      `--out=${junkOut}`,
+    ]);
+    check('e2e: a malformed --audit-test-json still exits 0 and still writes the matrix (no stack trace)',
+      junkRun.status === 0 && existsSync(junkOut) && !/TypeError|at Object\.|at Module\._compile/.test(junkRun.stderr ?? ''));
 
     // A refusal writes nothing and exits non-zero — a conversion tool must not leave a half-file behind.
     const badPath = join(tmpDir, 'should-not-exist.json');

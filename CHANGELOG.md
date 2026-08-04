@@ -38,8 +38,12 @@ release heading.
   bytes Gate would reject. `--audit-test-json` cross-checks how many keys actually join *before* gating —
   TEA spells files as repo paths while an `audit-test` emission may use basenames, and a zero-match matrix
   yields a complete, honest-looking report in which every requirement reads `unverified`; `--test-key=basename`
-  is the disclosed fix, refused when two directories share a spec basename. **`gate.mjs` is unchanged** — the
-  converter is a separate script precisely so the gate never learns a tool's private format.
+  is the disclosed fix, refused when two directories share a spec basename **among the files TEA mapped** (an
+  ambiguity that exists only on the `audit-test` side is undetectable by construction — which is why `path` is
+  the default). **`gate.mjs` gains no gate logic** — only three `export` keywords, so the converter shares its
+  constants instead of copying them; the conversion stays a separate script precisely so the gate never learns
+  a tool's private format. The TEA-side fixture is built from TEA's source, not captured from an observed
+  `trace` run: **Confirmed at source, Unexamined at runtime** (ADR-0050 Consequences).
 
 - **`gate`: business-risk coverage — a stateless join over an external trace matrix + `audit-test`, not a risk register** —
   [#199](https://github.com/TzolkinB/skills/issues/199), builds

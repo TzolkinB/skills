@@ -123,7 +123,9 @@ Three things to relay honestly rather than work around:
   match a `runs[]` record. TEA spells files as repo paths; an `audit-test` emission may use basenames — if
   *none* match, it says so and names `--test-key=basename` as the fix. A matrix whose keys never match
   still produces a full, plausible-looking report in which every requirement reads `unverified`. Surface that
-  warning to the user; never silently gate on a zero-match matrix.
+  warning to the user; never silently gate on a zero-match matrix. Note the one-sided limit it prints in
+  basename mode: it can only check the files TEA mapped, so a same-named spec in two directories on the
+  `audit-test` side is undetectable — prefer `--test-key=path` whenever both sides can agree on paths.
 
 ### 2. Run the deterministic gate
 Run the bundled script from **this skill's base directory** (shown to you when the skill was invoked):
@@ -395,8 +397,10 @@ maintains (ADR-0045) …
   `INTEGRATION-ONLY` → `PARTIAL` (never `FULL` — a conversion may not widen TEA's own presence call), keeping
   TEA's verbatim value on each row as `teaCoverage`. The converter lives **outside** `gate.mjs` on purpose —
   teaching the gate to read a tool's private format is exactly the coupling `gate-trace-matrix/v0` exists to
-  avoid — and validates its output by importing `gate.mjs`'s own `parseTraceMatrix`, so it can never emit bytes
-  Gate would reject.
+  avoid — and validates its output by importing `gate.mjs`'s own `parseTraceMatrix` and its exported vocabularies,
+  so it can never emit bytes Gate would reject nor refuse a value Gate would have accepted. `gate.mjs` gains no
+  gate logic from this change: only three `export` keywords. The TEA-side fixture is built from TEA's **source**,
+  not captured from an observed `trace` run — Confirmed at source, Unexamined at runtime (ADR-0050 Consequences).
 - **Coverage-aware ship gate — the examined-floor** ([#127](https://github.com/TzolkinB/skills/issues/127),
   [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)). A confirmed-clean verdict alone used to be enough to
   ship, even if `deepAudited` was a small minority of `audited` (the shipped fixture used to be `4 of 12` — 33%).

@@ -40,39 +40,13 @@ whatever happens to sit at a line number that drifts on the next edit. A wrong k
 and renders `unverified` — a confident, honest-looking claim about coverage that is not true. That
 is the exact failure mode this repo exists to refuse.
 
-## Decision
-
-**1. Convert from the Phase-1 coverage-matrix JSON.** `tea-to-trace-matrix.mjs` takes
-`--coverage-matrix=<that file>`, or `--trace-md=<traceability-matrix.md>` and follows its
-`tempCoverageMatrixPath` frontmatter pointer. It never parses the Markdown body.
-
-**2. Refuse rather than approximate.** Anything unconvertible — an unrecognized coverage value, a
-missing priority, a test with no title, a `NONE` row carrying tests, a duplicate id — refuses the
-whole conversion, names the offending row, and writes nothing. Empty beats wrong; this is the same
-posture `gate.mjs` already takes when one impossible row rejects a whole matrix. The output is
-validated by importing `gate.mjs`'s own `parseTraceMatrix`, not by a second copy of those rules that
-could drift away from it.
-
-**3. `UNIT-ONLY` and `INTEGRATION-ONLY` map to `PARTIAL`.** TEA's coverage vocabulary is *five*-valued
-(step-03 §1), Gate's is three. A test exists, so `NONE` would understate (and violate the schema's
-tests-non-empty-iff-covered invariant); TEA is saying the requirement is covered at one level only, so
-`FULL` would widen TEA's own presence call, which a conversion is never allowed to do. TEA's verbatim
-value rides along on each row as `teaCoverage` so the flattening is visible in the artifact.
-
-**4. The adapter stays a separate script.** Teaching `gate.mjs` to read TEA's internal format would
-couple the gate to one tool's private shape — precisely what defining our own `gate-trace-matrix/v0`
-avoided (ADR-0045, orchestrate-don't-couple). Another producer writes its own adapter; Gate is
-unchanged, and this change adds **zero** lines to `gate.mjs`.
-
-**5. Disclose the join-key spelling instead of silently normalising it.** TEA records files as repo
-paths (`tests/e2e/booking.spec.ts`); an `audit-test` emission may name the same test by basename.
-Every key then misses and every covered requirement renders `unverified`. `--test-key=path|basename`
-makes the spelling an explicit, disclosed choice (recorded in `producer`, which Gate prints), and
-`--audit-test-json` cross-checks the real overlap before Gate ever runs. Basename mode **refuses**
-when two directories share a spec basename — collapsing them could join a requirement to a *different
-file's* run record, a false `mutation-proven`, which is worse than no join at all. The cross-check
-never rewrites a key: forcing keys to match would manufacture the very join this is supposed to make
-trustworthy.
+**How the Phase-1 shape was established — and how strongly.** By reading TEA's own step files, not
+its documentation (TEA publishes no schema for this file) and **not by executing a `trace` run**:
+step-04 §5 constructs the object, step-04 §6 writes it, step-05 §1 reads it back and checks
+`phase === 'PHASE_1_COMPLETE'`, and step-05 §3b iterates `requirements[].tests[]` reading
+`title || name`, `file`, `level` and the skip flags. Producer and consumer are the same workflow, so
+this is source-Confirmed at both ends — but it is **not** runtime-observed, and #220 asked for that
+(see Consequences).
 
 ## Considered options
 
@@ -89,25 +63,73 @@ trustworthy.
   Rejected for now — it makes our schema TEA's problem, needs an upstream change to land before
   anything works here, and would still leave every other producer without a path. Reconsider as an
   upstream contribution once the shape has held for a while.
+- **Install BMAD and drive a real `trace` run to capture ground truth first**, as #220's first
+  checklist item asked. **Not done** — recorded here rather than quietly dropped. `trace` is an
+  agent-driven workflow whose artifacts an LLM writes step by step, so "running it" here would have
+  meant *this* model producing the fixture and then treating its own output as external evidence —
+  the model-self-report laundering this repo already refuses elsewhere. Reading the producer *and*
+  consumer code was the stronger available check, and every field it relies on is guarded at
+  runtime. The empirical capture stays open (see Consequences); it is a verification gap, not a
+  design one.
 - **Convert from the Phase-1 coverage-matrix JSON.** Chosen.
+
+## Decision
+
+**1. Convert from the Phase-1 coverage-matrix JSON.** `tea-to-trace-matrix.mjs` takes
+`--coverage-matrix=<that file>`, or `--trace-md=<traceability-matrix.md>` and follows its
+`tempCoverageMatrixPath` frontmatter pointer. It never parses the Markdown body.
+
+**2. Refuse rather than approximate.** Anything unconvertible — an unrecognized coverage value, a
+missing priority, a test with no title, a `NONE` row carrying tests, a duplicate id — refuses the
+whole conversion, names the offending row, and writes nothing. Empty beats wrong; this is the same
+posture `gate.mjs` already takes when one impossible row rejects a whole matrix. The output is
+validated by importing `gate.mjs`'s own `parseTraceMatrix`, and values are checked against
+`gate.mjs`'s own exported vocabularies — never a second copy of either that could drift.
+
+**3. `UNIT-ONLY` and `INTEGRATION-ONLY` map to `PARTIAL`.** TEA's coverage vocabulary is *five*-valued
+(step-03 §1), Gate's is three. A test exists, so `NONE` would understate (and violate the schema's
+tests-non-empty-iff-covered invariant); TEA is saying the requirement is covered at one level only, so
+`FULL` would widen TEA's own presence call, which a conversion is never allowed to do. TEA's verbatim
+value rides along on each row as `teaCoverage` so the flattening is visible in the artifact.
+
+**4. The adapter stays a separate script.** Teaching `gate.mjs` to read TEA's internal format would
+couple the gate to one tool's private shape — precisely what defining our own `gate-trace-matrix/v0`
+avoided (ADR-0045, orchestrate-don't-couple). Another producer writes its own adapter; `gate.mjs`
+gains no gate logic from this change (only three `export` keywords, so the converter shares its
+constants instead of copying them).
+
+**5. Disclose the join-key spelling instead of silently normalising it.** TEA records files as repo
+paths (`tests/e2e/booking.spec.ts`); an `audit-test` emission may name the same test by basename.
+Every key then misses and every covered requirement renders `unverified`. `--test-key=path|basename`
+makes the spelling an explicit, disclosed choice (recorded in `producer`, which Gate prints), and
+`--audit-test-json` cross-checks the real overlap before Gate ever runs. Basename mode **refuses**
+when two directories share a spec basename **among the files TEA mapped** — collapsing them could
+join a requirement to a *different file's* run record, a false `mutation-proven`, which is worse than
+no join at all. The cross-check never rewrites a key: forcing keys to match would manufacture the
+very join this is supposed to make trustworthy.
 
 ## Consequences
 
+- **The empirical capture #220 asked for remains open.** The shape is established from TEA's own
+  producer and consumer code, not from an observed run. Under this repo's own provenance labels
+  ([ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md)) the artifact shape is
+  **Confirmed at source, Unexamined at runtime** — say it that way, and don't let "runs end to end"
+  imply a real TEA run was in the loop: the adapter's subprocess self-test is genuinely end to end
+  (converter → `gate.mjs` → business-risk rollup), but its TEA-side input is a fixture built from
+  the source, not captured output. A real `trace` run against a fixture repo is still worth doing;
+  the cost of it being wrong is bounded by the drift guards, which refuse rather than mis-parse.
 - **The input is a temp file.** TEA writes it under `/tmp` with a timestamped name, so the
   conversion belongs in the same session as the `trace` run (or the file gets copied somewhere
   durable first). The refusal message says so. If a future TEA release stops writing it, or renames
   the frontmatter pointer, the adapter refuses loudly rather than mis-parsing — the drift guards are
   the fallback, not a Markdown parser.
-- **This tracks a shape TEA never published as a schema.** Field names come from TEA's own step
-  files reading them back (`phase`, `requirements[].id/.priority/.coverage`, `tests[].title|name`,
-  `.file`), not from documentation. The `phase: "PHASE_1_COMPLETE"` sentinel — TEA's own
-  completeness check — is what the adapter verifies first.
+- **The basename guard is one-sided, by construction.** It can only check the files TEA mapped. If
+  the ambiguity lives on the `audit-test` side — whose identifiers may already have dropped the
+  directory — nothing on either side can detect it, and the cross-check would count a wrong match as
+  a match. That is why `path` is the default and why basename mode says so out loud on every run.
 - **A stale `--trace-json` is still stale.** The conversion is a snapshot of one `trace` run; nothing
   binds it to the commit Gate is gating. Gate content-addresses the bytes it was handed, which
   records *what* was joined, not *when* it was true.
-- **`positioning.md`'s business-risk-coverage claim now has a runnable path end to end** — TEA run →
-  convert → `--trace-json` — proven in the adapter's self-test as a real subprocess chain, not
-  asserted.
 - **Falsifier:** a TEA release that writes per-requirement rows *with test titles* into a durable,
   documented artifact (or that adopts a published schema for the Phase-1 file) would make most of
   this adapter's caution unnecessary and should shrink it.
