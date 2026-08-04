@@ -19,6 +19,25 @@ release heading.
 
 ### Added
 
+- **`gate`: business-risk coverage — a stateless join over an external trace matrix + `audit-test`, not a risk register** —
+  [#199](https://github.com/TzolkinB/skills/issues/199), builds
+  [ADR-0045](docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md). TEA's `trace` workflow is
+  presence-based — verified against its source (v1.19.1): a requirement is marked covered because a
+  matching test *exists*, never because it would fail if the code broke, so a P0 requirement whose only
+  test is hollow reads as covered and gates PASS
+  ([`comparisons/tea.md`](docs/comparisons/tea.md) §3). A new optional `--trace-json` reads a
+  requirement→test matrix in Gate's own minimal shape
+  ([`gate-trace-matrix/v0`](skills/gate/schema/trace-matrix.v0.schema.json), not TEA's internal format)
+  and joins it against `--audit-test-json`'s `runs[]` on test identity, resolving each requirement to
+  **mutation-proven** (every mapped test execution-confirmed solid), **unverified** (mapped, no
+  execution-confirmed evidence), **hollow** (a mapped test survived a mutation — the exact gap this
+  closes), or **not-covered** (the matrix already says so). Deliberately kept out of `gate()`'s decision
+  loop — the entry is appended to the bundle only *after* the ship/canary/hold decision is computed, so
+  it can never become a decision input and a bundle with no `--trace-json` is byte-for-byte unaffected
+  (schema bumped to `gate-evidence-bundle/v0.8`, additive). A malformed matrix is **rejected**, the same
+  distinct-from-absent treatment `--audit-test-json` gets. TEA (`bmad-testarch-trace`) is MIT-licensed
+  (BMad Code, LLC) — confirmed at source; this join reads its own independently-defined schema, not any
+  of TEA's code.
 - **`debug-test`: Step 4.5 classifies the heal instead of trusting the healer's green** —
   [#190](https://github.com/TzolkinB/skills/issues/190), write side of
   [ADR-0047](docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2. The old branch

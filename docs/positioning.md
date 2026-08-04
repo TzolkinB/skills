@@ -92,7 +92,7 @@ left column and introduce the right one once, in context.
 |---|---|---|
 | **coverage illusion** | false-confidence test | Their phrase, and it maps exactly. Use theirs first — it's the single best gift this market has handed us. |
 | pages tested vs pages available | denominator honesty | Lead with a concrete instance, then name it once: *"Gate tells you 12 of 180 discovered tests actually ran — that's denominator honesty."* Never claim it repo-wide: name the place it's missing ([the map](orchestration-map.md#denominator-honesty)) in the same breath. |
-| business risk coverage | — (we have no risk register) | Don't claim it. Say: the risks are only as covered as the tests behind them, and we're what checks those. |
+| business risk coverage | business-risk coverage (a join, not a register) | Gate's `--trace-json` join ([#199](https://github.com/TzolkinB/skills/issues/199), [ADR-0045](adr/0045-business-risk-coverage-is-a-join-not-a-register.md)) resolves each requirement in an external traceability matrix to mutation-proven / unverified / hollow / not-covered — say it as a join over TEA `trace` + `audit-test`, never as a risk register we maintain, and never without the matrix that produced it. |
 | traceability matrix / requirements coverage | presence-based coverage | "Presence is not proof" — a requirement is marked covered because a test *exists*, never because it bites. |
 | release readiness | ship / canary / hold | Ours is categorical and advisory, deliberately without a score. |
 | explainability / "justify the AI's decision" | provenance labels — Confirmed / Likely / Unexamined | Closest thing we have to their ask, and it's genuinely strong. Lead with it in AI-trust conversations. |
@@ -167,8 +167,12 @@ one costs exactly the trust this audience is slowest to give.
 - **No takedowns.** The TEA finding is a claim about the *category*, and TEA is the readable instance
   that lets us make it. TEA is a credibility-side ally; framing it as a target costs us the one
   community already predisposed to agree.
-- **Don't claim business-risk coverage.** We have no risk register and are not building one — that's
-  TEA `trace`'s turf.
+- **Business-risk coverage is a join, never a register.** Gate's `--trace-json` ([#199](https://github.com/TzolkinB/skills/issues/199), [ADR-0045](adr/0045-business-risk-coverage-is-a-join-not-a-register.md))
+  resolves a requirement to mutation-proven / unverified / hollow / not-covered by joining an
+  external traceability matrix against `audit-test` — requirement→test mapping stays TEA `trace`'s
+  turf, and there is no claim to make without a matrix someone actually ran. Never say "business-risk
+  coverage" as a standalone capability; always name the join (trace matrix + audit-test) and that a
+  requirement never appears unless the matrix named it first.
 
 ## The honest weaknesses
 

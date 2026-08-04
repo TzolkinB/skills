@@ -1,6 +1,6 @@
 # gate — one readable evidence bundle, one advisory ship decision
 
-> **Agent instructions:** [`skills/gate/SKILL.md`](../skills/gate/SKILL.md) · **Run:** `/gate [Playwright results.json and/or Cypress result.json] [audit-test emission .json or report .md]`
+> **Agent instructions:** [`skills/gate/SKILL.md`](../skills/gate/SKILL.md) · **Run:** `/gate [Playwright results.json and/or Cypress result.json] [audit-test emission .json or report .md] [optional: a trace-matrix .json]`
 
 ## What it does
 
@@ -30,6 +30,43 @@ floor and still have a real gap the floor doesn't check for:
   It proves nothing about whether any producer's report was honest in the first place — Gate signs its
   own bundle, not the truthfulness of what went into it.
 
+## Business-risk coverage (optional, `--trace-json`)
+
+*"What business risks are actually covered?"* — answered as a **stateless join**, never a risk
+register Gate maintains itself ([#199](https://github.com/TzolkinB/skills/issues/199),
+[ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). Pass an optional
+requirement→test traceability matrix (`--trace-json`, [`gate-trace-matrix/v0`](../skills/gate/schema/trace-matrix.v0.schema.json)
+— Gate's **own** minimal shape, not any external tool's internal format; a small adapter converts a
+`trace` run's output into it) alongside `--audit-test-json`, and Gate resolves each requirement into
+one of four states instead of the bare presence bit a traceability matrix alone gives you:
+
+- **covered and mutation-proven** — every test mapped to the requirement was execution-confirmed to
+  kill a mutation.
+- **covered but unverified** — a test is mapped, but audit-test never execution-confirmed it (not
+  deep-audited, or only reasoned-about — likely-hollow/baseline-lock carry no per-test record).
+- **covered by a test we proved hollow** — a mapped test **survived** a mutation. This is the gap the
+  join exists to close: [`comparisons/tea.md`](./comparisons/tea.md) §3 verifies (against the
+  `bmad-testarch-trace` workflow source, v1.19.1) that TEA's own `trace` gate is **presence**-based —
+  a requirement is marked covered because a matching test *exists*, never because it would fail if the
+  code broke — so a P0 requirement whose only test is hollow reads as covered and gates PASS.
+- **not covered** — the matrix itself says so (`status: NONE`); Gate never fabricates a row to fill
+  the table.
+
+This is **purely informational** — it never touches the ship/canary/hold decision (the entry is
+appended to the bundle *after* the decision is computed, and never appears among the gate predicate's
+own `inputs`), and it degrades honestly: no `--trace-json` means no section at all; a malformed one is
+**rejected**, not silently dropped (the same distinct-state treatment `--audit-test-json` gets); a
+valid matrix with no paired `--audit-test-json` (or one carrying no per-test `runs[]`) reads every
+mapped requirement as `unverified` rather than a stronger claim the evidence doesn't support. Two
+caveats carry over from `comparisons/tea.md` §3: on a *synthetic* oracle TEA itself downgrades
+PASS→CONCERNS, so a clean PASS needs formal requirements; and a test scoring 100/100 on static review
+doesn't change its state here — only an executed mutation does.
+
+```
+node "<skill base dir>/gate.mjs" --playwright=results.json --audit-test-json=tally.json \
+     --trace-json=trace-matrix.json --commit=<sha> --out=gate-bundle.json
+```
+
 ## When to use it
 
 - At the end of a PR, to turn a Playwright/Cypress result and an `audit-test` verdict into one honest, human-readable release recommendation instead of eyeballing two separate reports.
@@ -41,6 +78,7 @@ floor and still have a real gap the floor doesn't check for:
 - **You want to know if a passing test is hollow** → [`audit-test`](./audit-test.md); Gate *consumes* its report, it doesn't produce one.
 - **You want which specs a diff hits, or to diagnose a red one** → [`e2e-impact`](./e2e-impact.md) / [`debug-test`](./debug-test.md).
 - **You want a QA judgment read across a branch** → [`sentinel`](./sentinel.md), which feeds Gate but doesn't itself speak shippability.
+- **You want requirement→test mapping or a persistent risk register** → that's TEA `trace`'s turf, deliberately not rebuilt here ([ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)); Gate only *joins* its output against `audit-test`, stateless, at gate time.
 
 ## Prerequisites
 
@@ -52,6 +90,8 @@ Fixtures live under [`skills/gate/fixtures/`](../skills/gate/fixtures/) rather t
 
 A green Playwright report paired with a **present-but-opaque** `audit-test.report.md` yields **🟡 CANARY**: Playwright proposes `ship`, but an unparsed Markdown report can only floor the credibility axis at `canary` — a human has to read it. Swap in a **parsed** confirmed-clean `audit-test` emission (`--audit-test-json`) and the same green Playwright report yields **🟢 SHIP** — the only path to it: both axes propose `ship`, worst-wins agrees. A third case shows the Cypress-specific guard: a Cypress result reading `totalPassed:12, totalFailed:0` but with one test that failed-then-passed in `attempts[]` is **derived** as WARNED (Cypress emits no aggregate flaky count) and floors the decision at `canary` even paired with a confirmed-clean audit — a survived flake never launders into a clean green.
 
+A fourth case shows the business-risk join: [`fixtures/trace-matrix.mixed.json`](../skills/gate/fixtures/trace-matrix.mixed.json) paired with [`fixtures/audit-test.confirmed-with-runs.json`](../skills/gate/fixtures/audit-test.confirmed-with-runs.json) (`--trace-json` + `--audit-test-json`, same Playwright report) resolves six requirements to **3 mutation-proven · 1 unverified · 1 hollow · 1 not-covered** — the hollow row names the exact test the matrix's own PASS gate would have called covered. The decision itself stays `🟡 CANARY` (the audit-test emission's own confirmed-hollow finding floors it there) — unaffected by whether `--trace-json` is present at all, which is the point.
+
 ## Where it fits
 
 The last stage of the [orchestration map](./orchestration-map.md) — after [`sentinel`](./sentinel.md)'s QA read and after [`audit-test`](./audit-test.md)'s credibility audit, Gate is where their evidence becomes an advisory release decision. It owns the ship verdict; nothing upstream of it does.
@@ -62,3 +102,4 @@ The last stage of the [orchestration map](./orchestration-map.md) — after [`se
 - **Reading a confidence number into the decision.** There is none, deliberately — the schema forbids a numeric field on the gate entry.
 - **Recomputing or overriding the script's decision.** It's deterministic code; present it as returned.
 - **Calling a self-signed bundle "Sigstore-verified" or "trusted publisher."** Signing proves integrity and continuity, never third-party identity.
+- **Reading the business-risk join as a risk register, or its absence as "no risk."** It's a stateless join over whatever `--trace-json` + `--audit-test-json` were actually supplied — no matrix means no section, not a clean bill of health ([ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)).
