@@ -39,7 +39,8 @@ establishes why:
 - The cause is a single binary: **62.6% of published response schemas declare no `required`**, and in
   those, drop is caught **0.0%** of the time. The distribution is bimodal — 57.6% of schemas sit at
   exactly 33.3% (types only), 19.0% at 100%.
-- `contract-guard`'s own worked example (`SKILL.md:56`) is `label → name`. A **rename**.
+- `contract-guard`'s own worked example (`SKILL.md:81`, the Tier-2 field-level diff) is `label → name`. A
+  **rename**.
 
 Arm B forecloses the tempting simplification of conditioning on the provider's stack. FastAPI/Pydantic
 and NestJS emit `required` automatically; **springdoc does not** — swagger-core's `ModelResolver` has
@@ -90,10 +91,11 @@ No global claim, no stack inference, no percentage — a categorical statement a
 consistent with the labels-not-magnitudes rule
 ([ADR-0013](0013-evidence-provenance-sentinel-labels-not-gates.md)).
 
-**3. Promote the optional/nullable flag from a footnote to a first-class output.** `SKILL.md:39`
-already flags fields the consumer treats as required that the spec marks optional. EXPERIMENT-0049
-sizes that case at **62.6% of published response schemas** — the majority, not an edge. It is the same
-`required` read as (2), and it is what makes the E-vs-S diff honest about latent intermittent breaks.
+**3. Promote the optional/nullable flag from a footnote to a first-class output.** `SKILL.md:58` (was
+`SKILL.md:39` before this ADR's implementation moved it) already flags fields the consumer treats as
+required that the spec marks optional. EXPERIMENT-0049 sizes that case at **62.6% of published response
+schemas** — the majority, not an edge. It is the same `required` read as (2), and it is what makes the
+E-vs-S diff honest about latent intermittent breaks.
 
 **4. No new dependency, and no auditor skill.** The check is set membership over `required` plus the
 operation resolution Tier 2 already performs. `core-ajv-schema-validator` is named as the engine
