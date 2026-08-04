@@ -65,7 +65,7 @@ reads `PASSED` and is capped at `canary` by the **executed-floor**, not treated 
 ([#157](https://github.com/TzolkinB/skills/issues/157); see Step 3).
 
 - **audit-test verdict** (optional) — two grades of credibility evidence, best first:
-  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.3` tally written by `/audit-test --emit-json=<path>`.
+  - **Parsed emission** (`--audit-test-json`): a `gate-audit-test/v0.4` tally written by `/audit-test --emit-json=<path>`.
     This is the **graduated** input — a *parsed* confirmed-clean verdict that also clears the **examined-floor**
     (`deepAudited`/`audited` ≥ 50% by default) is the only thing that can lift the ceiling to `ship`
     ([#127](https://github.com/TzolkinB/skills/issues/127), [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)).
@@ -333,7 +333,7 @@ maintains (ADR-0045) …
   the flaky (WARNED) signal by scanning per-test `attempts[]` for a failed-then-passed retry — the metric is
   labelled `flakyDerived` in the bundle to say so. (Unit-tested / component ingest is still a later increment.)
 - **`audit-test` rides in three grades.** *Parsed* (`--audit-test-json`): `/audit-test --emit-json` writes its
-  batch tally as `gate-audit-test/v0.3` structured data — the per-class **counts**, not prose. the Gate derives
+  batch tally as `gate-audit-test/v0.4` structured data — the per-class **counts**, not prose. the Gate derives
   the category (`result`+`label`) from those counts mechanically (same as it restates Playwright's `stats`) and
   the gate reads only the derived category, never the counts (honesty guard #1). *Opaque* (`--audit-test`): the
   Markdown is carried verbatim and **not** prose-scraped, so it can only floor at `canary`. *Rejected*: a `.json`
@@ -441,14 +441,35 @@ maintains (ADR-0045) …
   the window caps at `canary` even if it would otherwise ship, with the staleness named in the rationale. An entry
   with no recorded start time can't be checked and is silently unaffected — no evidence either way, not flagged
   stale. **Known limit:** this only catches a report that's old *relative to when this bundle was assembled* — it
-  does not bind a report to the specific `--commit` named on the bundle, so a fresh-looking report regenerated
-  moments before a DIFFERENT commit's gate run still passes. A git-timestamp cross-check was considered for this
-  and **rejected** ([ADR-0043](../../docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md)): a report
-  regenerated *now* for the wrong commit has `startedOn ≈ now` ≥ any commit timestamp, so timestamps don't even
-  catch this case, and the "report predates the commit" signal they *could* give false-positives the ordinary
-  test-then-commit local workflow. The mature closure — deferred to v2 — is **producer-recorded SHA provenance**:
-  the test producer records the git SHA it ran against *into* the report and Gate cross-checks it against
-  `--commit`. See `docs/roadmap.md` item 3 and ADR-0043 for why.
+  does not, on its own, bind a report to the specific `--commit` named on the bundle; that gap is closed by
+  report-to-commit provenance, next.
+- **Report-to-commit provenance** ([#177](https://github.com/TzolkinB/skills/issues/177),
+  [ADR-0043](../../docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md)). **Always on, no flag** —
+  the closure `--max-age` above can't reach: binding a report to the *specific* commit being gated, not just to
+  a wall-clock window. A git-timestamp cross-check was considered for this and **rejected**: a report regenerated
+  *now* for the wrong commit has `startedOn ≈ now` ≥ any commit timestamp, so timestamps don't even catch that
+  case, and the "report predates the commit" signal they *could* give false-positives the ordinary
+  test-then-commit local workflow. The shipped closure instead measures the real question directly —
+  **producer-recorded SHA provenance**: the Playwright/Cypress ingest adapters record the git commit `gate.mjs`
+  itself was run against — preferring `GITHUB_SHA` (or an equivalent CI-supplied SHA; the checked-out SHA in CI
+  is authoritative) over `git rev-parse HEAD` (the honest local signal) — plus a dirty-worktree flag from `git
+  status --porcelain`, captured once per invocation and stamped onto every Playwright/Cypress entry ingested that
+  run. The `audit-test` emission carries its own version instead: pass `commitSha`/`dirty` in the
+  `--emit-json` output (see [audit-test/SKILL.md](../audit-test/SKILL.md) "Structured emission"), captured by the
+  model at audit time. Either way, `gate()` cross-checks the recorded `commitSha` against `--commit`: a mismatch
+  caps an otherwise-`ship` proposal at `canary`, named in the rationale ("this report is evidence about a
+  DIFFERENT commit"); a report with **no** recorded commit is unaffected either way — necessary-not-sufficient,
+  the same discipline content-addressing (ADR-0037 §2) and the examined/executed floors already hold themselves
+  to. A **dirty worktree** at capture time is disclosed in the rationale, never a cap on its own (only an actual
+  SHA mismatch caps) — there is no single commit that fully describes evidence run against uncommitted changes.
+  **Honest, not adversary-proof:** a producer can lie about its own recorded SHA (but then the content-addressed
+  input bytes wouldn't correspond to the real commit either) — this closes the *accidental* wrong-commit-fresh-
+  report case (a stale local checkout, a mismatched CI trigger event), not a motivated adversary; Gate is
+  advisory and self-signed (not a third-party trust root), so that remains outside its honest threat model, same
+  as everywhere else in this file. No schema-shape change to the gate predicate — the cross-check is prose-only
+  in `rationale`, never a new field `gatePredicate.inputs[]` reads (honesty guard #1/#3 unaffected); the recorded
+  `commitSha`/`dirty` live only on the additive `producer.commitSha`/`producer.dirty` (schema bumped to
+  `gate-evidence-bundle/v0.9`, additive — a bundle that never records either is byte-for-byte unaffected).
 - **Optional DSSE signing** ([#141](https://github.com/TzolkinB/skills/issues/141),
   [ADR-0037](../../docs/adr/0037-gate-evidence-integrity.md) §1, widened by
   [#158](https://github.com/TzolkinB/skills/issues/158)/[ADR-0040](../../docs/adr/0040-widen-gate-signed-scope-to-entries.md))

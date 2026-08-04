@@ -19,6 +19,28 @@ release heading.
 
 ### Added
 
+- **`gate`: producer-recorded SHA provenance — bind an execution/audit-test report to the commit it actually ran against** —
+  [#177](https://github.com/TzolkinB/skills/issues/177), the mature closure
+  [ADR-0043](docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md) scoped over a git-timestamp
+  cross-check that was considered and rejected (it doesn't even catch a report regenerated *now* for the wrong
+  commit, and its only usable signal false-positives the ordinary test-then-commit local workflow). The
+  Playwright/Cypress ingest adapters now record the git commit `gate.mjs` was run against — `GITHUB_SHA` (or an
+  equivalent CI-supplied SHA; authoritative in CI) if set, else `git rev-parse HEAD` (the honest local signal) —
+  plus a dirty-worktree flag from `git status --porcelain`, captured once per invocation, always on, no new
+  flag. The `audit-test` emission carries its own version — `commitSha`/`dirty`, captured by the model at audit
+  time (`gate-audit-test/v0.4`). `gate()` cross-checks the recorded `commitSha` against `--commit`: a mismatch
+  caps an otherwise-`ship` proposal at `canary`, named in rationale prose only — **no new field on
+  `gatePredicate.inputs[]`** (honesty guard #1/#3 unaffected, same discipline `--max-age` already holds itself
+  to); a report with no recorded SHA is unaffected either way (necessary-not-sufficient, same as
+  content-addressing and the examined/executed floors). A dirty worktree at capture time is disclosed in
+  rationale, never a cap on its own — a mutation audit legitimately runs against uncommitted changes,
+  and there is no single commit that fully describes evidence captured that way. Schema bumped to
+  `gate-evidence-bundle/v0.9` (additive — `producer.commitSha`/`producer.dirty`); a bundle that never records
+  either is byte-for-byte unaffected. Honest, not adversary-proof: a producer can lie about its own recorded
+  SHA (but then the content-addressed input bytes wouldn't correspond to the real commit either) — this closes
+  the *accidental* wrong-commit case, not a motivated adversary, consistent with Gate's advisory/self-signed
+  posture everywhere else.
+
 - **`gate`: `tea-to-trace-matrix.mjs` — convert a real TEA `trace` run into `--trace-json`, instead of hand-authoring it** —
   [#220](https://github.com/TzolkinB/skills/issues/220), decided in
   [ADR-0050](docs/adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md). #199 shipped the

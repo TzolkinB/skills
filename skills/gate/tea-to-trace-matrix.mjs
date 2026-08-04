@@ -89,7 +89,7 @@ const COVERAGE_MAP = {
 
 // ---- the conversion (pure) ------------------------------------------------
 
-// Build the `<file>::<title>` join key `gate-audit-test/v0.3`'s `runs[].test` uses.
+// Build the `<file>::<title>` join key `gate-audit-test/v0.4`'s `runs[].test` uses.
 // `title || name` mirrors TEA's own fallback (step-05 §3b: `test.title || test.name`).
 // Returns null when either half is missing — a half-key is not a key, and guessing the other half
 // is exactly the fabrication this script exists to avoid.
