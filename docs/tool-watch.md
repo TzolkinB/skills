@@ -20,7 +20,7 @@ raw-content are not scoped and work for any public repo. See the Notes section.
 | StrykerJS | npm `@stryker-mutator/core` dist-tags.latest | 9.6.1 (113 versions, modified 2026-05-13) | 2026-08-03 |
 | Tautest | npm `tautest` dist-tags.latest | 1.10.1 (10 versions, modified 2026-06-04) | 2026-08-03 |
 | Exspec | npm `@mnapoli/exspec` dist-tags.latest | 0.1.7 (11 versions) | 2026-08-03 |
-| TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.19.1 | 2026-08-03 |
+| TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.21.4 | 2026-08-04 |
 | Playwright test agents | raw `microsoft/playwright` `main/docs/src/release-notes-js.md`, top `## Version` block + grep it for `planner`/`generator`/`healer`/`agent`; npm `@playwright/test` dist-tags.latest for the version number | v1.62.1 (agents feature landed 1.56; top block has no agent-keyword hit) | 2026-08-03 |
 | Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 15.19.1 at top of changelog | 2026-08-03 |
 | Schema validators (sclavijosuero) — **recommended, not competitor** | npm `cypress-schema-validator`, `playwright-schema-validator`, `core-ajv-schema-validator` dist-tags.latest | cypress-schema-validator 2.0.0 (2026-06-07); playwright-schema-validator 1.0.0 (2025-08-03); core-ajv-schema-validator 1.0.0 (2025-04-06) | 2026-07-31 |
@@ -52,6 +52,13 @@ Notes:
   directory and `api.github.com` is out of scope, so this is the best available signal, not a
   complete one. **Not a licensing concern** — routing to a skill the user installs themselves copies
   nothing (mattpocock/skills is MIT); the row exists for breakage, not compliance.
+- The TEA row was bumped **manually** on 2026-08-04 (v1.19.1 → v1.21.4), not by Job 1: building the
+  `trace`→Gate conversion ([#220](https://github.com/TzolkinB/skills/issues/220)) meant reading the
+  workflow source at `main` directly, which is a stronger check than the version diff. The bump would
+  normally be the trigger to re-read §3 of [`comparisons/tea.md`](comparisons/tea.md) — that re-read
+  already happened and is recorded there: the presence-gap claim is **unchanged**, with two
+  corrections (the coverage vocabulary is five-valued, and a per-requirement JSON artifact exists that
+  the earlier reading missed). Job 1 should see no delta on its next run.
 - A WebSearch sanity pass during setup (2026-07-22) claimed Cypress was at v16.0.0. The raw
   changelog said 15.19.1. The raw source wins — this is why Job 1 is curl-only, no LLM-search
   step, for every known-tool check.

@@ -141,7 +141,7 @@ Each with its label. Never state one above its label.
 | `audit-test` runs a real mutation on dev-served Playwright/Cypress and reports whether the test caught it | **Confirmed** |
 | Mutation tools (StrykerJS, Tautest) structurally cannot reach app-driven E2E — they mutate source and run Vitest/Jest | **Confirmed** |
 | Playwright/Cypress first-party agents optimize toward green; the healer skips a test if functionality appears broken | **Confirmed** (docs at source) |
-| TEA's `trace` gates on coverage *presence*, so a P0 requirement covered only by a hollow test gates PASS | **Confirmed** (workflow source, v1.19.1) |
+| TEA's `trace` gates on coverage *presence*, so a P0 requirement covered only by a hollow test gates PASS | **Confirmed** (workflow source, v1.19.1; re-verified unchanged at v1.21.4, 2026-08-04) |
 | `audit-test` caught a Playwright-Healer green-locked regression | **Confirmed *with caveat*** — the catch needed intent recoverable from source; pure mechanical mutation alone missed it. Never cite this one without the caveat. |
 | Presence-based coverage is the category default, not a TEA quirk | **Confirmed** for TEA (source) · **Likely** for Qase (docs) · **Unexamined** for closed tools |
 | Our results state the scope they were drawn from — "denominator honesty" ([the map](orchestration-map.md#denominator-honesty)) | **Confirmed** for `gate`: the executed-floor caps a suite that ran a sliver of what it discovered at `canary`, in deterministic self-tested code (`gate.mjs`). **Likely** for `e2e-impact`'s run-all bucket: a skill contract read at source, not an observed run. Never merge the two into one Confirmed. State the gap alongside: `coverage-review` has no repo-level denominator yet ([#180](https://github.com/TzolkinB/skills/issues/180)). |
@@ -172,7 +172,15 @@ one costs exactly the trust this audience is slowest to give.
   external traceability matrix against `audit-test` — requirement→test mapping stays TEA `trace`'s
   turf, and there is no claim to make without a matrix someone actually ran. Never say "business-risk
   coverage" as a standalone capability; always name the join (trace matrix + audit-test) and that a
-  requirement never appears unless the matrix named it first.
+  requirement never appears unless the matrix named it first. As of
+  [#220](https://github.com/TzolkinB/skills/issues/220) the hand-conversion step is gone —
+  `tea-to-trace-matrix.mjs` turns a `trace` run's own output into the matrix. Claim that at its real
+  strength and no higher: the convert→gate half runs end to end in CI against a fixture, but the
+  fixture is built from TEA's **source**, not captured from an observed `trace` run — **Confirmed at
+  source, Unexamined at runtime**. So "you can run TEA `trace` and gate its output" is fair; "we ran
+  TEA and it worked" is not, until someone does. Say *converted from a TEA run*, never *integrated
+  with TEA*: nothing calls TEA, and the conversion reads one temp artifact TEA never published as a
+  schema ([ADR-0050](adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
 
 ## The honest weaknesses
 

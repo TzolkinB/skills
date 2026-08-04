@@ -85,8 +85,47 @@ reads `PASSED` and is capped at `canary` by the **executed-floor**, not treated 
   format), joined against `--audit-test-json` to answer *"what business risks are actually covered?"*
   without building a risk register ([#199](https://github.com/TzolkinB/skills/issues/199),
   [ADR-0045](../../docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). Purely informational —
-  it never affects the ship/canary/hold decision. See Step 4 below.
+  it never affects the ship/canary/hold decision. See Step 4 below. If the user has run TEA's `trace`
+  workflow, **do not hand-author this file** — convert their run with
+  [`tea-to-trace-matrix.mjs`](./tea-to-trace-matrix.mjs) (Step 1a).
 - **PR head commit**: `git rev-parse HEAD` — the bundle's subject.
+
+### 1a. Converting a TEA `trace` run into a trace matrix (only if there is one)
+
+Skip this entirely unless the user has run TEA's `trace` workflow (`bmad-testarch-trace`) and wants the
+business-risk read. **Never hand-author a `gate-trace-matrix/v0` file from a TEA report, and never
+transcribe one by reading `traceability-matrix.md` yourself** — that Markdown carries each mapped test as
+`` `id` `` - `file`:`line` with **no test title**, and Gate's join key is `<file>::<title>`, so anything you
+produced that way would be a guessed key that joins to nothing and renders as honest-looking `unverified`
+coverage ([ADR-0050](../../docs/adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
+Run the converter instead:
+
+```
+node "<skill base dir>/tea-to-trace-matrix.mjs" --trace-md=<path to traceability-matrix.md> \
+     [--gate-json=<gate-decision.json or e2e-trace-summary.json>] \
+     [--audit-test-json=<the same tally you will pass Gate>] \
+     [--test-key=path|basename] --out=trace-matrix.json
+```
+
+It reads the Phase-1 coverage-matrix JSON that TEA's own step-05 reads — the only TEA artifact carrying
+per-requirement rows *and* per-test titles — by following the `tempCoverageMatrixPath` pointer in the
+`.md`'s frontmatter. Pass `--coverage-matrix=<that file>` directly if you already have it.
+
+Three things to relay honestly rather than work around:
+
+- **It refuses more readily than it guesses.** An unrecognized coverage value, a missing priority, a test
+  with no title, a contradictory row — it names the row, writes nothing, and exits 2. That is the correct
+  outcome: fix it in the TEA run and re-convert. Do **not** patch the output by hand to get past a refusal.
+- **The input is a temp file.** TEA writes it to `/tmp` with a timestamped name, so convert in the same
+  session as the `trace` run. If the pointer is stale, the fix is to re-run `*trace`, not to parse the
+  Markdown.
+- **Check the join keys before gating.** Passing `--audit-test-json` makes it report how many keys actually
+  match a `runs[]` record. TEA spells files as repo paths; an `audit-test` emission may use basenames — if
+  *none* match, it says so and names `--test-key=basename` as the fix. A matrix whose keys never match
+  still produces a full, plausible-looking report in which every requirement reads `unverified`. Surface that
+  warning to the user; never silently gate on a zero-match matrix. Note the one-sided limit it prints in
+  basename mode: it can only check the files TEA mapped, so a same-named spec in two directories on the
+  `audit-test` side is undetectable — prefer `--test-key=path` whenever both sides can agree on paths.
 
 ### 2. Run the deterministic gate
 Run the bundled script from **this skill's base directory** (shown to you when the skill was invoked):
@@ -345,6 +384,23 @@ maintains (ADR-0045) …
   `--trace-json` is **rejected**, the same distinct-from-absent treatment `--audit-test-json` gets; a valid
   matrix with no `--audit-test-json` `runs[]` evidence resolves every mapped requirement to `unverified`
   rather than a stronger claim.
+- **The TEA conversion — `tea-to-trace-matrix.mjs`** ([#220](https://github.com/TzolkinB/skills/issues/220),
+  [ADR-0050](../../docs/adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)). #199 shipped
+  the join but not the last mile: using it against a real TEA run meant hand-authoring JSON. The converter
+  closes that, and the decision behind it is where the value is. Re-reading the `bmad-testarch-trace` source at
+  **v1.21.4** shows TEA's `e2e-trace-summary.json` and `gate-decision.json` carry aggregates and a gate signal
+  only, and `traceability-matrix.md` carries rows but **no test titles** — while step-04 writes a **Phase-1
+  coverage-matrix JSON** that carries both, and records its path in the `.md` frontmatter as
+  `tempCoverageMatrixPath`. That JSON is the input; the Markdown body is never parsed, because a key built from
+  it would be fabricated or line-drift-guessed, and a wrong key renders as plausible `unverified` coverage
+  rather than as an error. TEA's five-valued coverage vocabulary flattens into Gate's three with `UNIT-ONLY` /
+  `INTEGRATION-ONLY` → `PARTIAL` (never `FULL` — a conversion may not widen TEA's own presence call), keeping
+  TEA's verbatim value on each row as `teaCoverage`. The converter lives **outside** `gate.mjs` on purpose —
+  teaching the gate to read a tool's private format is exactly the coupling `gate-trace-matrix/v0` exists to
+  avoid — and validates its output by importing `gate.mjs`'s own `parseTraceMatrix` and its exported vocabularies,
+  so it can never emit bytes Gate would reject nor refuse a value Gate would have accepted. `gate.mjs` gains no
+  gate logic from this change: only three `export` keywords. The TEA-side fixture is built from TEA's **source**,
+  not captured from an observed `trace` run — Confirmed at source, Unexamined at runtime (ADR-0050 Consequences).
 - **Coverage-aware ship gate — the examined-floor** ([#127](https://github.com/TzolkinB/skills/issues/127),
   [ADR-0035](../../docs/adr/0035-gate-examined-floor.md)). A confirmed-clean verdict alone used to be enough to
   ship, even if `deepAudited` was a small minority of `audited` (the shipped fixture used to be `4 of 12` — 33%).

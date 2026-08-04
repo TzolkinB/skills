@@ -1,0 +1,161 @@
+{
+  "_fixture": "A TEA `trace` Phase-1 coverage matrix, shaped from the bmad-testarch-trace workflow SOURCE (v1.21.4) — hand-built from that source, NOT captured from an observed `trace` run (ADR-0050: Confirmed at source, Unexamined at runtime): step-04 §5 writes this object to `{tempOutputFile}` (/tmp/tea-trace-coverage-matrix-<timestamp>.json) and records its path in traceability-matrix.md's frontmatter as `tempCoverageMatrixPath`; step-05 §1 reads it back. It is the ONLY TEA artifact carrying per-requirement rows AND per-test identity fields (id/title/file/line/level + skipped/fixme/pending) — e2e-trace-summary.json and gate-decision.json carry aggregates only. Field names are as TEA's own step files read them: `phase`, `requirements[].id/.priority/.coverage/.tests[]`, `tests[].title|name/.file/.line/.level`. Deliberately exercises every conversion edge: UNIT-ONLY + INTEGRATION-ONLY (TEA's 5-value coverage vocabulary), a within-row duplicate test, a skipped test, a NONE row, and nested `tests/e2e/...` paths that do NOT match audit-test's basename identifiers (the join-key hazard --test-key exists for).",
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-08-04T09:15:00.000Z",
+  "trace_target": { "type": "story", "id": "BOOK-14", "label": "Room booking" },
+  "collection_mode": "contract_static",
+  "allow_gate": true,
+  "coverage_basis": "acceptance_criteria",
+  "summary_confidence": "high",
+  "oracle": {
+    "resolution_mode": "formal_requirements",
+    "confidence": "high",
+    "sources": ["docs/stories/BOOK-14.md"],
+    "external_pointer_status": "not_used",
+    "synthetic": false
+  },
+  "requirements": [
+    {
+      "id": "REQ-BOOKING-OVERLAP",
+      "description": "Overlapping bookings are rejected",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "14.1-E2E-001",
+          "title": "rejects overlapping bookings",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 42,
+          "level": "e2e"
+        }
+      ]
+    },
+    {
+      "id": "REQ-BOOKING-CONFIRM",
+      "description": "A valid booking is confirmed",
+      "priority": "P0",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "14.1-E2E-002",
+          "title": "confirms a valid booking",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 18,
+          "level": "e2e"
+        }
+      ]
+    },
+    {
+      "id": "REQ-BOOKING-FEE",
+      "description": "The cancellation fee is shown before confirming",
+      "priority": "P1",
+      "coverage": "UNIT-ONLY",
+      "tests": [
+        {
+          "id": "14.1-UNIT-001",
+          "title": "shows the cancellation fee",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 77,
+          "level": "unit"
+        }
+      ]
+    },
+    {
+      "id": "REQ-BOOKING-ERROR-LOG",
+      "description": "A failed booking is logged with its error",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "14.1-E2E-004",
+          "title": "logs a booking error",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 96,
+          "level": "e2e"
+        }
+      ]
+    },
+    {
+      "id": "REQ-BOOKING-EXPORT",
+      "description": "A booking receipt can be exported",
+      "priority": "P2",
+      "coverage": "INTEGRATION-ONLY",
+      "tests": [
+        {
+          "id": "14.1-API-001",
+          "name": "exports a booking receipt",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 131,
+          "level": "api"
+        }
+      ]
+    },
+    {
+      "id": "REQ-BOOKING-ROOMLIST",
+      "description": "The room list renders and submit is disabled while pending",
+      "priority": "P1",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "14.1-E2E-005",
+          "title": "renders the room list",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 8,
+          "level": "e2e"
+        },
+        {
+          "id": "14.1-E2E-006",
+          "title": "disables submit while pending",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 61,
+          "level": "e2e"
+        },
+        {
+          "id": "14.1-E2E-005-dup",
+          "title": "renders the room list",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 8,
+          "level": "e2e"
+        }
+      ]
+    },
+    {
+      "id": "REQ-BOOKING-A11Y",
+      "description": "Booking form meets contrast requirements",
+      "priority": "P2",
+      "coverage": "FULL",
+      "tests": [
+        {
+          "id": "14.1-E2E-007",
+          "title": "meets contrast requirements",
+          "file": "tests/e2e/booking.spec.ts",
+          "line": 152,
+          "level": "e2e",
+          "skipped": true,
+          "status": "skipped",
+          "blocker_reason": "axe fixture pending"
+        }
+      ]
+    },
+    {
+      "id": "REQ-BOOKING-SLA",
+      "description": "Bookings confirm within the 2s SLA",
+      "priority": "P3",
+      "coverage": "NONE",
+      "tests": []
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 8,
+    "fully_covered": 5,
+    "partially_covered": 0,
+    "uncovered": 1,
+    "overall_coverage_percentage": 63,
+    "priority_breakdown": {
+      "P0": { "total": 2, "covered": 2, "percentage": 100 },
+      "P1": { "total": 3, "covered": 2, "percentage": 67 },
+      "P2": { "total": 2, "covered": 1, "percentage": 50 },
+      "P3": { "total": 1, "covered": 0, "percentage": 0 }
+    }
+  }
+}

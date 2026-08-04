@@ -19,6 +19,32 @@ release heading.
 
 ### Added
 
+- **`gate`: `tea-to-trace-matrix.mjs` — convert a real TEA `trace` run into `--trace-json`, instead of hand-authoring it** —
+  [#220](https://github.com/TzolkinB/skills/issues/220), decided in
+  [ADR-0050](docs/adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md). #199 shipped the
+  business-risk join but not its last mile: pointing it at a real TEA run meant writing the JSON by hand.
+  Re-reading the `bmad-testarch-trace` source at **v1.21.4** (up from #199's v1.19.1; the §3 presence-gap
+  claim re-verified **unchanged**) corrected the premise the issue was filed on — `e2e-trace-summary.json`
+  and `gate-decision.json` carry aggregates and a gate signal only, and `traceability-matrix.md` carries
+  rows but **no test titles**, while step-04 writes a **Phase-1 coverage-matrix JSON** carrying both, with
+  its path recorded in the `.md` frontmatter as `tempCoverageMatrixPath`. The converter reads that JSON
+  (directly, or by following the pointer from `--trace-md`) and never parses the Markdown body: Gate's join
+  key is `<file>::<title>`, so a key transcribed from that body would be fabricated or guessed from a
+  drifting line number, and a wrong key renders as plausible `unverified` coverage rather than as an error.
+  TEA's five-valued coverage vocabulary flattens to Gate's three (`UNIT-ONLY`/`INTEGRATION-ONLY` →
+  `PARTIAL`, never `FULL` — a conversion may not widen TEA's own presence call), keeping the verbatim value
+  on each row as `teaCoverage`. Anything unconvertible **refuses**, names the row, and writes nothing
+  (exit 2); the output is validated by importing `gate.mjs`'s own `parseTraceMatrix`, so it can never emit
+  bytes Gate would reject. `--audit-test-json` cross-checks how many keys actually join *before* gating —
+  TEA spells files as repo paths while an `audit-test` emission may use basenames, and a zero-match matrix
+  yields a complete, honest-looking report in which every requirement reads `unverified`; `--test-key=basename`
+  is the disclosed fix, refused when two directories share a spec basename **among the files TEA mapped** (an
+  ambiguity that exists only on the `audit-test` side is undetectable by construction — which is why `path` is
+  the default). **`gate.mjs` gains no gate logic** — only three `export` keywords, so the converter shares its
+  constants instead of copying them; the conversion stays a separate script precisely so the gate never learns
+  a tool's private format. The TEA-side fixture is built from TEA's source, not captured from an observed
+  `trace` run: **Confirmed at source, Unexamined at runtime** (ADR-0050 Consequences).
+
 - **`gate`: business-risk coverage — a stateless join over an external trace matrix + `audit-test`, not a risk register** —
   [#199](https://github.com/TzolkinB/skills/issues/199), builds
   [ADR-0045](docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md). TEA's `trace` workflow is
