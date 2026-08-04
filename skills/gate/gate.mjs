@@ -1725,7 +1725,14 @@ function runProducerCommitSelfTest(check) {
     const headSha = git(['rev-parse', 'HEAD']).stdout.trim();
     check('#177 setup: the temp git repo produced a real 40-hex-char HEAD sha', /^[0-9a-f]{40}$/.test(headSha));
 
-    const run = (args, env) => spawnSync(process.execPath, [gatePath, ...args], { cwd: tmpDir, encoding: 'utf8', env: { ...process.env, ...env } });
+    // Strip GITHUB_SHA from the inherited environment by default — this self-test itself runs AS a
+    // GitHub Actions job, so the ambient `process.env.GITHUB_SHA` is the SKILLS REPO's own real commit,
+    // not the temp repo's. Left inherited, it would silently override every `git rev-parse HEAD` case
+    // below with an unrelated SHA (exactly the bug this stripping avoids) — only the GITHUB_SHA-specific
+    // test further down opts back in, explicitly, to a controlled value.
+    const baseEnv = { ...process.env };
+    delete baseEnv.GITHUB_SHA;
+    const run = (args, env) => spawnSync(process.execPath, [gatePath, ...args], { cwd: tmpDir, encoding: 'utf8', env: { ...baseEnv, ...env } });
     const goodPw = resolve(HERE, 'fixtures/playwright.passed.json');
     const goodAudit = resolve(HERE, 'fixtures/audit-test.confirmed.json');
 
@@ -1775,7 +1782,7 @@ function runProducerCommitSelfTest(check) {
     const outsideDir = mkdtempSync(join(tmpdir(), 'gate-no-git-'));
     try {
       const outsideOut = join(outsideDir, 'outside-bundle.json');
-      const outsideResult = spawnSync(process.execPath, [gatePath, `--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--commit=${headSha}`, `--out=${outsideOut}`], { cwd: outsideDir, encoding: 'utf8' });
+      const outsideResult = spawnSync(process.execPath, [gatePath, `--playwright=${goodPw}`, `--audit-test-json=${goodAudit}`, `--commit=${headSha}`, `--out=${outsideOut}`], { cwd: outsideDir, encoding: 'utf8', env: baseEnv });
       check('#177: run outside any git repo exits 0', outsideResult.status === 0);
       const outsideBundle = JSON.parse(readFileSync(outsideOut, 'utf8'));
       check('#177: outside a repo, no producer.commitSha is recorded at all (no git to ask)',
