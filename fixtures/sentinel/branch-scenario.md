@@ -1,10 +1,15 @@
-# Sentinel run scenario — feat/payments-refund
+# Sentinel run scenario — payments-refund
 
-Run: `/sentinel feat/payments-refund --sacred=src/payments/**`
+Run: `/sentinel fixture/sentinel-payments-refund --sacred=src/payments/**`
 
 Sentinel runs no original analysis of its own — it composes the atomic QA skills over a branch and
-synthesizes ONE verdict. So this scenario/prompt fixture describes what the sub-skills report over
-the branch, and the eval grades Sentinel's **synthesis** of them.
+synthesizes ONE verdict. This document is the **spec** the real fixture branch was built from — for
+the `--dry-run`/`--self-test` tiers it still just describes what the sub-skills should report, graded
+against the recorded samples in `evals/samples/`. For `--live` (#210), the branch it describes is
+materialized for real at `fixture/sentinel-payments-refund` (real commits, a real merge-base with
+`main`, a runnable `node --test` project) — `evals/cases/sentinel.json`'s `fixture_ref` checks that
+branch out into the isolated worktree, so the live agent derives the findings below itself instead of
+being handed them in the prompt.
 
 ## The branch
 - Changed: `src/payments/refund.js` + `src/payments/refund.test.js`, and

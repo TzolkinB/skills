@@ -3,6 +3,7 @@
 Loaded from Step 4 (deep audit). "Run just that one test" is framework-specific — never run the whole suite, and never trust a run you can't confirm targeted exactly one test:
 
 - **Jest / Vitest:** `jest -t '<test name>' <file>` / `vitest run -t '<test name>' <file>`
+- **Node built-in (`node:test`):** `node --test --test-name-pattern='<test name>' <file>`
 - **pytest:** `pytest '<file>::<test_id>'`
 - **Go:** `go test -run '^<TestName>$' ./<pkg>`
 - **JUnit (Maven / Gradle):** `mvn -Dtest='<Class>#<method>' test` / `gradle test --tests '<Class>.<method>'`
