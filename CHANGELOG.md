@@ -19,6 +19,27 @@ release heading.
 
 ### Added
 
+- **`contract-guard`: Tier 1b (test-boundary validation) + per-operation drift-coverage reporting** —
+  [#217](https://github.com/TzolkinB/skills/issues/217), decided in
+  [ADR-0049](docs/adr/0049-contract-guard-test-boundary-validation-tier.md), backed by
+  [EXPERIMENT-0049](docs/experiments/EXPERIMENT-0049-schema-permissiveness.md) (two arms, both
+  Confirmed). ADR-0021's Tier 1 proposes response-schema validation at the *application's* fetch
+  boundary — production code the stranded QA/SDET usually can't merge. Tier 1b is the complement: when
+  the consumer reads untyped JSON and a published spec is available, `contract-guard` now also proposes
+  validating the response **inside the suite** the SDET already owns, naming the stack-matching
+  plugin (`cypress-schema-validator` / `playwright-schema-validator` — the current MIT packages, not
+  the more-downloaded superseded `*-ajv-schema-validator` predecessors). Tier 1 keeps precedence;
+  Tier 1b is proposed and never installed or run (ADR-0003/ADR-0010). The recommendation is qualified,
+  not flat: EXPERIMENT-0049 mutation-tested 1,152 published response schemas and found the plugin
+  catches retypes 98.6% of the time but misses drop/rename ~75% of the time wherever the operation's
+  schema declares no `required` (62.6% of the corpus) — so every Tier 1b recommendation now carries a
+  per-operation drift-coverage line, reading `required` on the resolved operation and stating
+  categorically which of rename/drop/retype the validation would actually catch, naming the uncovered
+  fields (no percentage, no global claim, ADR-0013). The same `required` read promotes the
+  optional/nullable flag from a footnote to a first-class output. An unresolvable operation or
+  malformed document degrades the coverage line to `no-spec`, the same honest-degrade path Tier 2
+  already uses — never a fabricated coverage claim.
+
 - **`gate`: producer-recorded SHA provenance — bind an execution/audit-test report to the commit it actually ran against** —
   [#177](https://github.com/TzolkinB/skills/issues/177), the mature closure
   [ADR-0043](docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md) scoped over a git-timestamp
