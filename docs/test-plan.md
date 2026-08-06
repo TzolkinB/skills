@@ -45,7 +45,7 @@ The tell of a good plan is that the boundary and rejection cases appear *before*
 
 ## Where it fits
 
-The front of the [QA flow](./ask-sentinel.md) — it runs *before* any code or tests exist. The per-case layer labels it produces are what [`sentinel`](./sentinel.md) later aggregates into a branch's layer-distribution snapshot. Once the tests are written, hand off to [`coverage-review`](./coverage-review.md) for what's missing and [`audit-test`](./audit-test.md) for whether the green tests actually bite.
+The front of the [QA flow](./qa-compass.md) — it runs *before* any code or tests exist. The per-case layer labels it produces are what [`qa-pass`](./qa-pass.md) later aggregates into a branch's layer-distribution snapshot. Once the tests are written, hand off to [`coverage-review`](./coverage-review.md) for what's missing and [`audit-test`](./audit-test.md) for whether the green tests actually bite.
 
 ## Anti-patterns
 

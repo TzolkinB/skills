@@ -2,7 +2,7 @@
 
 **TL;DR** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
 what it's genuinely good at: risk planning, static test review, requirement→test mapping, scaffolding,
-and a governance gate with a compliance audit trail. Reach for Sentinel/Gate for what TEA's own docs
+and a governance gate with a compliance audit trail. Reach for `audit-test`/Gate for what TEA's own docs
 and source show it **cannot** do — **run a mutation to check whether a passing test is hollow** (`audit-test`, a
 shipping skill today): a survived mutation is an execution-grounded counterexample that the test is
 hollow; a killed one confirms the test solid *against that specific break*, never a blanket guarantee.
@@ -27,10 +27,10 @@ one of these gaps, this note is wrong and should be updated.
 
 TEA — the **BMAD Test Architect module** ([`bmad-method-test-architecture-enterprise`](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise),
 free) — is not a point tool. It's a near-complete testing **orchestration method**: a prompt-persona
-agent with nine workflows that span most of the same QA lifecycle Sentinel maps. That's exactly why
+agent with nine workflows that span most of the same QA lifecycle this repo's map covers. That's exactly why
 "why use yours, not just TEA?" is a real question and not a strawman. Its nine workflows:
 
-| TEA workflow | What it does | Sentinel-map stage it covers |
+| TEA workflow | What it does | Map stage it covers |
 |---|---|---|
 | `test-design` | P0–P3 risk tiers + NFR planning | 1 · Plan |
 | `test-review` | Static quality audit → 0–100 score + violations + fixes | 2–3 · Static review |
@@ -198,7 +198,7 @@ workflows. Two concrete seams, both feeding TEA's gate rather than competing wit
   source-verified `trace`, not the WAIVED trail), and an override is a *proxy* label — it records the
   human's call at gate time, not whether that call was later vindicated.
 
-Net: **TEA plans and governs; Sentinel checks by execution; Gate (eventually) weighs — reading a
+Net: **TEA plans and governs; `audit-test` checks by execution; Gate (eventually) weighs — reading a
 history it doesn't own.**
 You can run TEA for its governance gate and slot `audit-test` in as the mutation check its
 `test-review` structurally lacks — today, without adopting anything else.

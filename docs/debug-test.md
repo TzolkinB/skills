@@ -55,12 +55,12 @@ Playwright's web-first assertions are async and auto-retrying; without `await`, 
 
 ## Where it fits
 
-debug-test is the one skill that lives in **two** places in the [QA flow](./ask-sentinel.md):
+debug-test is the one skill that lives in **two** places in the [QA flow](./qa-compass.md):
 
 - **Standalone**, the moment a single spec goes red — diagnose and route the fix.
-- **Inside the `/sentinel` chain** — the orchestrator runs it over any failing tests it finds on the branch before reaching a verdict.
+- **Inside the `/qa-pass` chain** — the orchestrator runs it over any failing tests it finds on the branch before reaching a verdict.
 
-That's what separates it from [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md), which sit deliberately *outside* the `/sentinel` chain. Downstream, a confirmed logic bug hands off to `diagnosing-bugs`; a flaky test it can't fix routes to [`qa-review`](./qa-review.md), [`audit-test`](./audit-test.md), or [`prune-tests`](./prune-tests.md) depending on the suspected cause; a suspected drift routes to [`bug-report`](./bug-report.md) for a cross-team report, or to [`contract-guard`](./contract-guard.md) when the harder job — locating and diffing the provider's published contract — is needed.
+That's what separates it from [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md), which sit deliberately *outside* the `/qa-pass` chain. Downstream, a confirmed logic bug hands off to `diagnosing-bugs`; a flaky test it can't fix routes to [`qa-review`](./qa-review.md), [`audit-test`](./audit-test.md), or [`prune-tests`](./prune-tests.md) depending on the suspected cause; a suspected drift routes to [`bug-report`](./bug-report.md) for a cross-team report, or to [`contract-guard`](./contract-guard.md) when the harder job — locating and diffing the provider's published contract — is needed.
 
 ## Anti-patterns
 

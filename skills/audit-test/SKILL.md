@@ -23,7 +23,7 @@ Every verdict below is this skill's own account of a mutation it actually ran in
    - **a single named test** → deep-audit that one test.
    - **a test file** → triage every test in it, deep-audit only the flagged ones.
    - **a test *and* its code** (both paths given) → deep-audit, code-aware. The first-class mode — full confidence needs the code.
-   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run [Batch mode](reference/batch-mode.md). Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns. This is the mode `/sentinel` calls over a branch's changed tests.
+   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run [Batch mode](reference/batch-mode.md). Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns. This is the mode `/qa-pass` calls over a branch's changed tests.
    - **nothing** → default to the whole suite (same patterns) and run [Batch mode](reference/batch-mode.md).
 
    Batch mode runs **diagnostic** (default — deep-audit only the flagged suspects) or **certification** (`--certify` — deep-audit a floor-sized random sample ∪ the suspects, the opt-in path to an honest `ship`); [Batch mode](reference/batch-mode.md) specifies both.
@@ -34,7 +34,7 @@ Every verdict below is this skill's own account of a mutation it actually ran in
    - Go: `**/*_test.go`
    - JVM: `**/*Test.java`, `**/*Tests.java`, `**/*Test.kt`
 
-   If discovery matches **zero** test files, the audit is **INCONCLUSIVE — no recognized test files**: report it and stop. Never treat "nothing found" as "nothing wrong" — a caller like `/sentinel` must read INCONCLUSIVE as "the audit did not run," not as a clean result.
+   If discovery matches **zero** test files, the audit is **INCONCLUSIVE — no recognized test files**: report it and stop. Never treat "nothing found" as "nothing wrong" — a caller like `/qa-pass` must read INCONCLUSIVE as "the audit did not run," not as a clean result.
 2. Read the test(s) fully. If code paths are given, read those too.
 3. **Triage (cheap, static).** For each test, state its **behavior contract** in one sentence ("what real behavior would break if this failed?"), then smell-check it. The assertion-quality smells — loose, incidental, overmocked (taxonomy 2–4) — are the *same static read* `/coverage-review` defines; apply that read here rather than re-deriving it. The taxonomy below adds the smells specific to *this* skill's question (focal-unit-never-invoked, order-dependent, implementation-coupled, pseudo-tested). What `audit-test` contributes beyond the static read is Step 4 — escalating the suspects to a live mutation. Only suspicious tests advance; this **funnel** keeps runtime to a handful of single-test runs.
 4. **Deep audit (per flagged test).** Reason out the single most plausible code change that *should* make this test fail, then prove it — honoring the **Safety rule**:
@@ -48,7 +48,7 @@ Every verdict below is this skill's own account of a mutation it actually ran in
 
 ## Verdicts
 
-Reuses `/sentinel`'s three states, scoped to a single test, plus one suspicion flag (⚠️) for the failure a mutation can't see:
+Reuses `/qa-pass`'s three states, scoped to a single test, plus one suspicion flag (⚠️) for the failure a mutation can't see:
 
 - 🔴 **Confirmed false-confidence** — mutation ran, test stayed green, **and the reachability check confirmed the harness is source-live**. Factual, execution-confirmed.
 - 🟡 **Likely false-confidence** — reasoned only; code wasn't runnable *or* the mutation didn't reach the running app (stale/remote harness), so this is short of proof.
@@ -92,7 +92,7 @@ For a 🟡 verdict, replace **Proof** with **Reasoning** and say why the code co
 
 Single-test mode always shows its verdict, including 🟢. **Batch mode** reports a provenance tally instead — Unexamined tests are never folded into the confirmed-solid greens; see [reference/batch-mode.md](reference/batch-mode.md) for its format ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
 
-Close every report — single-test, batch, or `--digest` ([shared card](../shared/digest-format.md)) — with the one-line [`Next:` footer](../shared/next-footers.md) shown above. Pick the row for the verdict you actually reported: 🔴/⚠️ route back into a re-run after the fix; 🟡 routes to making the code runnable (or to `/audit-orchestrator` to pick a prover your stack can run); 🟢 or a clean batch routes on to `/sentinel`, then `/gate`.
+Close every report — single-test, batch, or `--digest` ([shared card](../shared/digest-format.md)) — with the one-line [`Next:` footer](../shared/next-footers.md) shown above. Pick the row for the verdict you actually reported: 🔴/⚠️ route back into a re-run after the fix; 🟡 routes to making the code runnable (or to `/audit-orchestrator` to pick a prover your stack can run); 🟢 or a clean batch routes on to `/qa-pass`, then `/gate`.
 
 ## Structured emission (`--emit-json=<path>`) — for the Gate skill
 

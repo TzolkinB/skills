@@ -4,7 +4,7 @@
 
 ## What it does
 
-`gate` is the **Gate stage** (stage 7) — the release-verdict layer that [`sentinel`](./sentinel.md) deliberately doesn't speak ([#99](https://github.com/TzolkinB/skills/issues/99)). It ingests a PR's *existing* test evidence — a Playwright JSON report and/or a Cypress Module API result, plus (optionally) an [`audit-test`](./audit-test.md) verdict — and binds them into one readable, in-toto-shaped evidence bundle over content-addressed inputs. From that bundle it derives a categorical **ship / canary / hold** decision by **worst-wins**: if any input proposes `hold`, the decision is `hold`; else if any proposes `canary`, it's `canary`; else `ship`. The arithmetic is deterministic code (`gate.mjs`), not a judgment call — given the same bundle it always yields the same decision.
+`gate` is the **Gate stage** (stage 7) — the release-verdict layer that [`qa-pass`](./qa-pass.md) deliberately doesn't speak ([#99](https://github.com/TzolkinB/skills/issues/99)). It ingests a PR's *existing* test evidence — a Playwright JSON report and/or a Cypress Module API result, plus (optionally) an [`audit-test`](./audit-test.md) verdict — and binds them into one readable, in-toto-shaped evidence bundle over content-addressed inputs. From that bundle it derives a categorical **ship / canary / hold** decision by **worst-wins**: if any input proposes `hold`, the decision is `hold`; else if any proposes `canary`, it's `canary`; else `ship`. The arithmetic is deterministic code (`gate.mjs`), not a judgment call — given the same bundle it always yields the same decision.
 
 The bar for `ship` is deliberately hard to clear: every E2E suite passed in must be green **and** clear an **executed-floor** against what the report itself says it discovered (a suite that only ran a sliver of what it found is capped at `canary`, not read as green) — **and** a *parsed* `audit-test` verdict must show no hollow tests among what it deep-audited, with that deep-audited fraction clearing an **examined-floor**. An *opaque* audit-test report (human-readable but not machine-parsed) or no audit-test at all floors the decision at `canary` — a bare green E2E run can never launder into `ship` on its own. The whole bundle can optionally be DSSE-signed with a self-signed ed25519 key so a reader can verify nothing was altered after Gate produced it — self-signed, not Sigstore, and unsigned by default.
 
@@ -109,7 +109,7 @@ than no join). Because the input is a temp file, convert in the same session as 
 - **You want to run the suite or a browser** → out of scope by design; Gate ingests existing evidence only ([ADR-0010](./adr/0010-execution-out-temporal-deferred-behind-a-seam.md)).
 - **You want to know if a passing test is hollow** → [`audit-test`](./audit-test.md); Gate *consumes* its report, it doesn't produce one.
 - **You want which specs a diff hits, or to diagnose a red one** → [`e2e-impact`](./e2e-impact.md) / [`debug-test`](./debug-test.md).
-- **You want a QA judgment read across a branch** → [`sentinel`](./sentinel.md), which feeds Gate but doesn't itself speak shippability.
+- **You want a QA judgment read across a branch** → [`qa-pass`](./qa-pass.md), which feeds Gate but doesn't itself speak shippability.
 - **You want requirement→test mapping or a persistent risk register** → that's TEA `trace`'s turf, deliberately not rebuilt here ([ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)); Gate only *joins* its output against `audit-test`, stateless, at gate time.
 
 ## Prerequisites
@@ -126,7 +126,7 @@ A fourth case shows the business-risk join: [`fixtures/trace-matrix.mixed.json`]
 
 ## Where it fits
 
-The last stage of the [orchestration map](./orchestration-map.md) — after [`sentinel`](./sentinel.md)'s QA read and after [`audit-test`](./audit-test.md)'s credibility audit, Gate is where their evidence becomes an advisory release decision. It owns the ship verdict; nothing upstream of it does.
+The last stage of the [orchestration map](./orchestration-map.md) — after [`qa-pass`](./qa-pass.md)'s QA read and after [`audit-test`](./audit-test.md)'s credibility audit, Gate is where their evidence becomes an advisory release decision. It owns the ship verdict; nothing upstream of it does.
 
 ## Anti-patterns
 

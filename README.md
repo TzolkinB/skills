@@ -38,7 +38,7 @@ Then, in any Claude Code session:
 
 ## The skills, by the moment you'd reach for one
 
-Not sure? Run `/ask-sentinel` and describe your situation — it routes you to the one that fits, including to external tools when they're the better answer.
+Not sure? Run `/qa-compass` and describe your situation — it routes you to the one that fits, including to external tools when they're the better answer.
 
 ### The coverage illusion — your suite is green, but is it protecting anything?
 
@@ -64,8 +64,8 @@ The core of this plugin. A high **test coverage** number and a green suite say a
 ### Around a PR
 
 - **[`/e2e-impact`](./skills/e2e-impact/SKILL.md)** _(user-invoked)_ — Which user journeys does this PR touch? Maps a diff to the Playwright/Cypress specs it plausibly hits, with an explicit "can't tell, run everything" bucket rather than a confident guess.
-- **[`/sentinel`](./skills/sentinel/SKILL.md)** _(model-invoked)_ — Before you merge: one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate).
-- **[`/ask-sentinel`](./skills/ask-sentinel/SKILL.md)** _(model-invoked)_ — The front door: describe your situation and get routed to the one skill that answers it, plus where it sits in the flow.
+- **[`/qa-pass`](./skills/qa-pass/SKILL.md)** _(model-invoked)_ — Before you merge: one QA judgment pass over your branch, reduced to 🟢 / 🟡 / 🔴 (a read to act on, not a release gate).
+- **[`/qa-compass`](./skills/qa-compass/SKILL.md)** _(model-invoked)_ — The front door: describe your situation and get routed to the one skill that answers it, plus where it sits in the flow.
 
 ## Gate
 
@@ -115,7 +115,7 @@ Most of these skills are self-contained — they statically read your code and t
 
 `diagnosing-bugs` is load-bearing: when Playwright agents aren't set up, locator failures route to it too, so `/debug-test` leans on it for anything past a clean auto-heal. Installing Matt Pocock's skills alongside these is recommended — the two compose by design: **build with Matt's skills, verify with these.**
 
-Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/e2e-impact`, `/contract-guard`, `/ask-sentinel`, `/sentinel`, `/gate`) needs only Claude Code — `/contract-guard` optionally reads a published OpenAPI spec from a URL you supply, and `/gate` reads result files you already produced, but neither requires an install.
+Every other skill (`/test-plan`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/bug-report`, `/qa-review`, `/threat-model`, `/e2e-impact`, `/contract-guard`, `/qa-compass`, `/qa-pass`, `/gate`) needs only Claude Code — `/contract-guard` optionally reads a published OpenAPI spec from a URL you supply, and `/gate` reads result files you already produced, but neither requires an install.
 
 ## Privacy — what each skill reads, runs, and routes externally
 
@@ -123,7 +123,7 @@ These skills add no network calls of their own — none sends your code to a thi
 
 | Skill                 | Reads                                                                                                                                                                  | Runs (executes)                                                                                                                                                                                                                                                                                                                                              | Routes externally                                                                                                                                                  |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/ask-sentinel`       | Your description of the situation + your stack manifests (`package.json`, a `playwright.config.*`/`cypress.config.*`, a published `openapi`/`swagger` doc, if present) | Nothing                                                                                                                                                                                                                                                                                                                                                      | Nothing — points you at the right skill, doesn't invoke it                                                                                                         |
+| `/qa-compass`       | Your description of the situation + your stack manifests (`package.json`, a `playwright.config.*`/`cypress.config.*`, a published `openapi`/`swagger` doc, if present) | Nothing                                                                                                                                                                                                                                                                                                                                                      | Nothing — points you at the right skill, doesn't invoke it                                                                                                         |
 | `/test-plan`          | A feature description you provide                                                                                                                                      | Nothing                                                                                                                                                                                                                                                                                                                                                      | Nothing                                                                                                                                                            |
 | `/coverage-review`    | Your test file + code file                                                                                                                                             | Nothing                                                                                                                                                                                                                                                                                                                                                      | Nothing                                                                                                                                                            |
 | `/audit-test`         | The passing test(s) + the code they cover                                                                                                                              | One mutation at a time, reverted before the next, on a clean git tree — single-test mode runs one; batch mode fans this out across every flagged test, and `--certify` can run into the hundreds on a large suite. A crashed session can leave one mutation live; recovering it (`git checkout -- <file>`) is a manual step, not a guarantee the skill makes | Nothing                                                                                                                                                            |
@@ -135,22 +135,22 @@ These skills add no network calls of their own — none sends your code to a thi
 | `/audit-orchestrator` | The test under audit + your test configs                                                                                                                               | Detection locally (Glob/Read/`git`); hands off to `/audit-test` or points you at Tautest/StrykerJS                                                                                                                                                                                                                                                           | **Yes** — routes to `/audit-test` or the external mutation tools, all run locally in your session (see [Dependencies](#dependencies))                              |
 | `/contract-guard`     | The consumer code + the published contract (a local file, or a URL you point it at)                                                                                    | Reads the spec — a local file, or a read-only `GET` on the URL you supply                                                                                                                                                                                                                                                                                    | Routes to `/bug-report` locally; the only network touch is fetching the published-spec URL you provide — your code is never sent out                               |
 | `/debug-test`         | The failing Playwright test + code                                                                                                                                     | Runs the Playwright test locally                                                                                                                                                                                                                                                                                                                             | **Yes** — routes to the Playwright healer agent and to Matt Pocock's `diagnosing-bugs` skill (both run locally in your session; see [Dependencies](#dependencies)) |
-| `/sentinel`           | Files in the change                                                                                                                                                    | Composes the skills above; runs only what they run                                                                                                                                                                                                                                                                                                           | Only whatever `/debug-test` routes to, and only when a failing test is present                                                                                     |
+| `/qa-pass`           | Files in the change                                                                                                                                                    | Composes the skills above; runs only what they run                                                                                                                                                                                                                                                                                                           | Only whatever `/debug-test` routes to, and only when a failing test is present                                                                                     |
 | `/gate`               | A Playwright/Cypress result file + (optional) an `audit-test` emission/report you pass in                                                                              | Its bundled Node script locally + `git rev-parse HEAD` for the subject                                                                                                                                                                                                                                                                                       | Nothing                                                                                                                                                            |
 
 `/debug-test` and `/audit-orchestrator` hand work to external tooling; `/contract-guard` may fetch a published OpenAPI spec from a URL you supply, but never sends your code anywhere. Everything else statically reads and reasons, and the two skills that do execute (`/audit-test`, `/prune-tests --apply`) stay gated on a clean git tree. Both are prose skills, not executables — their verdicts are the agent's own account of what it ran in your session, not an independently verified measurement; watch the tool calls.
 
 ## New to testing? Start here
 
-Pedagogical skills — `/qa-review`, `/threat-model`, `/sentinel`, `/coverage-review`, `/test-plan`, `/audit-test`, `/bug-report`, `/prune-tests` — support a `--explain` flag. Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
+Pedagogical skills — `/qa-review`, `/threat-model`, `/qa-pass`, `/coverage-review`, `/test-plan`, `/audit-test`, `/bug-report`, `/prune-tests` — support a `--explain` flag. Default output stays terse for daily use; add `--explain` and each report includes a "Why This Matters" section that teaches the underlying concept, not just the finding — e.g. `/qa-review UserService.ts --explain`.
 
 Procedural skills — `/debug-test`, `/audit-orchestrator`, `/contract-guard`, `/e2e-impact`, `/gate` — don't support `--explain`; they run a fixed check rather than reasoning toward a teachable finding.
 
 ## In a hurry? `--digest`
 
-The judgment skills — `/test-plan`, `/qa-review`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/threat-model`, `/sentinel` — also take a `--digest` flag, the opposite of `--explain`. It replaces the full report with at most three evidence cards, each one line of risk, the specific evidence behind it, one concrete action, and the `Confirmed` / `Likely` / `Unexamined` label that says how well it's known — e.g. `/audit-test tests/booking.spec.ts --digest`. It's a *trim*, not a summary: a digest can only say less than the report it replaces, and it never upgrades a label (a reasoned finding stays `Likely` however short the card gets). The one format is defined once in [`skills/shared/digest-format.md`](./skills/shared/digest-format.md) ([ADR-0048](./docs/adr/0048-shared-digest-card-and-inline-next-footers.md)).
+The judgment skills — `/test-plan`, `/qa-review`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/threat-model`, `/qa-pass` — also take a `--digest` flag, the opposite of `--explain`. It replaces the full report with at most three evidence cards, each one line of risk, the specific evidence behind it, one concrete action, and the `Confirmed` / `Likely` / `Unexamined` label that says how well it's known — e.g. `/audit-test tests/booking.spec.ts --digest`. It's a *trim*, not a summary: a digest can only say less than the report it replaces, and it never upgrades a label (a reasoned finding stays `Likely` however short the card gets). The one format is defined once in [`skills/shared/digest-format.md`](./skills/shared/digest-format.md) ([ADR-0048](./docs/adr/0048-shared-digest-card-and-inline-next-footers.md)).
 
-Every judgment report — full or digest — ends with a one-line **`Next:`** footer naming the single step that follows *this* result, so you don't have to run `/ask-sentinel` again to find out what to do with what you're holding. The routing map stays `/ask-sentinel`'s; the footer is the shortcut into it ([`skills/shared/next-footers.md`](./skills/shared/next-footers.md)).
+Every judgment report — full or digest — ends with a one-line **`Next:`** footer naming the single step that follows *this* result, so you don't have to run `/qa-compass` again to find out what to do with what you're holding. The routing map stays `/qa-compass`'s; the footer is the shortcut into it ([`skills/shared/next-footers.md`](./skills/shared/next-footers.md)).
 
 (The `--digest` seven and the `--explain` eight are deliberately different sets: `/bug-report` teaches but has no findings to compress, so it takes `--explain` and not `--digest`.)
 
@@ -167,7 +167,7 @@ Use this when adding these skills to a repo that already has tests.
 3. Classify a small set of existing high-value tests to create an initial layer baseline.
 4. Record an initial distribution (for example: `3 unit / 5 component / 7 integration / 4 e2e`).
 5. Keep only thin critical-path browser journeys in `e2e`; if a case still passes with a browser replaced by API/client calls, move it toward `integration`.
-6. From that point forward, treat the `/sentinel` report layer distribution as your per-PR drift signal.
+6. From that point forward, treat the `/qa-pass` report layer distribution as your per-PR drift signal.
 
 Bootstrap is intentionally lightweight. You do not need to classify the entire legacy suite on day one.
 
@@ -208,7 +208,7 @@ Separately, not built yet on the authoring side:
 
 # Later, when tests are done:
 /coverage-review booking.test.js booking.ts
-/sentinel booking-feature-branch
+/qa-pass booking-feature-branch
 ```
 
 ### Example 2: AI Code Review
@@ -223,7 +223,7 @@ Separately, not built yet on the authoring side:
 # - Date boundary not covered
 
 # You tell Claude: "Fix these gaps"
-# Run /sentinel again when it's done
+# Run /qa-pass again when it's done
 ```
 
 ### Example 3: Production Bug
@@ -260,8 +260,8 @@ A: Yes, but the value is lower. They're most useful when you're actively writing
 **Q: What if I don't use Claude Code?**
 A: These are just structured procedures and checklists. Adapt them to your workflow.
 
-**Q: How do I "ship" the report from `/sentinel`?**
-A: That's up to you — copy it into your pull request, post it to Slack, use it in code review. `/sentinel` is a tool for thinking; `/gate` is the one that emits an explicit ship/canary/hold recommendation.
+**Q: How do I "ship" the report from `/qa-pass`?**
+A: That's up to you — copy it into your pull request, post it to Slack, use it in code review. `/qa-pass` is a tool for thinking; `/gate` is the one that emits an explicit ship/canary/hold recommendation.
 
 ## Contributing & Support
 

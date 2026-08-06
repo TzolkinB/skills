@@ -85,7 +85,7 @@ see?** If so, tell me; that false-🔴 is exactly the edge I most want to find.
 
 ## The other skills
 
-They're here too; try them if useful (`/ask-sentinel` routes you to the right one). But they're
+They're here too; try them if useful (`/qa-compass` routes you to the right one). But they're
 honest **static** helpers that reason about your tests, while `/audit-test` makes the strong,
 execution-backed claim, so that's where I want your scrutiny.
 

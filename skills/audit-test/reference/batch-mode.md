@@ -1,11 +1,11 @@
 # audit-test — Batch / directory mode
 
-Loaded from Step 1 when the target is a directory, glob, `--changed`, or nothing. The same audit fanned out over a set of test files, with the triage funnel doing the cost control. It's how `/sentinel` consumes this skill.
+Loaded from Step 1 when the target is a directory, glob, `--changed`, or nothing. The same audit fanned out over a set of test files, with the triage funnel doing the cost control. It's how `/qa-pass` consumes this skill.
 
-1. **Resolve the file set** (Step 1). If discovery matches no test files, report **INCONCLUSIVE — no recognized test files** and stop. A caller like `/sentinel` must treat INCONCLUSIVE as "the audit did not run," never as a clean result.
+1. **Resolve the file set** (Step 1). If discovery matches no test files, report **INCONCLUSIVE — no recognized test files** and stop. A caller like `/qa-pass` must treat INCONCLUSIVE as "the audit did not run," never as a clean result.
 2. **Triage every test** (Step 3), then **deep-audit only the flagged ones** (Step 4) — never more than one live mutation across the whole batch, reverting between each.
 3. **Cost guard.** The funnel normally keeps deep audits to a handful. If more than ~15 tests flag, or even triage is heavy, report the counts and ask the user to narrow scope rather than grinding the whole suite — deep-audit the highest-smell tests first and say plainly which ones you did **not** reach.
-4. **Report the tally plus flagged-only** (see Output Format). Each flagged entry names the test **and its file path**, so a caller — e.g. `/sentinel` mapping findings to sacred paths — can locate every finding without re-triaging.
+4. **Report the tally plus flagged-only** (see Output Format). Each flagged entry names the test **and its file path**, so a caller — e.g. `/qa-pass` mapping findings to sacred paths — can locate every finding without re-triaging.
 
 Batch mode judges tests exactly as single-test mode does; it does **not** know or care about sacred paths or branch verdicts — that's the caller's synthesis.
 
@@ -42,10 +42,10 @@ Reach for `--certify` when you want a run that can honestly reach `ship`; stay i
 1. **Triage the whole population** (Step 3), exactly as diagnostic mode does — this enumerates every test identity and flags the suspects.
 2. **Draw the sample** — a subset of size `N = ceil(floor% × audited)` (`floor%` = the effective `--examined-floor`, default 50%, clamped ≥ 25%), drawn by a **pinned sha256 hash-and-sort**, not the agent's judgement of "representative." This is **not** a random draw — the seed is a published constant, so the ordering is arbitrary but fully deterministic and *identity-independent*: reproducible **cross-machine** (a fixture drawn on macOS reproduces identically in Linux/Windows CI) and computable by anyone in advance. That has two consequences worth knowing: a fixed seed means every `--certify` run at a given floor draws the **same** subset, so repeated runs accumulate no new breadth on their own (at a 50% floor, the bottom half of the ordering is never drawn); and the emission carries no seed, ordering, or sample manifest, so neither Gate nor a human reviewer can check after the fact that the documented draw was actually performed — only that the documented *command*, if run, would reproduce it (`gate.mjs --self-test` proves the latter, not the former).
 
-   > Sort the triaged identities by `sha256("<SEED>:<id>")` ascending, where `id` is `<file>::<test name>` and `SEED` is the fixed constant `sentinel-certify-v0` (no `--seed` flag in v0). Take the first `N`.
+   > Sort the triaged identities by `sha256("<SEED>:<id>")` ascending, where `id` is `<file>::<test name>` and `SEED` is the fixed constant `qa-pass-certify-v0` (no `--seed` flag in v0). Take the first `N`.
 
    ```bash
-   SEED="sentinel-certify-v0"
+   SEED="qa-pass-certify-v0"
    # triaged-ids.txt: one "<file>::<test name>" per line — the full triaged population
    while IFS= read -r id; do
      printf '%s\t%s\n' "$(printf '%s' "$SEED:$id" | shasum -a 256 | cut -d' ' -f1)" "$id"

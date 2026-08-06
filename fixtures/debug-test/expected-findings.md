@@ -32,7 +32,7 @@ Rubric source for the `heal-classification-*` cases in [`evals/cases/debug-test.
 ([#190](https://github.com/TzolkinB/skills/issues/190)). **No runnable fixture backs these two**, and that
 is deliberate rather than an omission: reaching Step 4.5 requires a Playwright healer initialised in the
 repo that actually edits a spec, which the offline lane cannot stage. They are graded from recorded
-samples only, the way the `ask-sentinel` routing cases are — so this section, not a fixture directory, is
+samples only, the way the `qa-compass` routing cases are — so this section, not a fixture directory, is
 where their `must_surface` / `must_not` items come from.
 
 ## Case 1 — `heal-classification-assertion-value` (the green-lock)

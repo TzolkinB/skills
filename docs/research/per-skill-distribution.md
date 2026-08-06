@@ -268,7 +268,7 @@ exactly as documented in Claude Code's own reference.
 
 This research is intentionally narrow to the two questions in the issue. It does **not** address:
 
-- What breaks for the composed skills (`sentinel`, `ask-sentinel`, `gate`) if a user installs only a
+- What breaks for the composed skills (`qa-pass`, `qa-compass`, `gate`) if a user installs only a
   subset of the 14 skills — whether they need to detect a missing routing target and degrade
   gracefully, error clearly, or something else. That's an internal-codebase question about this repo's
   own skills, not a question about either distribution mechanism, and needs its own pass.

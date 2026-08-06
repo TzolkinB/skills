@@ -135,9 +135,13 @@ this isn't rediscovered as an open question.
 
 ### 6. Contextual "Sentinel" de-brand
 [#124](https://github.com/TzolkinB/skills/issues/124) (open) — ADR-0032/0033 retired "Sentinel"
-as the umbrella brand in the README; the other ~59 file-hits (prose, not the `/sentinel` skill
-identifier itself, which stays per ADR-0032 decision 2) are an unswept follow-up. Pure hygiene,
-no behavior or claim changes.
+as the umbrella brand in the README; most prose mentions of the old brand name are an unswept
+follow-up. **Narrowed**: the `/sentinel` and `/ask-sentinel` skill identifiers themselves — previously
+carved out per ADR-0032 decision 2 — were renamed to `/qa-pass` and `/qa-compass` (see the rename's own
+ADR), which also swept every functional-prose mention of "Sentinel" describing their current behavior.
+What's left for this item is narrower: loose "Sentinel" mentions that meant the old *umbrella* product
+name, not either skill (e.g. `docs/orchestration-map.md`'s fabricated-report provenance note). Pure
+hygiene, no behavior or claim changes.
 
 ### 7. Review-archive hygiene
 [#117](https://github.com/TzolkinB/skills/issues/117) (closed, 2026-07-22 by commit 4fd85ff) —

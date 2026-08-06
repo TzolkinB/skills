@@ -16,7 +16,7 @@ Its value is that a vague "it's broken" is the number-one reason bugs bounce bac
 ## When *not* to use it
 
 - **A Playwright test is red and you want the root cause** → [`debug-test`](./debug-test.md), which runs and diagnoses it.
-- **You want the ship/no-ship verdict on a branch** → [`sentinel`](./sentinel.md). Like [`threat-model`](./threat-model.md), bug-report is not part of the `/sentinel` chain.
+- **You want the ship/no-ship verdict on a branch** → [`qa-pass`](./qa-pass.md). Like [`threat-model`](./threat-model.md), bug-report is not part of the `/qa-pass` chain.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ a good report replaces "broken" with something reproducible:
 
 ## Where it fits
 
-Outside the [`sentinel`](./sentinel.md) chain — it's a handoff tool, not a QA judgment or ship-decision skill. It often follows [`debug-test`](./debug-test.md): once a failing test is diagnosed, bug-report turns the finding into a report the team can act on.
+Outside the [`qa-pass`](./qa-pass.md) chain — it's a handoff tool, not a QA judgment or ship-decision skill. It often follows [`debug-test`](./debug-test.md): once a failing test is diagnosed, bug-report turns the finding into a report the team can act on.
 
 ## Anti-patterns
 

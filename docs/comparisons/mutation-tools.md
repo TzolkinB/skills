@@ -10,7 +10,7 @@ watched the test stay green while the code was broken. **On the unit layer, they
 routes you to them** ([`audit-orchestrator`](../../skills/audit-orchestrator/SKILL.md),
 [ADR-0004](../adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md): *route, not rivalry*).
 
-Reach for **Sentinel** for the layer those tools **structurally cannot enter**: app-driven
+Reach for **`audit-test`** for the layer those tools **structurally cannot enter**: app-driven
 **Playwright/Cypress** end-to-end tests. Every one of these mutators is source-mutate + unit-runner
 (Jest/Vitest, or JUnit on the JVM); a hollow E2E assertion is invisible to them. `audit-test` runs a
 targeted mutation against a **dev-served** E2E test and shows whether it goes red — the same

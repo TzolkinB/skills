@@ -121,7 +121,7 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 1. ✅ **Done** — `--judge=llm` built, meta-eval'd green (Haiku 4.5), and now the default when
    `ANTHROPIC_API_KEY` is set; `heuristic` is the free offline fallback.
 2. ✅ **Done** — fan-out to the verdict-emitting skills: `debug-test`, `contract-guard`, `e2e-impact`.
-3. ✅ **Phase 1b done** — a `should-route` / `should-NOT-route` case set for `ask-sentinel` (the
+3. ✅ **Phase 1b done** — a `should-route` / `should-NOT-route` case set for `qa-compass` (the
    acceptance test for [#47](https://github.com/TzolkinB/skills/issues/47)), meta-eval'd green.
 4. ✅ **Phase 2 done** — `changed.mjs` + the `skill-evals` PR workflow detect the changed `SKILL.md`
    and run only its eval + lint ([ADR-0024](../docs/adr/0024-skill-evals-change-detection-report-first-ci.md)).
@@ -130,5 +130,5 @@ Figures are estimates from a chars/token heuristic; `messages/count_tokens` give
 6. ✅ **Gate flipped on (2026-07-16)** — CI runs `changed.mjs --gate`; the offline self-test now blocks
    a merge that breaks a case's discrimination.
 7. ✅ **Done** — scenario/prompt fixtures + cases for the three non-code skills (`test-plan`,
-   `bug-report`, `sentinel`), meta-eval'd green. **All 14 skills now have a trust-gated eval.**
+   `bug-report`, `qa-pass`), meta-eval'd green. **All 14 skills now have a trust-gated eval.**
 8. **Next** — wire `--live` (real agent runs, the real cost driver); the harness is otherwise complete.

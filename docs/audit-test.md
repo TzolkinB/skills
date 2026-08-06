@@ -40,7 +40,7 @@ The verdict is **🔴 Confirmed false-confidence**: comment out the overlap guar
 
 ## Where it fits
 
-Runs *after* tests exist, next to [`coverage-review`](./coverage-review.md). [`sentinel`](./sentinel.md) calls it in batch (`--changed`) over a branch's changed tests as its False-Confidence Audit — and a confirmed-hollow test on a `--sacred` path forces an un-overridable FAIL. If a suspect test turns out merely redundant rather than hollow, hand it to [`prune-tests`](./prune-tests.md); if you want a suite-wide mutation *score*, that's Stryker, not this.
+Runs *after* tests exist, next to [`coverage-review`](./coverage-review.md). [`qa-pass`](./qa-pass.md) calls it in batch (`--changed`) over a branch's changed tests as its False-Confidence Audit — and a confirmed-hollow test on a `--sacred` path forces an un-overridable FAIL. If a suspect test turns out merely redundant rather than hollow, hand it to [`prune-tests`](./prune-tests.md); if you want a suite-wide mutation *score*, that's Stryker, not this.
 
 ## Anti-patterns
 

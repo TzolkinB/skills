@@ -7,7 +7,7 @@ disable-model-invocation: true
 ---
 
 **Owns:** the release **Gate** — aggregating a PR's existing test Evidence into one bundle and emitting an
-advisory `ship`/`canary`/`hold` decision. the Gate owns the ship verdict; `/sentinel`-the-orchestrator does not
+advisory `ship`/`canary`/`hold` decision. the Gate owns the ship verdict; `/qa-pass`-the-orchestrator does not
 speak shippability ([#99](https://github.com/TzolkinB/skills/issues/99)).
 **Not this:** running a suite or a browser → out of scope, the Gate **ingests existing evidence only**
 ([ADR-0010](../../docs/adr/0010-execution-out-temporal-deferred-behind-a-seam.md)); proving a green test isn't

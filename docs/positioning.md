@@ -1,7 +1,7 @@
 # Positioning — the single source of truth
 
 Every user-facing surface derives from this file: the README opening, skill descriptions,
-`ask-sentinel` routing language, talks, and social copy. If a claim isn't sanctioned here, it doesn't
+`qa-compass` routing language, talks, and social copy. If a claim isn't sanctioned here, it doesn't
 ship. If this file and a surface disagree, **this file wins and the surface is a bug.**
 
 Held to the repo's own evidence bar ([ADR-0013](adr/0013-evidence-provenance-sentinel-labels-not-gates.md)):
@@ -201,6 +201,6 @@ Update these together; drift between them is a bug in the surface, not here.
 - `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` — the install-time descriptions,
   and for many users the *first* line they ever read
 - `skills/*/SKILL.md` — descriptions
-- `skills/ask-sentinel/` — routing language
+- `skills/qa-compass/` — routing language
 - [`orchestration-map.md`](orchestration-map.md) — the thesis, positioned as depth
 - [`comparisons/`](comparisons/) — per-competitor notes, same no-takedown rule

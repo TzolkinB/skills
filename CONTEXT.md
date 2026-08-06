@@ -68,9 +68,9 @@ _Avoid_: "full audit" / "deep audit" (a certification run still samples, it isn'
 (names the mechanism, not the purpose; the union with suspects is not just a sample).
 
 **Sacred path**:
-A path (code or test) the user marks critical for a `/sentinel` run, via `--sacred=<glob>`, so
-`/sentinel` abandons its gradient there for binary rigor: a *confirmed* false-confidence finding or an
-unhandled boundary on that path forces an **un-overridable FAIL**. It's the one place `/sentinel` refuses
+A path (code or test) the user marks critical for a `/qa-pass` run, via `--sacred=<glob>`, so
+`/qa-pass` abandons its gradient there for binary rigor: a *confirmed* false-confidence finding or an
+unhandled boundary on that path forces an **un-overridable FAIL**. It's the one place `/qa-pass` refuses
 CAUTION, and only ever on confirmed evidence, never a reasoned-only (Likely) finding. Off sacred paths the
 gradient stands.
 _Avoid_: sacred regression (J-Rig's term for the release-blocking test case, a related idea but different
@@ -79,7 +79,7 @@ critical path (ambiguous, that's a workflow/perf term).
 
 **Judgment skill**:
 One of the seven skills that read an artifact and return a *finding* about it — `test-plan`,
-`qa-review`, `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `sentinel`. They are
+`qa-review`, `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `qa-pass`. They are
 the set that shares the output contract in `skills/shared/`: the `--digest` evidence card and the
 inline `Next:` footer ([ADR-0048](docs/adr/0048-shared-digest-card-and-inline-next-footers.md)). The
 distinguishing property is having something to compress — a finding with evidence and a provenance

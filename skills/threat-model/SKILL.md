@@ -54,7 +54,7 @@ This is reasoning, not verification. It doesn't execute the code under review an
 **Next:** `/test-plan "refund retry leaves a double-charge"` — turn the ranked risks into cases
 ```
 
-Close every model — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: a HIGH risk with no test behind it routes to `/test-plan`; HIGHs that are already covered route to `/sentinel`.
+Close every model — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: a HIGH risk with no test behind it routes to `/test-plan`; HIGHs that are already covered route to `/qa-pass`.
 
 ## Explain Mode (`--explain`)
 

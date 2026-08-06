@@ -28,14 +28,14 @@ Following Matt Pocock's skills philosophy: **the orchestration is an *option*, n
 - **Orchestrated** — the stage *order* is the recommended path when you want end-to-end coverage,
   and it's what lets outputs flow into a single evidence artifact (see Gate).
 
-`ask-sentinel` already works this way — it's a router *to* individual skills, not a pipeline that
+`qa-compass` already works this way — it's a router *to* individual skills, not a pipeline that
 drags you through all of them. The map below documents both the standalone value of each item and
 the order that connects them.
 
 ## The bar: why trust any recommendation here? (no proof → no recommendation)
 
 A curated map that just *asserts* "use X over Y" is the exact slop this repo exists to catch —
-one level up. So the map is held to **Sentinel's own evidence standard.** Every recommendation
+one level up. So the map is held to **this repo's own evidence standard.** Every recommendation
 carries one of the three provenance labels from
 [ADR-0013](adr/0013-evidence-provenance-sentinel-labels-not-gates.md):
 
@@ -63,7 +63,7 @@ where it wins. Read these when you're deciding between a specific external tool 
   (they win there); reach for `audit-test` at the app-driven E2E layer they structurally can't enter;
   Gate composes, it doesn't verify.**
 - **[`comparisons/tea.md`](comparisons/tea.md)** — BMAD TEA. Use it for risk planning + governance
-  gate; reach for Sentinel for the mutation check and calibration TEA's docs show it can't do.
+  gate; reach for our tools for the mutation check and calibration TEA's docs show it can't do.
 
 ---
 
@@ -78,7 +78,7 @@ Each stage maps to: the **best free tool(s)** for it, the **wall** where those t
 
 | # | Stage | Best free tool(s) | The wall (where free tools stop) | Our gap-tool |
 |---|-------|-------------------|----------------------------------|--------------|
-| 1 | **Plan** — ticket/feature → risk-ranked plan | **Playwright Planner agent** (explores the running app, writes a Markdown plan; first-party, `init-agents --loop=claude`); **TEA** (risk tables) | Planner explores; it doesn't rank by *this diff's* blast radius or threat model | `test-plan`, `threat-model` (Sentinel) |
+| 1 | **Plan** — ticket/feature → risk-ranked plan | **Playwright Planner agent** (explores the running app, writes a Markdown plan; first-party, `init-agents --loop=claude`); **TEA** (risk tables) | Planner explores; it doesn't rank by *this diff's* blast radius or threat model | `test-plan`, `threat-model` (ours) |
 | 2 | **Author** — write the tests | **Playwright Generator agent** + **Cypress AI** (`cy.prompt()`, Studio AI, `cypress-author` skill — both first-party, app-driven, verify selectors/assertions live) | Generation is a solved commodity now; *trustworthy* generation is not — these optimize toward **green**, not toward *meaningful* | `qa-review` (testability) |
 | 3 | **Audit** — is this *passing* test actually real? | **StrykerJS** (full mutation), **Tautest** (PR diff-mutation, JS/TS **unit**), **Exspec** (static test-quality linter — flags assertion-free/over-mocked/coupled tests, multi-lang, no execution) | The mutators are source-mutate + Vitest/Jest only → **can't touch app-driven Playwright/Cypress** (reachability wall). Exspec is a real ally but **static — can't mutation-prove an assertion *matters***. **No first-party agent audits at all.** | **`audit-test`** (mutation-proof on **dev-served** Playwright/Cypress) — ADR-0016 staleness guard is the net-new piece |
 | 4 | **Coverage** — what's untested? | V8/istanbul (Vitest/Jest), Playwright coverage; `coverage-guard` (AI skill — **auto-generates tests looping to 100% line coverage → a green-pusher/manufactured-confidence hazard**, not credibility) | Line coverage ≠ assertion quality — and `coverage-guard` *manufactures* the number by auto-writing tests to hit it (no assertion-quality check); blind to app-driven paths | `coverage-review` |
@@ -163,7 +163,7 @@ Replay**). Cypress's side was thin. **cypress-flaky-test-audit** fills it symmet
   root-cause evidence for stage 6 — the exact slot Playwright trace viewer occupies. Clean symmetry:
   **Cypress flake → cypress-flaky-test-audit; Playwright flake → trace viewer.**
 - **Orchestrate, don't absorb.** The right move is a *pointer* — flake mode routes a flagged Cypress
-  spec here for command-level root cause. Building queue-interception into Sentinel would drag a
+  spec here for command-level root cause. Building queue-interception into this toolset would drag a
   skills/orchestration layer into a runtime-instrumentation plugin (category change, against the
   thesis and Kim's lane). Ideas worth pulling as *heuristics* debug-test can reference (not code to
   port): enqueue-vs-execution mismatch and never-run commands as flake signals; retry side-by-side
@@ -212,7 +212,7 @@ Each core claim, with its provenance label ([ADR-0013](adr/0013-evidence-provena
 | ~~`debug-test` flake mode beats "Playwright flag + read the trace" on the ambiguous subset~~ → **REFRAMED**: flake mode's value = **disposition + routing**, not detection | **Likely (by inspection 2026-07-11)** | Vetted SKILL + ADR-0012 directly: detection *is* the framework's own burn (`--repeat-each`/`status:"flaky"`) = the baseline, **by design** — it claims no detection edge. Marginal value = quarantine-not-skip + routing the cause to a skill that can *confirm* it (`audit-test`). Honest-by-design: unlike Gate it explicitly **refuses to verdict the cause**. But it's a workflow prescription whose technical proof is **borrowed from `audit-test`** (already Confirmed); no independent win. The heavy injected-corpus A/B tests a claim the tool doesn't make (ambiguous-subset *resolution*) → **not worth running.** |
 | cypress-flaky-test-audit does per-command queue/execution-order, timing, retry-diff and never-run-command tracing for Cypress (HTML/console/terminal), diagnosis-only, does not heal-to-green | **Confirmed (README at source, 2026-07-12)** | Fetched the GitHub README directly; features match. Upgrade: run it on a real flaky Cypress spec and confirm the reported command graph. |
 | cypress-flaky-test-audit is the Cypress-side stage-6 root-cause evidence source that `debug-test` flake mode should *route to* (symmetric to Playwright trace viewer); orchestrate-not-absorb | **Likely (reasoned 2026-07-12)** | Follows from the map's orchestrate-not-rebuild thesis + the tool being diagnosis-only (aligned with honest-flake). Not yet demonstrated: no live handoff run. Upgrade: flake mode flags a Cypress spec → hand to this tool → confirm the root cause is legible end-to-end. |
-| **TEA** (BMAD Test Architect, free) does P0–P3 risk tables (Plan) + a categorical PASS/CONCERNS/FAIL/WAIVED governance gate with NFR/compliance evidence (Gate) | **Confirmed (docs at source, 2026-07-17)** | [BMAD TEA docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/): `test-design` risk tables, `trace` categorical gate, `nfr-assess`. **Credibility/governance-side ally**, not a green-pusher (its stated enemy: "AI tests that rot"). Verified *absences* → the Sentinel/Gate gap: **no mutation, no live-execution ingest, no calibration** (see #96; reviewer-facing writeup: [`comparisons/tea.md`](comparisons/tea.md)). |
+| **TEA** (BMAD Test Architect, free) does P0–P3 risk tables (Plan) + a categorical PASS/CONCERNS/FAIL/WAIVED governance gate with NFR/compliance evidence (Gate) | **Confirmed (docs at source, 2026-07-17)** | [BMAD TEA docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/): `test-design` risk tables, `trace` categorical gate, `nfr-assess`. **Credibility/governance-side ally**, not a green-pusher (its stated enemy: "AI tests that rot"). Verified *absences* → the audit/Gate gap: **no mutation, no live-execution ingest, no calibration** (see #96; reviewer-facing writeup: [`comparisons/tea.md`](comparisons/tea.md)). |
 | **TEA `trace` gates on coverage *presence*** — Step 3 maps each requirement to a matching test (FULL/PARTIAL/NONE) and Step 5 is deterministic arithmetic over those percentages (`P0 < 100 → FAIL`; `P0 = 100 ∧ P1 ≥ 90 ∧ overall ≥ 80 → PASS`), with **no** mutation or credibility input → a P0 requirement covered only by a **hollow** test gates **PASS** | **Confirmed (workflow source, `main` @ v1.19.1, 2026-07-29; re-verified unchanged @ v1.21.4, 2026-08-04)** | Read `bmad-testarch-trace/steps-c/step-03-map-criteria.md` + `step-05-gate-decision.md`; **zero** hits for mutation/hollow/would-fail/kill-score across the whole trace tree (SKILL, instructions, 671-line checklist, 4 step files); test quality appears only as a printed step-04 recommendation, not a gate input. **Limits:** a *synthetic* oracle downgrades PASS→CONCERNS, so the clean PASS needs formal requirements; composing `test-review` doesn't close the presence gap either — static review isn't mutation proof. **Not TEA-specific** — presence-based coverage is the category default; TEA is just the one with readable source (Qase **Likely**, docs-only; closed tools **Unexamined**). Falsifier: a TEA release adding a credibility input to Step 5. Detail: [`comparisons/tea.md`](comparisons/tea.md) §3 |
 | **Playwright Planner agent** explores the running app → a human-readable Markdown test plan (first-party) | **Confirmed (docs at source, 2026-07-17)** | [playwright.dev/docs/test-agents](https://playwright.dev/docs/test-agents). Green-pushing (front of the authoring pipeline); doesn't rank by *this diff's* blast radius → yields to `test-plan`/`threat-model`. |
 | **Playwright Generator agent** turns the plan into executable tests, verifying selectors/assertions live | **Confirmed (docs at source, 2026-07-17)** | Same docs. Green-pushing — live-authoring *correctness*, not a credibility proof (would it fail if the code broke?) → `qa-review`/`audit-test` downstream. |
@@ -282,14 +282,14 @@ tool. It only has value sitting on top of trustworthy stages 3–5.
 1. **Cataloged vs. owned boundary** — for each stage, is our tool a thin wrapper that *invokes* the
    best free tool (e.g. `audit-test` orchestrating Stryker where it fits), or a genuine replacement
    in the E2E domain? Probably *both, per stage*.
-2. **Router — resolved.** `ask-sentinel` *is* the ecosystem's top-level router now ([ADR-0025](adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
+2. **Router — resolved.** `qa-compass` *is* the ecosystem's top-level router now ([ADR-0025](adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
    [ADR-0027](adr/0027-ask-sentinel-orchestrated-sequence-mode.md)): stack-aware, routes to external tools and to these skills alike,
    and returns either one best tool (à la carte) or an ordered stage path (a lifecycle ask). It routes across
    thirteen skills plus itself.
 3. **The gate-verdict ownership question — resolved.** (from `sentinel-witness-split`):
-   Sentinel stages 3–5 emit *credibility evidence*; Gate stage 7 owns the *ship verdict*,
-   earned via calibration. `skills/sentinel/SKILL.md` and `docs/sentinel.md` now say plainly
-   that `/sentinel` is a QA judgment read, not the release gate, and point to `/gate` for the
+   Stages 3–5 emit *credibility evidence*; Gate stage 7 owns the *ship verdict*,
+   earned via calibration. `skills/qa-pass/SKILL.md` and `docs/qa-pass.md` now say plainly
+   that `/qa-pass` is a QA judgment read, not the release gate, and point to `/gate` for the
    actual ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
 4. **Spin-out** — user flagged this may become its own project. Decide when the map stabilizes.
 
