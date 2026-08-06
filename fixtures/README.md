@@ -21,9 +21,11 @@ the same role: an input whose correct handling is spelled out in `expected-findi
 - **Not an automated assertion harness.** Skill output is prose that varies run to run, so there
   is deliberately no exact-output comparison, no snapshot, no CI gate that diffs skill output.
   `expected-findings.md` is a human checklist, not a golden file.
-- **Not runnable test suites.** The `.js` / `.ts` / `.spec.*` files are *example inputs* fed to a
-  skill, not tests this repo executes. They use a Jest/Vitest/Playwright idiom only because the
-  skills' own examples do.
+- **Not runnable test suites.** The `.js` / `.ts` / `.spec.*` files vendored directly under `fixtures/`
+  are *example inputs* fed to a skill, not tests this repo executes. They use a Jest/Vitest/Playwright
+  idiom only because the skills' own examples do. The one exception is the **live branch fixture**
+  kind below — its code lives off a dedicated git ref specifically *because* `--live` really does
+  execute it, which is why that content is kept off `main` and out of this directory.
 
 ## How to use one
 
@@ -52,7 +54,7 @@ Then compare the run to that fixture's `expected-findings.md`.
 | `threat-model` | `refund.js` | Fire-and-forget refund: silent failure, all-refunds blast radius, hard reversibility (email sent, status flipped) |
 | `test-plan` | `discount-code.md` *(scenario — a ticket)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |
 | `bug-report` | `report-export.md` *(scenario — an observation)* | A report that fabricates the sparse input's missing fields — a specific browser/OS/version, an exact `TypeError`, a confident root cause — instead of marking them `Unknown — not provided` (the anti-guess rule) |
-| `sentinel` | `branch-scenario.md` *(scenario — a branch)* | Softening a confirmed-hollow test on a **sacred** path to 🟡 CAUTION instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
+| `sentinel` | `branch-scenario.md` *(scenario — a branch)*, live-checked-out from `fixture/sentinel-payments-refund` (#210) | Softening a confirmed-hollow test on a **sacred** path to 🟡 CAUTION instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
 | `gate` | *(none vendored here — reads the skill's own committed fixtures under [`skills/gate/fixtures/`](../skills/gate/fixtures/))* | Worst-wins across a green Playwright/Cypress run plus a present `audit-test` verdict; the decision arithmetic itself is covered by `node skills/gate/gate.mjs --self-test`, this eval grades only the skill's honest reporting of that decision |
 
 Three more skills route/detect against a **warm sibling repo** and so keep only an
@@ -72,6 +74,12 @@ against situations, not a fixture.
 - **Warm-sibling fixture** — an `expected-findings.md` that traces against a real sibling repo in
   `~/projects/` (not vendored), used by the repo-context skills (`e2e-impact`, `contract-guard`,
   `audit-orchestrator`).
+- **Live branch fixture** — a scenario/prompt fixture's real counterpart: a permanent, dedicated git
+  ref (never merged into `main`) carrying real, runnable committed code with a genuine merge-base, for
+  the `--live` eval tier to check out via a case's `fixture_ref` ([`evals/run-eval.mjs`](../evals/run-eval.mjs))
+  instead of always HEAD. `sentinel`'s `fixture/sentinel-payments-refund` (#210) is the first: it's what
+  makes the `--live` run actually exercise the skill against real files, rather than grading a recorded
+  transcript.
 
 Every fixture — whichever kind — is now also an executable eval case under
 [`evals/`](../evals/) (issue #74): its `expected-findings.md` is the rubric, graded by an

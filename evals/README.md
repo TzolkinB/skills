@@ -45,6 +45,9 @@ evals/
   lib/judge-llm.mjs            LLM judge — zero-dep fetch to the Messages API, quote-grounded
   cases/<skill>.json           a case = verdict/route token + must_surface + must_not (from expected-findings)
                                one per skill — all 14 (verdict, router, prose-only, and scenario-fixture)
+                               a case may pin `fixture_ref` (#210): a permanent git ref elsewhere in
+                               this repo that `--live` checks out into the isolated worktree instead
+                               of HEAD, for a scenario fixture materialized as real, runnable code
   samples/
     <skill>.*.pass.md          faithful run — dry-run grades this, expects PASS
     <skill>.*.fail.md          hollow run  — self-test grades this, expects FAIL

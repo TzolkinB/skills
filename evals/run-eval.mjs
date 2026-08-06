@@ -109,7 +109,11 @@ function runInIsolatedWorktree(c) {
   // prior transcript and pass without doing the work.
   const wt = mkdtempSync(resolve(tmpdir(), 'sentinel-eval-'));
   try {
-    git(['worktree', 'add', '--detach', wt, 'HEAD']);
+    // A case can pin a fixture_ref (#210) — a permanent ref elsewhere in this repo
+    // carrying real fixture content (e.g. a materialized branch a skill's --live
+    // run needs to operate on) instead of whatever HEAD happens to be. Default
+    // stays HEAD so every case without one is unaffected.
+    git(['worktree', 'add', '--detach', wt, c.fixture_ref ?? 'HEAD']);
     // --dangerously-skip-permissions: the agent runs headless (-p) with nothing to answer an
     // Edit/Bash permission prompt, so without this a mutation-based skill (audit-test) just
     // stalls asking for approval and never reaches a verdict. Safe here specifically because
