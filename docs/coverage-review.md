@@ -43,7 +43,7 @@ A correct run flags the loose assertions (they'd pass even if the arithmetic wer
 
 ## Where it fits
 
-Runs *after* tests exist, paired with [`audit-test`](./audit-test.md): coverage-review finds what's untested or loosely asserted, audit-test proves whether an existing green test would fail if the code broke. Both feed the [`sentinel`](./sentinel.md) ship gate. Its subtractive mirror is [`prune-tests`](./prune-tests.md), which cuts tests rather than adding them.
+Runs *after* tests exist, paired with [`audit-test`](./audit-test.md): coverage-review finds what's untested or loosely asserted, audit-test proves whether an existing green test would fail if the code broke. Both feed the [`qa-pass`](./qa-pass.md) ship gate. Its subtractive mirror is [`prune-tests`](./prune-tests.md), which cuts tests rather than adding them.
 
 ## Anti-patterns
 

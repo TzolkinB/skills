@@ -55,7 +55,7 @@ is ignored rather than guessed at. Still proposal-only, still gated behind `--ap
 
 ## Where it fits
 
-The suite-hygiene step, and the subtractive counterpart to [`coverage-review`](./coverage-review.md). It hands any "does this test actually bite?" question to [`audit-test`](./audit-test.md) and never adds tests itself. It's *not* part of the [`sentinel`](./sentinel.md) ship-gate chain — reach for it when the suite feels slow or noisy, not at the merge gate.
+The suite-hygiene step, and the subtractive counterpart to [`coverage-review`](./coverage-review.md). It hands any "does this test actually bite?" question to [`audit-test`](./audit-test.md) and never adds tests itself. It's *not* part of the [`qa-pass`](./qa-pass.md) ship-gate chain — reach for it when the suite feels slow or noisy, not at the merge gate.
 
 ## Anti-patterns
 

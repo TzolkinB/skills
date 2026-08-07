@@ -1,7 +1,7 @@
 # Shared: the `--digest` evidence card
 
 Loaded from the Output Format of every judgment skill that supports `--digest` — `test-plan`,
-`qa-review`, `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `sentinel`. Defined
+`qa-review`, `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `qa-pass`. Defined
 **once** here so `--digest` is one shape a reader learns once, not a bespoke short-form per skill.
 
 `--digest` **replaces** the skill's full report with the least output you can act on: what's at risk,
@@ -84,4 +84,4 @@ Per skill, the strongest label its evidence can support:
 | `audit-test` | **Confirmed** for 🔴/🟢 (mutation ran, outcome observed, reachability cleared); **Likely** for 🟡 and for ⚠️ baseline-lock; **Unexamined** for triaged-but-never-mutated. | [ADR-0039](../../docs/adr/0039-audit-test-green-requires-execution.md), [ADR-0017](../../docs/adr/0017-audit-test-baseline-lock-suspected.md). |
 | `prune-tests` | **Likely** — except a `Confirmed Prune (mutation-backed)` entry (`--audit-evidence`), which carries **Confirmed** | A static economy read. A `Deferred to audit-test` entry is the one card that carries **Unexamined**: deferring it *is* the finding, and the admission that nothing here judged it. A `Confirmed Prune` entry is grounded in a mutation `audit-test` already ran and recorded in its `runs[]` trace, not this skill's own static read. |
 | `threat-model` | **Likely** | Reasoning about consequence; it executes nothing and cannot confirm a risk is real. |
-| `sentinel` | **The weakest label among the inputs that drove the verdict** (worst-wins). | It composes; it originates no evidence. A PASS carried by four reasoned reads is `Likely`, and a mostly-Unexamined audit tally is reported as such, never as confirmed-solid ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). |
+| `qa-pass` | **The weakest label among the inputs that drove the verdict** (worst-wins). | It composes; it originates no evidence. A PASS carried by four reasoned reads is `Likely`, and a mostly-Unexamined audit tally is reported as such, never as confirmed-solid ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). |

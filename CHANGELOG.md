@@ -17,6 +17,20 @@ release heading.
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: renamed `/ask-sentinel` → `/qa-compass` and `/sentinel` → `/qa-pass`** —
+  [ADR-0052](docs/adr/0052-rename-sentinel-skills-to-qa-compass-qa-pass.md). The two skills still
+  named after the retired "Sentinel" umbrella brand ([ADR-0032](docs/adr/0032-flatten-to-single-kimbell-skills-plugin.md))
+  read as orphaned once nothing else in the repo answered to that name. `/ask-sentinel` (the
+  situation → best-tool router) is now `/qa-compass`; `/sentinel` (the branch-wide QA judgment pass)
+  is now `/qa-pass`. Every cross-reference among the other twelve skills, `README.md`, and the eval
+  harness's routing/orchestrator cases was updated to match; historical ADRs, `CHANGELOG.md`, and the
+  permanent `fixture/sentinel-payments-refund` live-eval git ref intentionally keep their old names
+  (point-in-time records and shared infra, not living prose — see ADR-0052 for the exact scope line).
+  **If you invoke either skill by name** (a saved prompt, a script, muscle memory), update to
+  `/qa-compass` / `/qa-pass`.
+
 ### Added
 
 - **`sentinel`: a live eval fixture for step 7's test↔code pairing, the Sacred-Path Override's load-bearing

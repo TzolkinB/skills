@@ -3,7 +3,7 @@
 Lightweight, per-skill **known-bad inputs** — one tiny fixture per skill, paired with an
 `expected-findings.md` naming what a correct run should surface. Most are a small, self-contained
 source and/or test file that deliberately contains the exact smell its skill is designed to catch.
-The skills that don't consume code (`test-plan`, `bug-report`, `sentinel`) instead have a
+The skills that don't consume code (`test-plan`, `bug-report`, `qa-pass`) instead have a
 **scenario/prompt fixture** — a feature ticket, a bug observation, or a branch scenario — carrying
 the same role: an input whose correct handling is spelled out in `expected-findings.md`.
 
@@ -54,15 +54,15 @@ Then compare the run to that fixture's `expected-findings.md`.
 | `threat-model` | `refund.js` | Fire-and-forget refund: silent failure, all-refunds blast radius, hard reversibility (email sent, status flipped) |
 | `test-plan` | `discount-code.md` *(scenario — a ticket)* | A green-light plan: happy-path-only with loose, un-testable criteria; misses the expiry / minimum / `$0`-clamp edges, the single-use & no-stacking unhappy paths, and layer discipline |
 | `bug-report` | `report-export.md` *(scenario — an observation)* | A report that fabricates the sparse input's missing fields — a specific browser/OS/version, an exact `TypeError`, a confident root cause — instead of marking them `Unknown — not provided` (the anti-guess rule) |
-| `sentinel` | `branch-scenario.md` *(scenario — a branch)*, live-checked-out from `fixture/sentinel-payments-refund` (#210) | Softening a confirmed-hollow test on a **sacred** path to 🟡 CAUTION instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
+| `qa-pass` | `branch-scenario.md` *(scenario — a branch)*, live-checked-out from `fixture/sentinel-payments-refund` (#210) | Softening a confirmed-hollow test on a **sacred** path to 🟡 CAUTION instead of the un-overridable 🔴 FAIL the Sacred-Path Override requires |
 | `gate` | *(none vendored here — reads the skill's own committed fixtures under [`skills/gate/fixtures/`](../skills/gate/fixtures/))* | Worst-wins across a green Playwright/Cypress run plus a present `audit-test` verdict; the decision arithmetic itself is covered by `node skills/gate/gate.mjs --self-test`, this eval grades only the skill's honest reporting of that decision |
 
 Three more skills route/detect against a **warm sibling repo** and so keep only an
 `expected-findings.md` (no vendored input): `e2e-impact`, `contract-guard`, and
 `audit-orchestrator` (targets in `~/projects/`, hand-traced — see each skill's `expected-findings.md`).
 
-`ask-sentinel` has no fixture directory at all — by design, it's a router with no code/scenario
-input to plant a smell in; its eval (`evals/cases/ask-sentinel.json`) grades routing accuracy
+`qa-compass` has no fixture directory at all — by design, it's a router with no code/scenario
+input to plant a smell in; its eval (`evals/cases/qa-compass.json`) grades routing accuracy
 against situations, not a fixture.
 
 ## Fixture kinds
@@ -70,14 +70,14 @@ against situations, not a fixture.
 - **Code fixture** — a vendored source/test file (the rows above without a *scenario* tag). Feed it to
   the skill directly.
 - **Scenario/prompt fixture** — a ticket / observation / branch scenario for the skills that consume a
-  description, not code (`test-plan`, `bug-report`, `sentinel`).
+  description, not code (`test-plan`, `bug-report`, `qa-pass`).
 - **Warm-sibling fixture** — an `expected-findings.md` that traces against a real sibling repo in
   `~/projects/` (not vendored), used by the repo-context skills (`e2e-impact`, `contract-guard`,
   `audit-orchestrator`).
 - **Live branch fixture** — a scenario/prompt fixture's real counterpart: a permanent, dedicated git
   ref (never merged into `main`) carrying real, runnable committed code with a genuine merge-base, for
   the `--live` eval tier to check out via a case's `fixture_ref` ([`evals/run-eval.mjs`](../evals/run-eval.mjs))
-  instead of always HEAD. `sentinel`'s `fixture/sentinel-payments-refund` (#210) is the first: it's what
+  instead of always HEAD. `qa-pass`'s `fixture/sentinel-payments-refund` (#210) is the first: it's what
   makes the `--live` run actually exercise the skill against real files, rather than grading a recorded
   transcript.
 

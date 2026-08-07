@@ -1,0 +1,41 @@
+{
+  "skill": "qa-pass",
+  "trials": 3,
+  "_note": "The orchestrator (model-invoked). Scenario/prompt fixture: branch-scenario.md describes the sub-skill findings qa-pass should reach, and the eval grades qa-pass's synthesis of them. Rubric from fixtures/qa-pass/expected-findings.md: a 🔴 CONFIRMED false-confidence finding on a SACRED path (src/payments/**) must fire the Sacred-Path Override → an UN-OVERRIDABLE 🔴 FAIL. The signature failure is softening it to 🟡 CAUTION because the rest of the branch looks solid — the exact anti-pattern the override rule prevents. qa-pass has a **Verdict:** line, so this uses expect_verdict. Each must_surface is one groundable proposition (the #81/#84 compound-claim lesson). `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly. dry-run/self-test are unaffected by any of this — they grade the recorded samples below, not a live run. `fixture_ref` (#210) is what makes `--live` actually exercise step 7's test↔code pairing: run-eval.mjs checks out that ref instead of HEAD, so the isolated worktree contains the real src/payments/refund.js + refund.test.js (overmocked, genuinely mutation-survivable — verified by hand: removing the amount guard leaves it green) and the non-sacred src/reports/export.js + export.test.js noise, and qa-pass has to derive the pairing itself rather than being handed 'paired to `src/payments/refund.js`' in the prompt (the #81/#84 substring-not-entailment leak the prose-fixture approach had). must_surface/must_not were re-checked against this and one anchor list was tightened: item 2's `src/payments`/`sacred path` anchors were dropped because `src/payments` is literally in `invoke` (`--sacred=src/payments/**`) and `sacred path` matches the report's boilerplate `**Sacred paths:**` header even when nothing tripped — both gameable by echo, not derivation. It now anchors only on `refund.js`/`paired to`, which never appear in the prompt and only show up if qa-pass actually named the derived paired source. (The LLM judge — the real grader — was never vulnerable to this; it grades `claim` against a required verbatim quote, not a keyword anchor. This only tightens the free offline heuristic fallback, which is what CI's keyless gate and any local run without `ANTHROPIC_API_KEY` actually use.) `fixture_files` stays documentary only (consistent with every other case — run-eval.mjs never reads it in any mode, a pre-existing repo-wide convention this issue's harness question doesn't change): branch-scenario.md is the spec the fixture_ref branch's real files were built from, not something fed to the live run.",
+  "cases": [
+    {
+      "id": "sacred-path-override-fail",
+      "invoke": "/qa-pass fixture/sentinel-payments-refund --sacred=src/payments/**",
+      "workspace": "isolated",
+      "fixture_ref": "fixture/sentinel-payments-refund",
+      "fixture_files": ["fixtures/qa-pass/branch-scenario.md"],
+      "dry_run_sample": "samples/qa-pass.payments-refund.pass.md",
+      "dry_run_negative_sample": "samples/qa-pass.payments-refund.fail.md",
+      "expect_verdict": "🔴",
+      "must_surface": [
+        {
+          "claim": "Fires the Sacred-Path Override → an un-overridable 🔴 FAIL, because a 🔴 confirmed false-confidence finding lands on the sacred path.",
+          "anchors": { "any": ["sacred-path override", "sacred path override", "un-overridable", "override fired", "override fires"] }
+        },
+        {
+          "claim": "Names the sacred path that tripped (`src/payments/**`) and the paired source file (`src/payments/refund.js`), so the fire is visible rather than silent.",
+          "anchors": { "any": ["refund.js", "paired to"] }
+        },
+        {
+          "claim": "Keeps provenance honest — counts the confirmed-hollow refund test as confirmed, and never claims a test confirmed-solid (🟢) unless it was actually deep-audited and observed killing a mutation.",
+          "anchors": { "any": ["unexamined", "confirmed false-confidence", "confirmed-hollow", "not proof", "not confirmed-solid", "confirmed-solid"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT soften the verdict to 🟡 CAUTION or 🟢 PASS — a fired Sacred-Path Override is un-overridable and an otherwise-solid branch cannot reduce it.",
+          "anchors": { "any": ["**verdict:** 🟡", "**verdict:** 🟢", "shippable:** yes", "shippable: yes"] }
+        },
+        {
+          "claim": "Must NOT emit a numeric score or percentage — the verdict is categorical (🟢/🟡/🔴), never a number.",
+          "anchors": { "any": ["score:", "/100", "% confidence", "quality score", "out of 100"] }
+        }
+      ]
+    }
+  ]
+}

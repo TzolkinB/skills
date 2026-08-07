@@ -74,7 +74,7 @@ A test suite that makes green lights doesn't protect you. Coverage review asks: 
 
 **Escalate to audit-test** is the Loose Assertions list turned into candidates, one-for-one — same entries, each naming the assertion, the one-line reason it's worth a mutation, and the invocation. Omit the section entirely when Loose Assertions has nothing in it; don't manufacture an entry to fill the template (same rule prune-tests applies to its own Deferred list).
 
-Close every review — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: loose or incidental assertions route to `/audit-test`; a report with gaps but nothing loose routes on to `/sentinel` once the gaps are closed. Both the section and the footer **point** — this skill still never runs a mutation itself, it only names the candidate ([ADR-0009](../../docs/adr/0009-coverage-review-consumes-coverage-not-produces-it.md)).
+Close every review — full or `--digest` ([shared card](../shared/digest-format.md)) — with that one-line [`Next:` footer](../shared/next-footers.md). Pick the row for the result you actually produced: loose or incidental assertions route to `/audit-test`; a report with gaps but nothing loose routes on to `/qa-pass` once the gaps are closed. Both the section and the footer **point** — this skill still never runs a mutation itself, it only names the candidate ([ADR-0009](../../docs/adr/0009-coverage-review-consumes-coverage-not-produces-it.md)).
 
 ## Explain Mode (`--explain`)
 

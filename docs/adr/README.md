@@ -93,6 +93,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0049](0049-contract-guard-test-boundary-validation-tier.md) | `contract-guard` gains a test-boundary validation tier and reports per-spec which drifts that validation can catch | Accepted 2026-08-04 |
 | [0050](0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md) | A TEA `trace` run converts into `gate-trace-matrix/v0` from its Phase-1 JSON, never its Markdown | Accepted 2026-08-04 |
 | [0051](0051-live-eval-fixtures-materialize-as-a-permanent-git-ref.md) | A `--live` eval fixture needing real, runnable code materializes as a permanent, never-merged git ref; `fixture_ref` checks it out instead of `HEAD` | Accepted 2026-08-06 |
+| [0052](0052-rename-sentinel-skills-to-qa-compass-qa-pass.md) | Rename `/ask-sentinel` → `/qa-compass` and `/sentinel` → `/qa-pass` — the last two "Sentinel" skill identifiers | Accepted 2026-08-06 |
 
 ## By area
 
@@ -101,9 +102,9 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 - **`coverage-review`** — [0009](0009-coverage-review-consumes-coverage-not-produces-it.md), [0011](0011-coverage-review-prefers-real-instrumentation.md), [0044](0044-repo-level-coverage-inventory-obligation-driver.md)
 - **`debug-test`** — [0012](0012-debug-test-flake-mode.md), [0018](0018-debug-test-drift-triage.md), [0047](0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)
 - **`prune-tests`** — [0003](0003-prune-tests-proposes-before-deleting.md)
-- **`/sentinel` verdict and the sacred path** — [0007](0007-sentinel-sacred-path-fail-override.md), [0014](0014-sacred-path-integrity-discovery-fails-loud.md)
+- **`/qa-pass` verdict and the sacred path** — [0007](0007-sentinel-sacred-path-fail-override.md), [0014](0014-sacred-path-integrity-discovery-fails-loud.md)
 - **Drift guards** — [0021](0021-contract-guard-consumer-side-openapi-differ.md), [0023](0023-selector-guard-static-testid-drift-check.md), [0049](0049-contract-guard-test-boundary-validation-tier.md)
-- **Routing (`ask-sentinel` / `audit-orchestrator`)** — [0025](0025-ask-sentinel-stack-aware-router-reads-manifests.md), [0027](0027-ask-sentinel-orchestrated-sequence-mode.md), [0036](0036-ask-sentinel-audit-orchestrator-confirmed-rename.md), [0048](0048-shared-digest-card-and-inline-next-footers.md)
+- **Routing (`qa-compass` / `audit-orchestrator`)** — [0025](0025-ask-sentinel-stack-aware-router-reads-manifests.md), [0027](0027-ask-sentinel-orchestrated-sequence-mode.md), [0036](0036-ask-sentinel-audit-orchestrator-confirmed-rename.md), [0048](0048-shared-digest-card-and-inline-next-footers.md), [0052](0052-rename-sentinel-skills-to-qa-compass-qa-pass.md)
 - **Gate and the evidence bundle** — [0028](0028-witness-gate-skill-mvp1.md), [0029](0029-witness-parsed-audit-test-graduation.md), [0030](0030-witness-cypress-ingest.md), [0031](0031-witness-evidence-bundle-v0.1-empty-result.md), [0033](0033-witness-internal-identifier-rename.md), [0034](0034-proven-confirmed-taxonomy-rename.md), [0035](0035-gate-examined-floor.md), [0037](0037-gate-evidence-integrity.md), [0040](0040-widen-gate-signed-scope-to-entries.md), [0042](0042-gate-rejected-credibility-state-and-freshness-floor.md), [0043](0043-report-to-commit-provenance-over-git-timestamp.md), [0050](0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)
 - **Skill evals** — [0022](0022-skill-eval-harness-asserts-tokens-judges-prose.md), [0024](0024-skill-evals-change-detection-report-first-ci.md), [0026](0026-live-evals-opt-in-pr-and-scheduled-drift.md), [0051](0051-live-eval-fixtures-materialize-as-a-permanent-git-ref.md)
 - **Packaging and release** — [0006](0006-bundled-two-plugin-marketplace-repo.md), [0008](0008-release-discipline.md), [0032](0032-flatten-to-single-kimbell-skills-plugin.md)

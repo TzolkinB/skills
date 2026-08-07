@@ -7,7 +7,7 @@ disable-model-invocation: true
 ---
 
 **Owns:** the **Audit stage** routing decision — detect a test's stack and hand it to the tool that can actually prove whether it guards anything. The stage-3 orchestrator.
-**Not this:** the per-test mutation proof itself → `/audit-test` (this routes *to* it); missing paths → `/coverage-review`; the whole-branch ship verdict → `/sentinel`. It **never emits a gate**.
+**Not this:** the per-test mutation proof itself → `/audit-test` (this routes *to* it); missing paths → `/coverage-review`; the whole-branch ship verdict → `/qa-pass`. It **never emits a gate**.
 
 The best free mutation tools — **StrykerJS** and **Tautest** — are source-mutating and Vitest/Jest-scoped, so they hit a **reachability wall**: they cannot touch app-driven Playwright/Cypress code (*Confirmed*). This skill detects the stack and **routes, not rivals** ([ADR-0004](../../docs/adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)): where a free tool fits, it points you at it (orchestrate, don't absorb); where the wall stops it — app-driven — it falls back to **`audit-test`**, which proves a dev-served target and returns an honest 🟡 on a stale/build-served harness instead of a false 🔴 ([ADR-0016](../../docs/adr/0016-audit-test-reachability-guard.md)/[ADR-0019](../../docs/adr/0019-audit-test-reachability-warm-dev-propagation.md)). A green is not proof — and neither is a routing assertion without evidence, so every recommendation carries a **provenance label** ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)); don't upgrade one past what backs it.
 
@@ -34,7 +34,7 @@ Pick **one** primary tool and state the reason and its provenance:
 ### 3. Invoke or point, then emit the verdict
 - **audit-test routes** → invoke `/audit-test` (via the `Skill` tool) on the target and carry its verdict through. audit-test owns the mutation, the reachability/baseline-lock guards, and the Safety rule; this skill does not re-implement them.
 - **Tautest / StrykerJS routes** → **orchestrate, don't absorb**: print the exact command and a one-line setup note; these are external, source-mutating CLIs the map points *at*, not into. Then recommend `/audit-test` on any survivor for a concrete fix.
-- Always label the routing claim's provenance and keep audit-test's `🔴 / 🟡 / 🟢 / ⚠️` verdict semantics intact. **Never** collapse them into a PASS/FAIL — that's the gate, and the gate is not this skill's (it's `/sentinel` → Gate).
+- Always label the routing claim's provenance and keep audit-test's `🔴 / 🟡 / 🟢 / ⚠️` verdict semantics intact. **Never** collapse them into a PASS/FAIL — that's the gate, and the gate is not this skill's (it's `/qa-pass` → Gate).
 
 ## Output Format
 

@@ -1,7 +1,7 @@
 {
   "skill": "qa-review",
   "trials": 3,
-  "_note": "Prose-only, token-less (no verdict/mode line) — discrimination rests on must_surface / must_not under the LLM judge, the regime validated on ask-sentinel route-none (#81). Rubric from fixtures/qa-review/expected-findings.md against pricing.js: a pure testability target (code only, no test file) with planted non-determinism, hidden/uninjectable deps, and brittleness. The signature failure this skill counters is the shallow 'looks testable' review that names none of the smells. `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
+  "_note": "Prose-only, token-less (no verdict/mode line) — discrimination rests on must_surface / must_not under the LLM judge, the regime validated on qa-compass route-none (#81). Rubric from fixtures/qa-review/expected-findings.md against pricing.js: a pure testability target (code only, no test file) with planted non-determinism, hidden/uninjectable deps, and brittleness. The signature failure this skill counters is the shallow 'looks testable' review that names none of the smells. `anchors` exist only for the offline heuristic judge; the LLM judge grades `claim` directly.",
   "cases": [
     {
       "id": "pricing-testability-smells",
