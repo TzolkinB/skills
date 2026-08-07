@@ -94,6 +94,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0050](0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md) | A TEA `trace` run converts into `gate-trace-matrix/v0` from its Phase-1 JSON, never its Markdown | Accepted 2026-08-04 |
 | [0051](0051-live-eval-fixtures-materialize-as-a-permanent-git-ref.md) | A `--live` eval fixture needing real, runnable code materializes as a permanent, never-merged git ref; `fixture_ref` checks it out instead of `HEAD` | Accepted 2026-08-06 |
 | [0052](0052-rename-sentinel-skills-to-qa-compass-qa-pass.md) | Rename `/ask-sentinel` → `/qa-compass` and `/sentinel` → `/qa-pass` — the last two "Sentinel" skill identifiers | Accepted 2026-08-06 |
+| [0053](0053-drop-the-prototype-self-label-for-v2.md) | Drop the "prototype" self-label for v2 — state the engineering rigor, keep the honest solo-maintainer caveats | Accepted 2026-08-07 |
 
 ## By area
 
