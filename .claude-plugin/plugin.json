@@ -1,11 +1,22 @@
 {
   "name": "kimbell-skills",
-  "version": "1.0.0",
+  "version": "1.9.0",
   "description": "Know which green tests you can trust. QA judgment skills for Claude Code — test planning, testability and coverage review, mutation-backed test audits, flake triage, and an evidence-based ship gate.",
   "author": {
     "name": "Kim"
   },
   "homepage": "https://github.com/TzolkinB/skills",
   "license": "MIT",
-  "keywords": ["testing", "qa", "sdet", "test-quality", "mutation", "playwright", "cypress", "e2e", "test-coverage", "flaky-tests"]
+  "keywords": [
+    "testing",
+    "qa",
+    "sdet",
+    "test-quality",
+    "mutation",
+    "playwright",
+    "cypress",
+    "e2e",
+    "test-coverage",
+    "flaky-tests"
+  ]
 }
