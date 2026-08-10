@@ -31,6 +31,16 @@ release heading.
   **If you invoke either skill by name** (a saved prompt, a script, muscle memory), update to
   `/qa-compass` / `/qa-pass`.
 
+- **Dropped the "prototype" self-label from `README.md`** — [ADR-0053](docs/adr/0053-drop-the-prototype-self-label-for-v2.md),
+  superseding the wording (not the intent) of [ADR-0037](docs/adr/0037-gate-evidence-integrity.md)
+  finding 9. "Prototype" undersold what's actually true for v2 — 14 skills each covered by a CI-gated
+  eval, 52 ADRs, an evidence label on every claim — without being asked to claim anything about outside
+  adoption, which hasn't changed: still solo-maintained, no team, no SLA, no confirmed users beyond the
+  maintainer. The Contributing & Support section now states the engineering discipline alongside those
+  unchanged caveats instead of a single word that implied roughness the repo doesn't have.
+  `docs/positioning.md` gains a matching "no implied external adoption" rule under Claims we must not
+  make, so future copy has an explicit line to check against.
+
 ### Added
 
 - **`sentinel`: a live eval fixture for step 7's test↔code pairing, the Sacred-Path Override's load-bearing

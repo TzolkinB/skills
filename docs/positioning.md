@@ -181,6 +181,11 @@ one costs exactly the trust this audience is slowest to give.
   TEA and it worked" is not, until someone does. Say *converted from a TEA run*, never *integrated
   with TEA*: nothing calls TEA, and the conversion reads one temp artifact TEA never published as a
   schema ([ADR-0050](adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
+- **No implied external adoption.** Say what's true about the engineering — eval coverage, ADR count,
+  the evidence discipline every claim (including this one) is held to. Never say or imply "used by
+  teams," "trusted by," "in production at," or similar, until it's true — there are no confirmed users
+  beyond the maintainer yet ([ADR-0053](adr/0053-drop-the-prototype-self-label-for-v2.md)). That's a
+  fact about adoption, not about quality, and the two must never blur into one claim.
 
 ## The honest weaknesses
 

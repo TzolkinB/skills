@@ -265,7 +265,7 @@ A: That's up to you — copy it into your pull request, post it to Slack, use it
 
 ## Contributing & Support
 
-**Status: prototype.** A personal project, built and maintained by one QA engineer — not a commercially supported product, with no team or SLA behind it. If a skill's judgment seems off, or something doesn't work, please file an issue — real usage against real code is what sharpens these skills. See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
+**Solo-maintained, built with the same rigor it asks of your tests.** One QA engineer, no team, no SLA — every skill is covered by a CI-gated eval, every non-trivial decision is recorded as an ADR (52 and counting), and every claim carries an evidence label. No confirmed users beyond the maintainer yet — if you're the first, or a skill's judgment seems off, please file an issue. Real usage against real code is what sharpens these skills. See [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ## License
 
