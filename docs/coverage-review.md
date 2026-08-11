@@ -4,7 +4,7 @@
 
 ## What it does
 
-`coverage-review` reads a test file against the code it covers. It asks the question a green suite never answers on its own: *what breaks that these tests do not catch?* It flags untested paths, untested error and boundary conditions, and — this matters most — loose assertions: assertions that pass even when the code is wrong.
+`coverage-review` reads a test file against the code it covers. It asks the question a green suite never answers on its own: *what breaks that these tests do not catch?* It flags untested paths, and untested error and boundary conditions. Most important, it flags loose assertions — assertions that pass even when the code is wrong.
 
 When the project already produces coverage instrumentation (lcov, istanbul/c8, JaCoCo), coverage-review reads that as ground truth for *which lines ran*. Otherwise it infers coverage statically. Either way, the judgment layer stays the same. It is the part a coverage number never gives you: **a line that ran is not a line that someone checked.** A line at 100% coverage guarded by `toBeDefined()` is still a gap. coverage-review never *requires* instrumentation — most AI-generated repos have none, and a hard setup barrier defeats the point.
 

@@ -101,7 +101,7 @@ Gate is the release-decision layer. It never runs a test suite. It **reads the e
 
   Playwright's JSON reporter writes its result to disk automatically. Cypress does not do this; it needs a small Module API wrapper first. See [`docs/gate.md`](./docs/gate.md) for this wrapper.
 
-  The decision comes from deterministic code. It carries no confidence number. The decision is advisory; it does not stop your build. A plain passing E2E run never becomes `ship` on its own: a `ship` decision needs a parsed `audit-test` verdict that has passed a minimum check, and a suite that ran only a small part of what it found is limited to `canary`.
+  The decision comes from deterministic code. It carries no confidence number. The decision is advisory; it does not stop your build. A plain passing E2E run never becomes `ship` on its own. A `ship` decision needs a parsed `audit-test` verdict that has passed a minimum check. A suite that ran only a small part of what it found is limited to `canary`.
 
   Signing the bundle is optional. Use your own ed25519 key and DSSE to sign it. A reader then verifies that the bundle was not changed after signing. This method is self-signed, not Sigstore. It never claims that the producer was honest.
 
@@ -160,7 +160,7 @@ These skills add no network calls of their own. No skill sends your code to a th
 
 Eight skills teach as they work: `/qa-review`, `/threat-model`, `/qa-pass`, `/coverage-review`, `/test-plan`, `/audit-test`, `/bug-report`, `/prune-tests`. Each of these skills supports a `--explain` flag. The default output stays short, for daily use. Add `--explain`, and each report gets a "Why This Matters" section. This section teaches the idea behind the finding, not only the finding itself. Example: `/qa-review UserService.ts --explain`.
 
-Five skills run a fixed check instead: `/debug-test`, `/audit-orchestrator`, `/contract-guard`, `/e2e-impact`, `/gate`. These skills do not support `--explain`. They run a fixed check, and do not reason toward a finding that they can teach.
+Five skills run a fixed check instead: `/debug-test`, `/audit-orchestrator`, `/contract-guard`, `/e2e-impact`, `/gate`. These skills do not support `--explain`. They run a fixed check. They do not reason toward a finding, so there is no reasoning to teach.
 
 ## In a Hurry? `--digest`
 

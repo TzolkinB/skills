@@ -4,7 +4,7 @@
 
 ## What it does
 
-`qa-review` is a code review from the QA angle. It asks different questions than a general review: Is this testable? Is it flaky? Are there hidden dependencies? Is it coupled to something with no mock? It scans for hard-coded dependencies and non-determinism, for example `Date.now()`, `Math.random()`, or an uncontrolled timer. It also scans for coupling that resists mocking, brittle assertions, and unclear contracts.
+`qa-review` is a code review from the QA angle. It asks different questions than a general review: Is this testable? Does it pass and fail with no code change — is it flaky? Are there hidden dependencies? Is it coupled to something with no mock? It scans for hard-coded dependencies and non-determinism, for example `Date.now()`, `Math.random()`, or an uncontrolled timer. It also scans for coupling that resists mocking, brittle assertions, and unclear contracts.
 
 Testability is independent of code quality. Beautiful code is sometimes untestable. Ugly code is sometimes perfectly testable. This review catches a class of problem that a style or correctness review misses entirely. Untestable code signals that hidden dependencies and non-determinism sit baked into the code. The fix is usually the code, not the test.
 
