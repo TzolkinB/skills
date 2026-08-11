@@ -4,38 +4,48 @@
 
 ## What it does
 
-When a Playwright test fails, `debug-test` reads and runs it instead of asking you to describe it, applies fast QA heuristics (setup, assertion, code-logic angles), and routes what it can't resolve — locator/timing failures to the Playwright healer, logic failures to Matt Pocock's `diagnosing-bugs`. The quick wins — a missing `await`, a loose assertion, a fixture that never fires — it catches itself, with a root cause and a one-line fix.
+If a Playwright test fails, `debug-test` reads and runs it, instead of asking you to describe it. It applies fast QA heuristics across three angles: setup, assertion, and code logic. It routes what it does not resolve on its own. A locator or timing failure goes to the Playwright healer. This is a tool that automatically rewrites a broken locator or wait condition, so the test passes again. A logic failure goes to Matt Pocock's `diagnosing-bugs` skill.
 
-When it does hand a locator or timing failure to the healer, it doesn't take the healer's green at face value. **Step 4.5 classifies the heal** from `git diff`: a selector or wait touch-up clears on the diff alone (no mutation spent on the low-risk common case); a changed *expected value* — the fingerprint of a healer greening a red test by rewriting what it asserts — routes to [`audit-test`](./audit-test.md)'s baseline-lock check and reports that verdict before saying "done"; a rewritten setup or fixture is never auto-cleared, because that heals by changing the story rather than the mechanics. Each of those three buckets — the cheap one included — also gets a proposed `Healed-by:` / `Heal-bucket:` commit-trailer block: proposed, never written, because debug-test does not own the commit.
+`debug-test` catches the quick wins itself: a missing `await`, a loose assertion, or a fixture that never fires. For each, it reports a root cause and a one-line fix.
 
-Right after that, **Step 4.6 checks whether this is a repeat.** It reads the test file's own git history — `git log --follow`, filtered on the `Heal-bucket` trailer Step 4.5 proposed, and reading the *union* of the shared trunk and the current branch so a teammate's already-merged heal isn't invisible just because this branch hasn't rebased — and if the same bucket shows up three or more times in the last 90 days (this heal included), it flags 🔁 **repeat-heal**: a test that keeps getting patched for the same reason instead of fixed at the root. Nothing is stored to make this work; it's computed fresh from git every time, and when a repo hasn't carried the trailer into its commits (or the read hits a shallow clone) it falls back to a weaker signal — a plain file-churn count, or an explicit "history may be truncated" flag — and says so rather than quietly reporting "no repeats."
+When `debug-test` hands a locator or timing failure to the healer, it does not take the healer's green result at face value. **Step 4.5 classifies the heal** from `git diff`:
 
-Its **flake mode** (`--flake`) handles the special case most teams get wrong. Instead of `.skip()`-ing or deleting a flaky test — a silent capitulation that throws away the real signal it usually guards — it measures the flake rate with the framework's *own* burn mechanism, quarantines the test (non-blocking, never deleted), and routes the *suspected* cause to the skill that can confirm it.
+- A selector or wait touch-up clears on the diff alone. No mutation is spent on this low-risk, common case.
+- A changed *expected value* is the sign of a healer that greens a red test by rewriting what it asserts. This case routes to [`audit-test`](./audit-test.md)'s baseline-lock check, and `debug-test` reports that verdict before it says "done."
+- A rewritten setup or fixture is never auto-cleared. This kind of heal changes the test's story, not just its mechanics.
 
-Its **drift mode** (`--drift`) handles a different special case: a *deterministic* red on a test that was long green, where nothing in the local diff explains the failure — the signature of an external service moving a contract underneath you. Rather than assume a local regression (or silently blame the provider), it classifies drift-vs-local-regression from static signals (diff-relevance → temporal → published-contract), quarantines the test non-blocking, and surfaces the mismatch for a human to dispose — never healing it to green.
+Each of the three buckets, including the cheap one, also gets a proposed `Healed-by:` / `Heal-bucket:` commit-trailer block. This block is proposed, never written, because `debug-test` does not own the commit.
+
+Right after that, **Step 4.6 checks whether this is a repeat.** It reads the test file's own git history: `git log --follow`, filtered on the `Heal-bucket` trailer that Step 4.5 proposed. It reads the *union* of the shared trunk and the current branch, so a teammate's already-merged heal is not invisible just because this branch has not rebased. If the same bucket shows up three or more times in the last 90 days, this heal included, `debug-test` flags 🔁 **repeat-heal**: a test that keeps getting patched for the same reason, instead of fixed at the root.
+
+Nothing is stored to make this work. `debug-test` computes the count fresh from git every time. If a repo has not carried the trailer into its commits, or the read hits a shallow clone, it falls back to a weaker signal: a plain file-churn count, or an explicit "history may be truncated" flag. `debug-test` states this out loud, instead of quietly reporting "no repeats."
+
+Its **flake mode** (`--flake`) handles the special case most teams get wrong. Most teams `.skip()` a flaky test, or delete it. This is a silent capitulation: it throws away the real signal the test usually guards. Flake mode instead follows three steps — **detect, quarantine, route**. It measures the flake rate with the framework's *own* burn mechanism. It quarantines the test, non-blocking and never deleted. It routes the *suspected* cause to the skill that confirms it.
+
+Its **drift mode** (`--drift`) handles a different special case: a *deterministic* red on a test that was long green, where nothing in the local diff explains the failure. This is the sign of an external service that changed its contract, with no local code change to explain the red. Drift mode does not assume a local regression, and it does not silently blame the provider. It classifies the failure from static signals, in this order: diff relevance, then timing, then the published contract. It quarantines the test, non-blocking. It surfaces the mismatch for a human to decide on. Drift mode never heals the test to green.
 
 ## When to use it
 
-- A `*.spec.ts` is red and you want it diagnosed and routed without writing up the problem first.
-- A self-healer turned a red spec green and you want to know *what it changed to get there* before trusting the green.
-- A test fails intermittently and you want it quarantined with its signal preserved, not skipped and forgotten (`--flake`).
-- A long-green test suddenly went red and the local diff doesn't touch anything it exercises — you want to know if this is drift from an external contract before assuming a local bug (`--drift`).
+- A `*.spec.ts` test is red, and you want it diagnosed and routed without writing up the problem first.
+- A self-healer turned a red spec green, and you want to know *what it changed to get there* before you trust the green result.
+- A test fails intermittently, and you want it quarantined with its signal preserved, instead of skipped and forgotten (`--flake`).
+- A long-green test suddenly turned red, and the local diff does not touch anything the test exercises. You want to know if an external contract changed, before you assume a local bug (`--drift`).
 
 ## When *not* to use it
 
-- **The failure isn't Playwright** (Jest/Vitest/pytest) → invoke [`diagnosing-bugs`](https://github.com/mattpocock/skills) directly. debug-test is Playwright-scoped (flake mode also handles Cypress).
+- **The failure is not Playwright** (Jest/Vitest/pytest) → invoke [`diagnosing-bugs`](https://github.com/mattpocock/skills) directly. `debug-test` is scoped to Playwright. Flake mode also handles Cypress.
 - **You want to file the failure for the team, not diagnose it** → [`bug-report`](./bug-report.md).
-- **You want a teaching walkthrough** — debug-test is procedural and doesn't support `--explain`.
+- **You want a teaching walkthrough** — `debug-test` is procedural. It does not support `--explain`.
 
 ## Prerequisites
 
-Unlike most of these skills (which need only Claude Code), debug-test orchestrates external tooling:
+Most of these skills need only Claude Code. `debug-test` is different: it orchestrates external tooling.
 
 - **Playwright** — required. The skill runs `npx playwright test` and is scoped to it.
-- **Playwright agents** (`npx playwright init-agents`, once per repo) — optional. Enables the healer's locator/timing auto-heal; without them, those failures fall through to `diagnosing-bugs`.
-- **Matt Pocock's `diagnosing-bugs` skill** — the terminal route for logic bugs. Without it, debug-test can triage but has nowhere to hand a deep diagnosis.
+- **Playwright agents** (`npx playwright init-agents`, once per repo) — optional. This enables the healer's locator and timing auto-repair. Without Playwright agents, those failures fall through to `diagnosing-bugs`.
+- **Matt Pocock's `diagnosing-bugs` skill** — the terminal route for logic bugs. Without it, `debug-test` still triages the failure, but it has nowhere to hand a deep diagnosis.
 
-See the README's [Dependencies](../README.md#dependencies) table for install commands and what degrades when each is missing.
+See the README's [Dependencies](../README.md#dependencies) table for install commands, and for what degrades when a tool is missing.
 
 ## Worked example
 
@@ -51,23 +61,29 @@ The test ends with an un-awaited web-first assertion:
 expect(banner).toBeVisible(); // BUG: missing await
 ```
 
-Playwright's web-first assertions are async and auto-retrying; without `await`, this returns a floating promise that never settles — an assertion that can never fail. debug-test catches it with its quick QA heuristics alone (a 🟢 High-confidence root cause plus the one-line fix, `await expect(banner).toBeVisible()`) and does *not* route to the healer or diagnosing-bugs, because the failure is neither a locator/timeout error nor a value mismatch.
+Playwright's web-first assertions are async, and they retry automatically. Without `await`, this line returns a floating promise that never settles. This makes the assertion one that never fails. `debug-test` catches it with its quick QA heuristics alone: a 🟢 High-confidence root cause, plus the one-line fix, `await expect(banner).toBeVisible()`. It does *not* route to the healer or to `diagnosing-bugs`, because the failure is neither a locator or timeout error, nor a value mismatch.
 
 ## Where it fits
 
-debug-test is the one skill that lives in **two** places in the [QA flow](./qa-compass.md):
+`debug-test` is the one skill that lives in **two** places in the [QA flow](./qa-compass.md):
 
 - **Standalone**, the moment a single spec goes red — diagnose and route the fix.
-- **Inside the `/qa-pass` chain** — the orchestrator runs it over any failing tests it finds on the branch before reaching a verdict.
+- **Inside the `/qa-pass` chain** — the orchestrator runs `debug-test` over any failing tests it finds on the branch, before it reaches a verdict.
 
-That's what separates it from [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md), which sit deliberately *outside* the `/qa-pass` chain. Downstream, a confirmed logic bug hands off to `diagnosing-bugs`; a flaky test it can't fix routes to [`qa-review`](./qa-review.md), [`audit-test`](./audit-test.md), or [`prune-tests`](./prune-tests.md) depending on the suspected cause; a suspected drift routes to [`bug-report`](./bug-report.md) for a cross-team report, or to [`contract-guard`](./contract-guard.md) when the harder job — locating and diffing the provider's published contract — is needed.
+This is what separates `debug-test` from [`threat-model`](./threat-model.md) and [`bug-report`](./bug-report.md), which sit deliberately *outside* the `/qa-pass` chain.
+
+Downstream, the routing depends on the failure:
+
+- A confirmed logic bug hands off to `diagnosing-bugs`.
+- A flaky test `debug-test` does not fix on its own routes to [`qa-review`](./qa-review.md), [`audit-test`](./audit-test.md), or [`prune-tests`](./prune-tests.md), depending on the suspected cause.
+- A suspected external contract change routes to [`bug-report`](./bug-report.md) for a cross-team report, or to [`contract-guard`](./contract-guard.md) when the harder job is needed — locating and diffing the provider's published contract.
 
 ## Anti-patterns
 
-- **Describing the bug instead of pointing it at the test.** The whole premise is that it reads the file so you don't have to narrate.
+- **Describing the bug instead of pointing `debug-test` at the test.** The whole premise is that the skill reads the file, so you do not have to narrate the problem.
 - **Using it outside Playwright.** For other runners, `diagnosing-bugs` is the direct route.
-- **`.skip()`-and-forget on a flaky test.** That discards a real signal; flake mode quarantines and routes instead. (Deletion *with* a confirmed cause is [`prune-tests`](./prune-tests.md)'s call.)
-- **Treating a flake-mode cause as fact.** Detection and quarantine are reliable; the cause is a routed suggestion for a skill that can confirm it.
-- **Treating a healer's pass as a result.** It's a *change*. A locator re-sync and an assertion rewritten to bless a regression both end in green; only the diff tells them apart, which is what Step 4.5 reads.
-- **Expecting it to write the commit trailer.** It proposes the block; a human — or the repo's own commit template / `prepare-commit-msg` hook — applies it. A heal that's never committed leaves no record, and that limit is accepted, not worked around.
-- **Healing a drifted test to green, or unilaterally blaming the provider.** Drift mode classifies and surfaces the mismatch; a human decides whether to update the stale test or escalate a suspected break.
+- **`.skip()`-and-forget on a flaky test.** That discards a real signal. Flake mode quarantines and routes the test instead. (Deletion *with* a confirmed cause is [`prune-tests`](./prune-tests.md)'s call.)
+- **Treating a flake-mode cause as fact.** Detection and quarantine are reliable. The cause is a routed suggestion for a skill that confirms it.
+- **Treating a healer's pass as a result.** A pass is a *change*, not a result. A locator re-sync and an assertion rewritten to bless a regression both end in green. Only the diff tells them apart, and that is what Step 4.5 reads.
+- **Expecting `debug-test` to write the commit trailer.** It proposes the block. A human — or the repo's own commit template, or its `prepare-commit-msg` hook — applies it. A heal that is never committed leaves no record. That limit is accepted, not worked around.
+- **Healing a test to green after an external contract changed, or deciding on its own that the provider is at fault.** Drift mode classifies the failure and surfaces the mismatch. A human decides whether to update the stale test, or escalate a suspected break.

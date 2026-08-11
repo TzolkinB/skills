@@ -4,27 +4,29 @@
 
 ## What it does
 
-`bug-report` converts a messy failure description into a structured, reproducible, scoped report — one that gives the person fixing it enough context that they don't have to ask a single follow-up question. It derives a specific title, a severity, minimal numbered repro steps, expected-vs-actual behavior, environment, frequency, and affected scope, and adds a root-cause hypothesis and suggested fix only when they're actually obvious.
+`bug-report` converts a messy failure description into a structured, reproducible, scoped report. The report gives the person who fixes the bug enough context. That person does not need to ask a follow-up question.
 
-Its value is that a vague "it's broken" is the number-one reason bugs bounce back unresolved. This skill turns an observation into something a stranger can reproduce and a teammate can act on, ready to paste into Jira, Linear, or GitHub Issues.
+The skill derives a specific title, a severity, and minimal numbered repro steps. It derives expected-vs-actual behavior, environment, frequency, and affected scope. It adds a root-cause hypothesis and a suggested fix only when these are obvious.
+
+A vague "it's broken" report is the top reason bugs bounce back unresolved. This skill turns an observation into a report. A stranger reproduces the bug from the report. A teammate acts on it. Paste the report into Jira, Linear, or GitHub Issues.
 
 ## When to use it
 
-- Something broke and you need to hand it off cleanly to the team.
-- You have a rough repro in your head and want it turned into a report someone else can follow.
+- Something breaks and you need to hand it off cleanly to the team.
+- You have a rough repro in your head. You want it turned into a report that another person follows without help.
 
 ## When *not* to use it
 
-- **A Playwright test is red and you want the root cause** → [`debug-test`](./debug-test.md), which runs and diagnoses it.
-- **You want the ship/no-ship verdict on a branch** → [`qa-pass`](./qa-pass.md). Like [`threat-model`](./threat-model.md), bug-report is not part of the `/qa-pass` chain.
+- **A Playwright test is red and you want the root cause** → [`debug-test`](./debug-test.md) runs and diagnoses it.
+- **You want the ship/no-ship verdict on a branch** → [`qa-pass`](./qa-pass.md). Like [`threat-model`](./threat-model.md), bug-report sits outside the `/qa-pass` chain.
 
 ## Prerequisites
 
-Just Claude Code — it structures the failure description you provide. Nothing to install, nothing runs, and it adds no network calls of its own.
+Just Claude Code. It structures the failure description you provide. There is nothing to install. Nothing runs, and the skill adds no network calls of its own.
 
 ## Worked example
 
-`bug-report` consumes a failure narrative rather than a source file, so it has no code fixture ([why](../fixtures/README.md)). Given a raw observation:
+`bug-report` consumes a failure narrative, not a source file. It has no code fixture ([why](../fixtures/README.md)). Given a raw observation:
 
 ```
 /bug-report "Date filter on /books page broken, returns empty results, browser console shows dateRange.start is undefined"
@@ -37,15 +39,15 @@ a good report replaces "broken" with something reproducible:
 - **Steps to reproduce:** log in → go to `/books` → click *Filter by date* → enter a past date → *Apply*
 - **Expected vs Actual:** results update to that date forward *vs* page reloads, filters clear, console shows `TypeError: dateRange.start is undefined`
 - **Affected scope:** date filtering; `BookList` / `DateFilter` / `useBooks`; blocks reporting, which depends on filters
-- **Root-cause hypothesis** (only because it's plausible here): the `dateRange` state is cleared before the filter effect runs.
+- **Root-cause hypothesis** (included only because it is plausible here): something clears the `dateRange` state before the filter effect runs.
 
 ## Where it fits
 
-Outside the [`qa-pass`](./qa-pass.md) chain — it's a handoff tool, not a QA judgment or ship-decision skill. It often follows [`debug-test`](./debug-test.md): once a failing test is diagnosed, bug-report turns the finding into a report the team can act on.
+The skill sits outside the [`qa-pass`](./qa-pass.md) chain. It is a handoff tool, not a QA judgment or ship-decision skill. It often follows [`debug-test`](./debug-test.md). Once a failing test is diagnosed, bug-report turns the finding into a report. The team acts on that report.
 
 ## Anti-patterns
 
-- **"It's broken" / "doesn't work" titles.** Say exactly what's wrong and what should happen instead.
-- **Repro steps a stranger can't follow.** If it isn't repeatable by someone who's never seen the bug, it isn't done.
-- **Guessing a root cause you don't have.** Leave the hypothesis blank rather than inventing one.
-- **Dropping frequency.** "Happens 50% of the time" is a different bug from "always."
+- **"It's broken" / "doesn't work" titles.** State exactly what is wrong and what the correct behavior is.
+- **Repro steps a stranger fails to follow.** If a person who has never seen the bug does not reproduce it from the steps, the report is not done.
+- **A guessed root cause.** Leave the hypothesis blank rather than inventing one.
+- **A dropped frequency.** "Happens 50% of the time" is a different bug from "always."

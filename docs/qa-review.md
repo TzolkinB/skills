@@ -4,24 +4,24 @@
 
 ## What it does
 
-`qa-review` is a code review from the QA angle, and it asks different questions than a general one: *Can I test this? Will it be flaky? Are there hidden dependencies? Is it coupled to something I can't mock?* It scans for hard-coded dependencies, non-determinism (`Date.now()`, `Math.random()`, uncontrolled timers), coupling that resists mocking, brittle assertions, and unclear contracts.
+`qa-review` is a code review from the QA angle. It asks different questions than a general review: Is this testable? Is it flaky? Are there hidden dependencies? Is it coupled to something with no mock? It scans for hard-coded dependencies and non-determinism, for example `Date.now()`, `Math.random()`, or an uncontrolled timer. It also scans for coupling that resists mocking, brittle assertions, and unclear contracts.
 
-The point is that testability is independent of code quality. Beautiful code can be untestable and ugly code can be perfectly testable — so this review catches a class of problem a style or correctness review sails right past. Untestable code is a signal that hidden dependencies and non-determinism are baked in; the fix is usually the code, not the test.
+Testability is independent of code quality. Beautiful code is sometimes untestable. Ugly code is sometimes perfectly testable. This review catches a class of problem that a style or correctness review misses entirely. Untestable code signals that hidden dependencies and non-determinism sit baked into the code. The fix is usually the code, not the test.
 
 ## When to use it
 
-- Mid code-review, before tests are written, to catch untestable code while it's still cheap to change.
-- You suspect a module will be flaky or impossible to mock and want that named before it ships.
+- During code review, before anyone writes tests, to catch untestable code while it is still cheap to change.
+- You suspect a module is flaky, or has no way to mock, and want that risk named before it ships.
 
 ## When *not* to use it
 
-- **You want the consequence if the code is wrong in production** → [`threat-model`](./threat-model.md). qa-review deliberately does *not* rank blast radius.
-- **Tests already exist and you want the coverage gaps** → [`coverage-review`](./coverage-review.md).
-- **You want a general code-quality or style review** — that's a different tool; qa-review only judges testability.
+- **You want the consequence of wrong code in production.** Use [`threat-model`](./threat-model.md) instead. `qa-review` does not rank blast radius — how much breaks if the code fails.
+- **Tests already exist and you want the coverage gaps.** Use [`coverage-review`](./coverage-review.md) instead.
+- **You want a general code-quality or style review.** That is a different tool. `qa-review` only judges testability.
 
 ## Prerequisites
 
-Just Claude Code — `qa-review` reads the code statically and runs nothing. Nothing to install, and it adds no network calls of its own.
+Only Claude Code. `qa-review` reads the code statically and runs nothing. Nothing to install. It adds no network calls of its own.
 
 ## Worked example
 
@@ -31,20 +31,25 @@ Fixture: [`fixtures/qa-review/`](../fixtures/qa-review/) ([expected findings](..
 /qa-review fixtures/qa-review/pricing.js
 ```
 
-`pricing.js` is a plausible pricing helper riddled with testability smells. A correct run groups them by category:
+`pricing.js` is a pricing helper with many testability smells. A correct run groups the findings by category:
 
-- **Testability** — a hard-coded prod URL with no injection, `new Date().getHours()` driving a flash-sale branch (time-dependent), unseeded `Math.random()`, an inline `fetch(...)` that can't be stubbed, and an uncontrolled `setTimeout(..., 3000)`.
-- **Brittleness** — `body.includes('rate limit exceeded')` (a fragile match on an external message) and an unguarded `JSON.parse(body).surcharge`.
-- **Coupling** — the function bundles clock, RNG, network, and timer together, so it can only run with the whole world live; it can't be unit-tested in isolation.
+- **Testability:**
+  - a hard-coded production URL with no way to inject a different one
+  - `new Date().getHours()`, which drives a flash-sale branch and depends on the time
+  - unseeded `Math.random()`
+  - an inline `fetch(...)` with no way to stub it
+  - an uncontrolled `setTimeout(..., 3000)`
+- **Brittleness** — `body.includes('rate limit exceeded')`, a fragile match on an external message, and an unguarded `JSON.parse(body).surcharge`.
+- **Coupling** — the function bundles the clock, the random-number generator, the network, and the timer together. It only runs with everything live, so no one unit-tests it in isolation.
 
-Note what a correct run does *not* do: it doesn't rank the production impact of a mispricing — that consequence view is [`threat-model`](./threat-model.md)'s job.
+A correct run does not rank the production impact of a wrong price. That consequence view belongs to [`threat-model`](./threat-model.md).
 
 ## Where it fits
 
-Sits in the *while-reviewing* slot of the [QA flow](./qa-compass.md) — before tests are written, catching untestable code while it's cheap to fix — and it's part of the [`qa-pass`](./qa-pass.md) QA-synthesis chain. Its consequence-focused sibling [`threat-model`](./threat-model.md) asks the separate "what breaks in production" question and runs on its own.
+`qa-review` sits in the while-reviewing step of the [QA flow](./qa-compass.md), before anyone writes tests. It catches untestable code while it is still cheap to fix, and it is part of the [`qa-pass`](./qa-pass.md) QA-synthesis chain. Its sibling [`threat-model`](./threat-model.md) asks the separate question of what breaks in production, and runs on its own.
 
 ## Anti-patterns
 
-- **Using it as a general code-quality review.** Clean-code opinions belong elsewhere; qa-review answers exactly one question: can this be tested?
-- **Re-flagging blast radius.** Consequence-of-failure is [`threat-model`](./threat-model.md); mixing them muddies both.
-- **Treating it as a coverage check.** It reads the code's *shape*, not whether tests exercise it.
+- **Using it as a general code-quality review.** Clean-code opinions belong elsewhere. `qa-review` answers exactly one question: is this testable?
+- **Re-flagging blast radius.** Consequence-of-failure belongs to [`threat-model`](./threat-model.md). Mixing the two questions muddies both.
+- **Treating it as a coverage check.** `qa-review` reads the shape of the code, not whether tests exercise it.
