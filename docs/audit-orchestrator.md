@@ -1,6 +1,8 @@
 # audit-orchestrator — routes a suspicious test to the tool that proves it
 
-> **Agent instructions:** [`skills/audit-orchestrator/SKILL.md`](../skills/audit-orchestrator/SKILL.md) · **Run:** `/audit-orchestrator [test/file or repo/dir]`
+> **Agent instructions:** [`skills/audit-orchestrator/SKILL.md`](../skills/audit-orchestrator/SKILL.md)
+>
+> **Run:** `/audit-orchestrator [test/file or repo/dir]`
 
 ## What it does
 
@@ -10,16 +12,16 @@ The best free mutation tools — **StrykerJS** and **Tautest** — mutate source
 
 Where a free tool fits (unit or component JS-TS), audit-orchestrator points you at Tautest (PR-scoped diff-mutation) or StrykerJS (whole-suite campaign). It orchestrates; it does not reimplement these tools. Where the wall stops those tools — any app-driven Playwright or Cypress test — audit-orchestrator falls back to [`audit-test`](./audit-test.md), which proves a dev-served target directly.
 
-Every recommendation carries a **provenance label** — Confirmed, Likely, or Unexamined. The reachability wall itself is Confirmed. A routing claim never goes higher than the evidence behind it. That label is not uniform across frameworks. Proving a Playwright target is **Confirmed**. Proving a Cypress target is only **Likely**. The Cypress runner sometimes fails to launch at all on macOS 26. This is an Electron incompatibility. Reinstalling does not fix it. Docker works around this problem. This is an environment problem, not a routing failure.
+Every recommendation carries a **label** — Confirmed, Likely, or Unexamined, that shows how strong the evidence is. The evidence for the reachability wall is Confirmed. A routing claim never goes higher than the evidence behind it. That label is not uniform across frameworks. Proving a Playwright target is **Confirmed**. Proving a Cypress target is only **Likely**. The Cypress runner sometimes fails to launch at all on macOS 26. This is an Electron incompatibility. Reinstalling does not fix it. Docker works around this problem. This is an environment problem, not a routing failure.
 
 ## When to use it
 
 - You have a suspicious passing test. You do not know which mutation tool actually reaches it, or you do not want to work that out.
 - A repo mixes unit and E2E suites, and you want the audit routed to the right tool per test, not a blanket guess.
 
-## When *not* to use it
+## When _not_ to use it
 
-- **You already know it is app-driven E2E.** Call [`audit-test`](./audit-test.md) directly — the router only adds a hop.
+- **You already know it is app-driven E2E.** Call [`audit-test`](./audit-test.md) directly — the router only adds a step.
 - **You want a codebase-wide mutation score.** Use StrykerJS itself. This skill points you at StrykerJS; it does not replace it.
 - **You want the actual proof, not a routing decision.** This skill hands off to `audit-test` or an external tool. It never runs the mutation itself.
 
