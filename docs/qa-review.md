@@ -1,6 +1,8 @@
 # qa-review — is this code even testable?
 
-> **Agent instructions:** [`skills/qa-review/SKILL.md`](../skills/qa-review/SKILL.md) · **Run:** `/qa-review path/to/file.ts`
+> **Agent instructions:** [`skills/qa-review/SKILL.md`](../skills/qa-review/SKILL.md)
+>
+> **Run:** `/qa-review path/to/file.ts`
 
 ## What it does
 
@@ -13,7 +15,7 @@ Testability is independent of code quality. Beautiful code is sometimes untestab
 - During code review, before anyone writes tests, to catch untestable code while it is still cheap to change.
 - You suspect a module is flaky, or has no way to mock, and want that risk named before it ships.
 
-## When *not* to use it
+## When _not_ to use it
 
 - **You want the consequence of wrong code in production.** Use [`threat-model`](./threat-model.md) instead. `qa-review` does not rank blast radius — how much breaks if the code fails.
 - **Tests already exist and you want the coverage gaps.** Use [`coverage-review`](./coverage-review.md) instead.

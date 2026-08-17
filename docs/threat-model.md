@@ -1,6 +1,8 @@
 # threat-model — if this change is wrong, what breaks in production?
 
-> **Agent instructions:** [`skills/threat-model/SKILL.md`](../skills/threat-model/SKILL.md) · **Run:** `/threat-model booking.ts`
+> **Agent instructions:** [`skills/threat-model/SKILL.md`](../skills/threat-model/SKILL.md)
+>
+> **Run:** `/threat-model booking.ts`
 
 ## What it does
 
@@ -13,7 +15,7 @@ For everything a change touches — data writes, external systems, downstream de
 - Before you ship something risky, when you want the view of what breaks in production, on its own.
 - You want to reason about blast radius and detectability on their own, separate from whether the change is tested.
 
-## When *not* to use it
+## When _not_ to use it
 
 - **You want testability smells** — hard-coded values, non-determinism. Use [`qa-review`](./qa-review.md) instead. `threat-model` does not re-flag those.
 - **You want coverage gaps.** Use [`coverage-review`](./coverage-review.md) instead.
@@ -31,7 +33,7 @@ Fixture: [`fixtures/threat-model/`](../fixtures/threat-model/) ([expected findin
 /threat-model fixtures/threat-model/refund.js
 ```
 
-The change makes refunds *fire-and-forget*: `paymentGateway.refund(...)` is no longer awaited or checked for errors. Yet the order is still marked `refunded`, and the customer still gets an email. A correct run first lists what the change touches — the orders table, the payment gateway, the email service, downstream reporting. It then ranks the top risk **HIGH**, because of its low detectability:
+The change makes refunds _fire-and-forget_: `paymentGateway.refund(...)` is no longer awaited or checked for errors. Yet the order is still marked `refunded`, and the customer still gets an email. A correct run first lists what the change touches — the orders table, the payment gateway, the email service, downstream reporting. It then ranks the top risk **HIGH**, because of its low detectability:
 
 - **Silent refund failure with recorded success** — the gateway call fails, and the money never comes back. But the database says success, and the confirmation email already went out.
 - **Blast radius:** every refund path, all customers, plus the reporting and reconciliation that trusts order status.

@@ -12,7 +12,7 @@ There are two ways to ask. A single question, for example "this test smells wron
 
 `qa-compass` routes. It does not analyze your code. If the choice depends on your stack, it reads your stack manifests: `package.json`, `playwright.config.*` or `cypress.config.*`, or a published OpenAPI or Swagger document. These tell it whether the best fit is an external tool or one of these skills. It never reads your test logic or source logic. It never runs a test. It never gives a verdict. It hands you the command to run instead.
 
-`qa-compass` is not one of the skills it routes to. It never joins the `/qa-pass` chain. It is the map, not a stop on the route. One rule matters most: [`qa-pass`](./qa-pass.md) is the orchestrator, not a peer skill. Each of the other atomic skills answers exactly one question.
+`qa-compass` is not one of the skills it routes to. It never joins the `/qa-pass` chain. It is the map, not a stop on the route. One rule matters most: [`qa-pass`](./qa-pass.md) is the orchestrator, not a peer skill. Each of the other individual skills answers exactly one question.
 
 ## When to use it
 
