@@ -41,6 +41,15 @@ release heading.
   `docs/positioning.md` gains a matching "no implied external adoption" rule under Claims we must not
   make, so future copy has an explicit line to check against.
 
+- **Converted all 22 user-facing docs to ASD-STE100 (Simplified Technical English)** —
+  [#232](https://github.com/TzolkinB/skills/issues/232). Two-phase pass: verify each doc still
+  matches current shipped v1 behavior (skill names, flags, commands, links), then rewrite in
+  controlled, plain-English prose with a de-jargon pass on QA-domain metaphors. `README.md`'s STE
+  prototype is adopted as final. Verification surfaced and fixed a dead Tautest GitHub link (the
+  org moved), a missing Cypress single-test-isolation caveat in `audit-test.md`, an internal "moat"
+  term that had leaked into reader-facing copy, and a "most-severe-wins"/"worst-wins" naming
+  mismatch the README prototype had introduced.
+
 ### Added
 
 - **`sentinel`: a live eval fixture for step 7's test↔code pairing, the Sacred-Path Override's load-bearing
