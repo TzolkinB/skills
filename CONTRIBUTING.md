@@ -31,6 +31,14 @@ Do not write up feedback before it happens. An empty issue tracker is more credi
 
 This plugin keeps a changelog at [`CHANGELOG.md`](./CHANGELOG.md), in [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. If a PR changes user-facing behavior, it must add a bullet under the `## [Unreleased]` section. Use the correct subheading: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, or `Security`. Do not invent a version number or a date. A maintainer adds these at release time.
 
+Prefix the bullet with its PR number and a short commit SHA, e.g.
+`- [#123](https://github.com/TzolkinB/skills/pull/123) \`abcdef1\` ...`. You know the PR
+number when you open it; you don't know the SHA until after merge (it's the squash-merge
+commit on `main`), so leave it as `` `TBD` `` — a maintainer fills it in at merge time,
+same as the version/date. Keep the bullet itself short: state what changed and why it
+matters to someone using the plugin, and link out (issue, ADR) for the deeper reasoning
+rather than restating it inline.
+
 Releases are lightweight (see
 [`docs/adr/0008-release-discipline.md`](./docs/adr/0008-release-discipline.md)). The
 authoritative version is the `version` field in `.claude-plugin/plugin.json`. A

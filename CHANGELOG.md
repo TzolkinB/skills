@@ -15,6 +15,10 @@ PRs append their change under `## [Unreleased]`, using the appropriate `Added` /
 `CONTRIBUTING.md`). `scripts/release.sh <version>` promotes those entries to a dated
 release heading.
 
+Each entry is prefixed with its PR number and the short SHA of the commit that merged
+it — `- [#123](https://github.com/TzolkinB/skills/pull/123) \`abcdef1\` ...` — so any
+change can be traced back to its source without a git-log search.
+
 ## [Unreleased]
 
 ### Changed
@@ -52,25 +56,13 @@ release heading.
 
 ### Added
 
-- **`sentinel`: a live eval fixture for step 7's test↔code pairing, the Sacred-Path Override's load-bearing
-  mechanism** — [#210](https://github.com/TzolkinB/skills/issues/210), narrowed from
-  [#188](https://github.com/TzolkinB/skills/issues/188), harness mechanism decided in
-  [ADR-0051](docs/adr/0051-live-eval-fixtures-materialize-as-a-permanent-git-ref.md). No tier exercised it for real: `--self-test` only
-  proves the grader discriminates between two fixed recorded transcripts, and `--live` had nothing to run
-  against — `fixture_files` was never read by the live path, and the prose `branch-scenario.md` fixture
-  stated the pairing answer ("paired to `src/payments/refund.js`") directly, so feeding it to a live run
-  would grade a copy-forward, not a derivation (the #81/#84 substring-not-entailment leak).
-  `evals/run-eval.mjs` now supports a case-level `fixture_ref`: `--live` checks out that ref into the
-  isolated worktree instead of always `HEAD`. `evals/cases/sentinel.json` points it at a new permanent
-  branch, `fixture/sentinel-payments-refund` — a real, runnable `node --test` project with a genuinely
-  mutation-survivable overmocked refund test (hand-verified: removing the refund-amount guard leaves it
-  green) on the sacred `src/payments/**` path, plus non-sacred `src/reports/**` noise (loose assertion,
-  hard-coded URL) so the "otherwise-tidy branch" softening pressure the rubric needs stays in the same
-  fixture as the pairing mechanism. `branch-scenario.md` is now the spec that real branch was built from,
-  not a stand-in fed to the live run. `must_surface` was re-checked against the real fixture and one claim
-  that hard-coded a synthetic test count was loosened to stay accurate. Also documents `node:test`'s
-  single-test command in `audit-test`'s `reference/run-one-test.md`, which this fixture needed and no
-  case had exercised before.
+- [#226](https://github.com/TzolkinB/skills/pull/226) `d74fe7c` **`sentinel`: live-eval fixture for the
+  Sacred-Path Override's test-to-code pairing check** ([#210](https://github.com/TzolkinB/skills/issues/210),
+  [ADR-0051](docs/adr/0051-live-eval-fixtures-materialize-as-a-permanent-git-ref.md)). Previously no eval
+  tier ran the check against real code — `--self-test` only compared two fixed transcripts, and the
+  `--live` fixture stated the answer directly instead of requiring it to be derived. `evals/run-eval.mjs`
+  now supports a per-case `fixture_ref`; `--live` checks out `fixture/sentinel-payments-refund`, a real
+  runnable branch with a genuinely mutation-survivable test, and confirms the check catches it.
 
 - **`contract-guard`: Tier 1b (test-boundary validation) + per-operation drift-coverage reporting** —
   [#217](https://github.com/TzolkinB/skills/issues/217), decided in
