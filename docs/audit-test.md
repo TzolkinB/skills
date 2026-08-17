@@ -1,30 +1,34 @@
-# audit-test — would this passing test fail if the code broke?
+# audit-test — proves whether a passing test fails when the code breaks
 
-> **Agent instructions:** [`skills/audit-test/SKILL.md`](../skills/audit-test/SKILL.md) · **Run:** `/audit-test test.spec.js code.js`
+> **Agent instructions:** [`skills/audit-test/SKILL.md`](../skills/audit-test/SKILL.md)
+>
+> **Run:** `/audit-test test.spec.js code.js`
 
 ## What it does
 
-`audit-test` interrogates a *passing* test and asks the sharpest question about the tests you already have: **would it fail if the code it covers broke?** If it wouldn't, it's false confidence — it looks like protection but guards nothing.
+`audit-test` checks a _passing_ test and asks the sharpest question about the tests you already have: **does it fail when the code it covers breaks?** If it does not fail, that is false confidence. It looks like protection, but it guards nothing.
 
-The trap it's built to avoid is that an AI can *reason* a test is fine and be exactly as wrong as the test it's judging. So it doesn't stop at reasoning: for a suspect test it applies the single most-likely-breaking mutation to the source, runs just that one test, and reports what actually happened. Findings are labeled **Confirmed** (a mutation ran and the test stayed green) or **Likely** (reasoned only, because the code couldn't be run) — never an invented score. Whether the mutation was behaviorally meaningful stays a visible human call: this is a **challenger, not an oracle**.
+Here is the trap audit-test avoids. AI reasoning about a test sometimes goes wrong, in exactly the same way the test itself is wrong. So audit-test does not stop at reasoning. For a suspect test, audit-test applies the mutation most likely to break the code. It runs just that one test and reports what actually happened. Each finding gets a label: **Confirmed** (a mutation ran and the test stayed green) or **Likely** (reasoning only, because the code did not run). It never invents a score. Whether the mutation matters to real behavior stays a visible human call. This makes audit-test a **challenger, not an oracle**.
 
-It also flags a subtler failure the mutation alone can't see — a **baseline-lock** (⚠️): a *live* assertion edited to bless a regression (the fingerprint a self-healer leaves when it greens a red test by rewriting the expected value). It still kills mutations, so it reads 🟢 — but it pins the *wrong* value and would reject the real fix. audit-test raises it from the assertion diff (in `--changed` mode) or an in-code source of truth the code now contradicts, for a human to confirm the intended value ([ADR-0017](./adr/0017-audit-test-baseline-lock-suspected.md)).
+audit-test also flags a subtler failure. A mutation alone does not show this failure: a **baseline-lock** (⚠️). This is a _live_ assertion edited to accept a regression. It is the mark a self-healer leaves when it makes a red test green by rewriting the expected value. The assertion still fails against a mutation, so audit-test marks it 🟢. But it checks the _wrong_ value, and it rejects the real fix. audit-test raises this finding from the assertion diff (in `--changed` mode), or from an in-code source of truth that the code now contradicts. A human then confirms the intended value ([ADR-0017](./adr/0017-audit-test-baseline-lock-suspected.md)).
 
 ## When to use it
 
-- A test is green and you don't trust it — you want proof it would actually bite.
-- Reviewing a PR's tests, or a single suspicious test, and you want a concrete fix rather than a number.
-- As the cheap first pass before a heavyweight [mutation campaign](../GLOSSARY.md#mutation-campaign) — fix what it flags before spending Stryker's minutes-to-hours.
+- A test is green and you do not trust it. You want proof that it catches a real bug.
+- You review a PR's tests, or one suspicious test, and you want a concrete fix, not a number.
+- Run it as the cheap first pass before a heavyweight [mutation campaign](../GLOSSARY.md#mutation-campaign). Fix what it flags first, before you spend Stryker's minutes-to-hours.
 
-## When *not* to use it
+## When _not_ to use it
 
-- **You want the missing cases** → [`coverage-review`](./coverage-review.md). audit-test judges tests that already pass; it doesn't propose new ones.
-- **You want to delete or merge tests** → [`prune-tests`](./prune-tests.md). A false-confidence test usually guards a real behavior *badly* — the fix is to strengthen it, not remove it.
-- **You want a codebase-wide mutation score** → StrykerJS. audit-test is the per-test judgment tool, not a suite-health metric ([ADR-0004](./adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)).
+- **You want the missing cases.** Use [`coverage-review`](./coverage-review.md) instead. audit-test judges tests that already pass; it does not propose new ones.
+- **You want to delete or merge tests.** Use [`prune-tests`](./prune-tests.md) instead. A false-confidence test usually guards a real behavior, but poorly. The fix is to strengthen it, not remove it.
+- **You want a codebase-wide mutation score.** Use StrykerJS instead. audit-test is the per-test judgment tool, not a suite-health metric ([ADR-0004](./adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)).
 
 ## Prerequisites
 
-Claude Code, plus — for a **Confirmed** verdict — a runnable test environment and a **clean git tree**: the deep audit mutates one source file, runs a single test, and reverts immediately. Without a clean tree or a runnable env it won't guess; it falls back to a reasoned 🟡 **Likely** verdict. It adds no network calls of its own.
+audit-test needs Claude Code. For a **Confirmed** verdict, it also needs a runnable test environment and a **clean git tree**. The deep audit mutates one source file, runs a single test, and reverts the change immediately. Without a clean tree or a runnable environment, audit-test does not guess — it falls back to a reasoned 🟡 **Likely** verdict.
+
+For a Cypress target, a **Confirmed** verdict also needs single-test isolation: a one-test spec file, or the `@cypress/grep` plugin. Without one of these, `cypress run --spec` runs the whole spec file, not one test, and the verdict falls back to 🟡 **Likely**. audit-test adds no network calls of its own.
 
 ## Worked example
 
@@ -34,17 +38,17 @@ Fixture: [`fixtures/audit-test/`](../fixtures/audit-test/) ([expected findings](
 /audit-test fixtures/audit-test/booking.spec.js fixtures/audit-test/booking.js
 ```
 
-The test is named `"rejects overlapping bookings"` and it's green — but it stubs `findOverlapping` to return `[]` (so the overlap path never runs) and only asserts that `save()` was called. It never exercises the rejection it's named for.
+The test is named `"rejects overlapping bookings"` and it is green. But it stubs `findOverlapping` to return `[]`, so the overlap path never runs. It only asserts that the code called `save()`. It never exercises the rejection named in its own title.
 
-The verdict is **🔴 Confirmed false-confidence**: comment out the overlap guard in `booking.js`, run just this test, and it *still passes* — the execution proof. The taxonomy label is *overmocked / interaction-only*, compounded by *focal-unit-never-invoked*. A real test would set `findOverlapping` to return a clash and assert `book(...)` throws with `code === 409`. Note the boundaries the run respects: it doesn't propose new tests ([`coverage-review`](./coverage-review.md)'s job) and it doesn't propose deleting the test ([`prune-tests`](./prune-tests.md)'s) — the fix is to strengthen it.
+The verdict is **🔴 Confirmed false-confidence**. Comment out the overlap guard in `booking.js`, run just this test, and it _still passes_ — the execution proof. The taxonomy label is _overmocked / interaction-only_. The finding also matches _focal-unit-never-invoked_. A real test sets `findOverlapping` to return a clash, and asserts that `book(...)` throws with `code === 409`. This run respects clear boundaries. It does not propose new tests — that is [`coverage-review`](./coverage-review.md)'s job. It does not propose deleting the test — that is [`prune-tests`](./prune-tests.md)'s job. The fix here is to strengthen the test.
 
 ## Where it fits
 
-Runs *after* tests exist, next to [`coverage-review`](./coverage-review.md). [`qa-pass`](./qa-pass.md) calls it in batch (`--changed`) over a branch's changed tests as its False-Confidence Audit — and a confirmed-hollow test on a `--sacred` path forces an un-overridable FAIL. If a suspect test turns out merely redundant rather than hollow, hand it to [`prune-tests`](./prune-tests.md); if you want a suite-wide mutation *score*, that's Stryker, not this.
+audit-test runs _after_ tests exist, next to [`coverage-review`](./coverage-review.md). [`qa-pass`](./qa-pass.md) calls it in batch (`--changed`) over a branch's changed tests, as its False-Confidence Audit. On a `--sacred` path, a confirmed false-confidence test forces an un-overridable FAIL. If a suspect test turns out merely redundant, not false confidence, hand it to [`prune-tests`](./prune-tests.md) instead. For a suite-wide mutation _score_, use Stryker, not this skill.
 
 ## Anti-patterns
 
-- **Dressing reasoning up as proof.** If the code can't be run, the honest verdict is 🟡 Likely, not 🔴 Confirmed.
-- **Running mutations on a dirty tree.** The safety rule refuses to mutate unless `git status` is clean (or you point at a scratch copy), and it reverts every mutation immediately.
-- **Deleting the flagged test.** A hollow test is usually protecting a real behavior poorly; strengthen the assertion instead of removing the guard.
-- **Reaching for it as a Stryker substitute.** It's a challenger with a taxonomy and a fix, not a defensible suite-wide score.
+- **Dressing reasoning up as proof.** If the code does not run, the honest verdict is 🟡 Likely, not 🔴 Confirmed.
+- **Running mutations on a dirty tree.** The safety rule refuses to mutate unless `git status` reports a clean tree (or you point at a scratch copy). It reverts every mutation immediately.
+- **Deleting the flagged test.** A false-confidence test usually guards a real behavior, but poorly. Strengthen the assertion instead of removing the guard.
+- **Reaching for it as a Stryker substitute.** audit-test is a challenger with a taxonomy and a fix, not a defensible suite-wide score.

@@ -1,301 +1,338 @@
 # The AI-Test Tooling Orchestration Map
 
-> **New here? Run [`audit-test`](audit-test.md) on one test first** — one command, and you'll see
-> straight away whether it finds anything in your suite. Read this when you want the whole picture:
-> it's the reference for **which tool to use at which stage, and in what order.**
+> **New here? Run [`audit-test`](audit-test.md) on one test first.** One command shows you right
+> away whether it finds anything in your suite. Read this document when you want the whole
+> picture. It is the reference for **which tool to use at each stage, and in what order.**
 
-**What this is:** a guide to which testing tool to use at each stage of QA work — from planning what
-to test, through judging whether the tests you already have are any good, to deciding whether a
-change is safe to ship.
+**What this is:** a guide to the testing tool to use at each stage of QA work. The stages run from
+planning what to test, through judging whether your existing tests are any good, to deciding
+whether a change is safe to ship.
 
-**There's a skill here for every stage,** and each one is something you run, not a link — it tells you
-what to do next with its result. `prune-tests` won't delete a test it suspects is hollow, for
-instance; it hands that test to `audit-test` to be proven first.
+**A skill exists here for every stage.** Each one is something you run, not a link. Each skill
+tells you what to do next with its result. For example, `prune-tests` does not delete a test it
+suspects checks nothing real. Instead, it hands that test to `audit-test`, to confirm the
+suspicion first.
 
-At each stage the map also names the best free tool someone else built, and says plainly when to reach
-for that one instead — the recommendation goes against us wherever it should. The one place those
-tools can't help at all is a test that drives a real browser: they work by changing your source and
-re-running it under Vitest or Jest, so a Playwright or Cypress test is out of their reach. That gap is
-why these skills exist.
+At each stage, the map also names the best free tool someone else built, and states plainly when
+to reach for that tool instead. The recommendation favors the other tool wherever the evidence
+supports it. One gap stops those tools completely: a test that drives a real browser. They work
+by changing your source code and running the test again under Vitest or Jest, so a Playwright or
+Cypress test is out of their reach. That gap is why these skills exist.
 
-## Two ways to use this (à la carte, not a funnel)
+## Two ways to use this: standalone, or in sequence
 
-Following Matt Pocock's skills philosophy: **the orchestration is an *option*, not a mandate.**
+Matt Pocock's skills philosophy applies here: **the orchestration is an *option*, not a
+requirement.**
 
-- **À la carte** — every stage's Skill stands alone. Grab `audit-test` for one suspicious test
-  without running anything else. Use `debug-test` on a single red spec. Each is independently
-  invokable and valuable on its own; you decide what you need.
-- **Orchestrated** — the stage *order* is the recommended path when you want end-to-end coverage,
-  and it's what lets outputs flow into a single evidence artifact (see Gate).
+- **Standalone.** Each stage's skill stands alone. Grab `audit-test` for one suspicious test,
+  without running anything else. Use `debug-test` on a single red spec. You invoke each skill
+  independently, and each skill has value on its own. You decide what you need.
+- **In sequence.** The stage *order* is the recommended path when you want coverage from start to
+  end. That order is also what lets each stage's output flow into a single evidence artifact (see
+  Gate).
 
-`qa-compass` already works this way — it's a router *to* individual skills, not a pipeline that
-drags you through all of them. The map below documents both the standalone value of each item and
-the order that connects them.
+`qa-compass` already works this way. It routes you *to* individual skills; it does not drag you
+through all of them as one pipeline. The map below documents both the standalone value of each
+item and the order that connects them.
 
-## The bar: why trust any recommendation here? (no proof → no recommendation)
+## The bar for trusting a recommendation here
 
-A curated map that just *asserts* "use X over Y" is the exact slop this repo exists to catch —
-one level up. So the map is held to **this repo's own evidence standard.** Every recommendation
-carries one of the three provenance labels from
+A curated map that just *asserts* "use X over Y" has the same low quality this repo exists to
+catch — one level up. So the map holds itself to **this repo's own evidence standard.** Every
+recommendation carries one of three provenance labels, from
 [ADR-0013](adr/0013-evidence-provenance-sentinel-labels-not-gates.md):
 
-- **Confirmed** — we ran it and observed the result (an experiment, a clone-and-read, a doc verified at
-  source). State *what* was observed.
-- **Likely** — reasoned or verified from a primary source, but not demonstrated in our context.
+- **Confirmed** — the team ran the tool and observed the result: an experiment, a clone-and-read,
+  or a doc verified at the source. The label states *what* the team observed.
+- **Likely** — reasoned or verified from a primary source, but not demonstrated in this project's
+  own context.
 - **Unexamined** — asserted, not yet checked. **An Unexamined recommendation is a to-do, not a
-  claim** — it must not be presented as advice until it's at least Likely.
+  claim.** It is not advice until it reaches at least Likely.
 
-This is not new machinery — [ADR-0004](adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)
-already does exactly this for `audit-test` vs Stryker ("route, not rivalry," Situation→Tool table
-with reasons). The map generalizes that ADR across all seven stages. **If we can't say why ours
-beats the alternative — with evidence, or an honest label admitting we haven't proven it — it
-doesn't earn a spot.** See the Evidence Ledger below.
-
----
-
-## Head-to-head comparisons — "why ours, not just theirs?"
-
-Per-competitor notes, each held to the no-unverified-claim bar and stated in the other tool's favor
-where it wins. Read these when you're deciding between a specific external tool and ours:
-
-- **[`comparisons/mutation-tools.md`](comparisons/mutation-tools.md)** — Stryker / Tautest / Exspec /
-  Pitest·Arcmutate. The layered false-confidence answer: **run the mutation tool at the unit layer
-  (they win there); reach for `audit-test` at the app-driven E2E layer they structurally can't enter;
-  Gate composes, it doesn't verify.**
-- **[`comparisons/tea.md`](comparisons/tea.md)** — BMAD TEA. Use it for risk planning + governance
-  gate; reach for our tools for the mutation check and calibration TEA's docs show it can't do.
+This is not new machinery.
+[ADR-0004](adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md) already does exactly this
+for `audit-test` versus Stryker: "route, not rivalry," with a Situation-to-Tool table and reasons.
+This map applies that same ADR across all seven stages. **A claim earns a spot on this map two
+ways.** It states why this project's tool beats the alternative, backed by evidence. Or, it
+carries an honest label that admits the team has not proven the claim yet. **A claim with
+neither does not earn a spot.** See the Evidence Ledger below.
 
 ---
 
-## The spine: seven QA workflow stages
+## Head-to-head comparisons with other tools
+
+These are per-competitor notes. Each one holds to the no-unverified-claim bar, and each states
+where the other tool wins. Read these when you decide between a specific external tool and one of
+these skills:
+
+- **[`comparisons/mutation-tools.md`](comparisons/mutation-tools.md)** — Stryker, Tautest,
+  Exspec, and Pitest·Arcmutate. The layered answer to false confidence: run the mutation tool at
+  the unit layer — it wins there. Reach for `audit-test` at the app-driven E2E layer, where those
+  tools structurally cannot enter. Gate combines the evidence; it does not verify it.
+- **[`comparisons/tea.md`](comparisons/tea.md)** — BMAD TEA. Use TEA for risk planning and its
+  governance gate. Reach for these skills for the mutation check and the calibration work that
+  TEA's own docs show it does not do.
+
+---
+
+## The seven QA workflow stages
 
 ```
 PLAN ─► AUTHOR ─► AUDIT ─► COVERAGE ─► FLAKE/RELIABILITY ─► TRIAGE ─► GATE
 ```
 
-Each stage maps to: the **best free tool(s)** for it, the **wall** where those tools stop
-(especially the app-driven E2E wall), and **our gap-tool** that fills it.
+Each stage lists three things: the best free tool or tools for it, the point where those tools
+stop (especially the point where app-driven E2E work stops them), and this project's own tool
+that fills that gap.
 
-| # | Stage | Best free tool(s) | The wall (where free tools stop) | Our gap-tool |
-|---|-------|-------------------|----------------------------------|--------------|
-| 1 | **Plan** — ticket/feature → risk-ranked plan | **Playwright Planner agent** (explores the running app, writes a Markdown plan; first-party, `init-agents --loop=claude`); **TEA** (risk tables) | Planner explores; it doesn't rank by *this diff's* blast radius or threat model | `test-plan`, `threat-model` (ours) |
-| 2 | **Author** — write the tests | **Playwright Generator agent** + **Cypress AI** (`cy.prompt()`, Studio AI, `cypress-author` skill — both first-party, app-driven, verify selectors/assertions live) | Generation is a solved commodity now; *trustworthy* generation is not — these optimize toward **green**, not toward *meaningful* | `qa-review` (testability) |
-| 3 | **Audit** — is this *passing* test actually real? | **StrykerJS** (full mutation), **Tautest** (PR diff-mutation, JS/TS **unit**), **Exspec** (static test-quality linter — flags assertion-free/over-mocked/coupled tests, multi-lang, no execution) | The mutators are source-mutate + Vitest/Jest only → **can't touch app-driven Playwright/Cypress** (reachability wall). Exspec is a real ally but **static — can't mutation-prove an assertion *matters***. **No first-party agent audits at all.** | **`audit-test`** (mutation-proof on **dev-served** Playwright/Cypress) — ADR-0016 staleness guard is the net-new piece |
-| 4 | **Coverage** — what's untested? | V8/istanbul (Vitest/Jest), Playwright coverage; `coverage-guard` (AI skill — **auto-generates tests looping to 100% line coverage → a green-pusher/manufactured-confidence hazard**, not credibility) | Line coverage ≠ assertion quality — and `coverage-guard` *manufactures* the number by auto-writing tests to hit it (no assertion-quality check); blind to app-driven paths | `coverage-review` |
-| 5 | **Flake / reliability** — is this run stable? | Playwright **`flaky` flag**; **self-healers** (Playwright Healer, Cypress self-heal, Healenium, CodeceptJS heal); Tautest `flakiness` (static lint) | Flag catches only **retry-then-pass**; self-healers **hide flake by healing to green** (a credibility hazard); linter never runs a test | **`debug-test` flake mode** (empirical detect → quarantine → route, *don't* heal-to-hide) |
-| 6 | **Triage / heal** — why did it fail? | **Playwright Healer agent** (replays, relocates elements, patches — can **skip if functionality looks broken**); Cypress self-heal; trace viewer/Test Replay; **cypress-flaky-test-audit** (Cypress-side per-command runtime evidence — queue-vs-execution order, timing, retry diff, never-run commands; **diagnosis-only, does *not* heal-to-green**) | Healers push to green and can **mask a real regression or skip it silently** — no judgment on whether the failure was a *real defect*, and no record of *what* was changed to get green | `debug-test` (Step 4.5 **classifies the heal** from the diff — selector/wait clears cheap, a changed expected value routes to `audit-test`'s baseline-lock check, a rewritten setup blocks auto-clear — and proposes the `Heal-bucket:` commit trailer), `diagnosing-bugs`, `bug-report` |
-| 7 | **Gate** — is this shippable? | CI pass/fail; **TEA** (evidence artifacts, categorical) | Pass/fail on the raw suite — no credibility axis (*is* the green real?), no live-execution evidence bundle, no calibration | **Gate** (aggregate execution + credibility evidence → **categorical worst-wins** decision → (planned) calibration) — see below |
+| # | Stage | Best free tool(s) | Where free tools stop | This project's tool |
+|---|-------|-------------------|------------------------|----------------------|
+| 1 | **Plan** — turn a ticket or feature into a risk-ranked plan | **Playwright Planner agent** (explores the running app and writes a Markdown plan; first-party; `init-agents --loop=claude`); **TEA** (risk tables) | Planner explores the app. It does not rank tasks by *this diff's* blast radius or by threat model | `test-plan`, `threat-model` |
+| 2 | **Author** — write the tests | **Playwright Generator agent** plus **Cypress AI** (`cy.prompt()`, Studio AI, the `cypress-author` skill — both first-party, app-driven, and verify selectors and assertions live) | Generation is now a solved, common capability. *Trustworthy* generation is not — these tools optimize toward a **green** result, not toward a *meaningful* one | `qa-review` (testability) |
+| 3 | **Audit** — is this *passing* test proof of anything real? | **StrykerJS** (full mutation), **Tautest** (PR diff-mutation, JS/TS **unit**), **Exspec** (a static test-quality linter — flags assertion-free, over-mocked, and coupled tests, multi-language, no execution) | The mutation tools change source code and run only under Vitest or Jest → they **cannot reach app-driven Playwright or Cypress tests** (the reachability wall). Exspec is a real ally, but it is **static — it cannot prove through mutation that an assertion *matters***. **No first-party agent audits at all.** | **`audit-test`** (mutation-proof on **dev-served** Playwright/Cypress tests) — the ADR-0016 staleness guard is the net-new piece |
+| 4 | **Coverage** — what code has no test? | V8/istanbul (Vitest/Jest), Playwright coverage; `coverage-guard` (an AI skill — **auto-generates tests in a loop until it reaches 100% line coverage → a manufactured-confidence hazard**, not a credibility check) | A line-coverage number is not the same as assertion quality — and `coverage-guard` *manufactures* its number by auto-writing tests to reach it (no check on assertion quality); it is also blind to app-driven paths | `coverage-review` |
+| 5 | **Flake / reliability** — is this test run stable? | Playwright's own **`flaky` status**; auto-repair tools (Playwright Healer, Cypress self-heal, Healenium, CodeceptJS heal); Tautest's static `flakiness` check | The `flaky` status catches only a test that **fails, then passes on retry**; the auto-repair tools **hide instability — they change the test until it passes, and the pass hides the problem** (a credibility hazard); the static check never runs a test | **`debug-test` flake mode** (finds instability by running the test, sets it aside, and routes the cause — it does *not* auto-repair the test to hide the problem) |
+| 6 | **Triage / repair** — why did the test fail? | **Playwright Healer agent** (replays the test, relocates elements, and patches it — it **skips the test if the app's behavior looks broken**); Cypress self-heal; trace viewer/Test Replay; **cypress-flaky-test-audit** (Cypress-side, per-command runtime evidence — queue order versus execution order, timing, a retry comparison, commands that never ran; **diagnosis only — it does *not* auto-repair the test to force a pass**) | The auto-repair tools push the test toward a pass, and sometimes **mask a real regression or skip it silently** — none of them judges whether the failure was a *real defect*, and none of them records *what* changed to reach a pass | `debug-test` (Step 4.5 **classifies the repair** from the diff — a selector or wait fix clears cheaply, a changed expected value routes to `audit-test`'s baseline-lock check, a rewritten setup blocks the automatic clear — and proposes the `Heal-bucket:` commit trailer), `diagnosing-bugs`, `bug-report` |
+| 7 | **Gate** — is this change ready to ship? | CI pass/fail; **TEA** (evidence artifacts, categorical) | Pass/fail on the raw suite gives no credibility check (it does not ask whether the green result is real), no live-execution evidence bundle, and no calibration | **Gate** (combines execution evidence and credibility evidence into a **categorical, worst-wins** decision; a calibration loop is planned) — see below |
 
-**The through-line (sharpened after verifying first-party agents):** the *entire* free/first-party
-app-driven ecosystem — Playwright's planner/generator/healer, Cypress AI, Healenium, CodeceptJS —
-**optimizes tests toward GREEN.** Authoring and self-healing are now commodity and first-party.
-**Nobody in the app-driven space proves that green means anything** — and self-healing is actively
-*hostile* to credibility (it heals or *skips* to green, masking regressions and hiding flake). So
-Kim's lane is not "build Playwright/Cypress author/heal tools" (first-party already owns that) — it
-is the **trust/credibility counterweight** to a green-pushing ecosystem: **Audit** (prove green),
-**honest Flake** (detect + quarantine, don't heal-to-hide), and **Gate** (aggregate + calibrate).
-That is the sharpest, most defensible statement of the gap.
+**The core pattern, confirmed by checking the first-party agents directly:** the *entire* free,
+first-party, app-driven ecosystem **optimizes tests toward a GREEN result.** This ecosystem
+includes Playwright's planner, generator, and healer; Cypress AI; Healenium; and CodeceptJS.
+Writing tests and auto-repairing them are now common, first-party capabilities. **Nothing in the
+app-driven space proves that a green result means anything** — and auto-repair is actively
+*hostile* to credibility: it repairs the test, or *skips* it, to reach green, and that hides both real
+regressions and test instability. So Kim's own focus is not "build Playwright or Cypress tools
+that author or auto-repair tests" (first-party tools already own that) — it is the **trust and
+credibility counterweight** to a green-pushing ecosystem: **Audit** (prove the green result is
+real), **honest flake handling** (find instability, set the test aside, and route the cause,
+never auto-repair to hide the problem), and **Gate** (combine the evidence, and, in future,
+calibrate it). That is the sharpest, most defensible statement of the gap.
 
 ## Denominator honesty
 
-**State the denominator, not just the numerator: every result says what it was drawn from, so a clean
-number can never be read as broader than the run that produced it.**
+**State the denominator, not only the numerator. Every result names what it was drawn from, so a
+clean number never reads as broader than the run that produced it.**
 
-"100/100 health" means nothing if one page of forty was tested — that is the *coverage illusion*
-under another name, and commercial tools now sell the fix as a feature ("pages tested vs pages
-available"). Four places in this repo already state their denominator, arrived at independently and
-never connected to each other; two are worth reading in full. The name is here so the move stops
-being re-explained each time — and so the place it's **missing** is visible.
+"100/100 health" means nothing if the test run covered one page of forty. That is the *coverage
+illusion* under another name, and commercial tools now sell the fix as a feature ("pages tested
+versus pages available"). Four places in this repo already state their denominator. Each place
+reached this conclusion independently; none of them connects to the others. Two are worth reading
+in full. This document names the pattern here so nobody re-explains it each time — and so the one
+place it is **missing** stays visible.
 
-**Worked example 1 — `gate`'s executed-floor (stage 7).** A framework reports `PASSED` after running
-one test of a thousand: skipped and pending tests sit outside the pass/fail counts, so a discovery,
-filter, or config mistake reads as a clean green. Gate compares tests *executed* against the tests
-the report itself says it *discovered*, and prints that fraction next to every execution suite that
-ran at least one test — red, flaky or green, not only the one it caps:
-`"12 of 180 discovered tests executed — 7%; 168 skipped"`. A suite under the floor (default 50%,
-overridable but never below 25%) is capped at `canary` rather than `ship`
+**Worked example 1 — `gate`'s executed-floor (stage 7).** A test framework reports `PASSED` even
+after it runs one test out of a thousand. Skipped and pending tests sit outside the pass/fail
+counts. So a mistake in discovery, a filter, or a config file reads as a clean green result. Gate
+compares the tests it *executed* against the tests the report itself says it *discovered*. It
+prints that fraction next to every execution suite that ran at least one test — red, unstable, or
+green, not only the suite it caps:
+`"12 of 180 discovered tests executed — 7%; 168 skipped"`. A suite under the floor (default 50%;
+an operator overrides it, but never below 25%) is capped at `canary` instead of `ship`
 ([#157](https://github.com/TzolkinB/skills/issues/157); `skills/gate/gate.mjs`, self-tested). The
-limit is stated too: the discovered count comes from the report, so a suite narrowed *before* the
-report was written still looks fully executed ([`gate.md`](gate.md)).
+limit is stated too: the discovered count comes from the report itself, so a suite narrowed
+*before* the report was written still looks fully executed ([`gate.md`](gate.md)).
 
-**Worked example 2 — `e2e-impact`'s run-all / unmapped bucket (stage 1).** Tracing a diff to the E2E
-specs it hits is heuristic — a spec never imports the source it drives — so some changed files match
-nothing. Those files go into an explicit **run-all / unmapped** bucket in the output instead of
-falling out of the impacted-spec list, and a changed global (root layout, router table, shared
-primitive) goes there too rather than being resolved into a plausible-looking subset. The bucket is
-an edge to *every* spec, not a missing edge, and `debug-test --drift` has to union it back in when it
-inverts the map ([`e2e-impact/SKILL.md`](../skills/e2e-impact/SKILL.md)).
+**Worked example 2 — `e2e-impact`'s run-all / unmapped bucket (stage 1).** Tracing a diff to the
+E2E specs it affects is a heuristic method. A spec never imports the source code that drives it,
+so some changed files match no spec at all. `e2e-impact` puts those files into an explicit
+**run-all / unmapped** bucket in its output, instead of dropping them from the impacted-spec list
+silently. A changed global file (a root layout, a router table, a shared primitive) also goes into
+that bucket, instead of being resolved into a subset that looks plausible but is not proven. The
+bucket is an edge to *every* spec, not a missing edge, and `debug-test --drift` has to combine it
+back in when it inverts the map ([`e2e-impact/SKILL.md`](../skills/e2e-impact/SKILL.md)).
 
-**Same shape, two more places:** gate's **examined-floor** compares deep-audited tests against
-everything the audit triaged, and pins that denominator at *all triaged* precisely so the ratio can't
-be flattered by shrinking it
-([ADR-0038](adr/0038-gate-trust-boundary-and-examined-floor-population.md), in `gate.mjs` alongside
-the executed-floor). `audit-test` batch mode is instructed to print its certified scope as a fraction
-of the suite (`"12 of ~180 suite test files"`) so a `--changed` `ship` can't read as a whole-suite
-one — and, where that suite count isn't cleanly computable, to name the scope *without* a fraction
-rather than invent one.
+**The same pattern appears in two more places.** Gate's **examined-floor** compares deep-audited
+tests against everything the audit triaged. It fixes that denominator at *all triaged tests*,
+precisely so shrinking it never flatters the ratio
+([ADR-0038](adr/0038-gate-trust-boundary-and-examined-floor-population.md), in `gate.mjs`
+alongside the executed-floor). `audit-test` batch mode prints its certified scope as a fraction of
+the suite (`"12 of ~180 suite test files"`), so a `--changed` `ship` result does not read as a
+whole-suite result. Where that suite count is not cleanly computable, it names the scope
+*without* a fraction, instead of inventing one.
 
-**Where it's missing — `coverage-review`.** It is file-pair scoped by contract (`[test file path]
-[code file path]`), so it can tell you which branches of the one file in front of it are unguarded,
-but nothing in its output says how many of the repo's source files were never handed to it at all.
-The line percentage it reports for that one file in instrumentation mode is a *within-file*
-denominator, not a repo-level one. Supplying the repo-level one needs a driver that can find an
-*untested* module — a file with no test to pair it with — which is exactly the seam
-[#180](https://github.com/TzolkinB/skills/issues/180) exists to fill
-([ADR-0044](adr/0044-repo-level-coverage-inventory-obligation-driver.md)); until it lands, this gap
-is stated rather than papered over.
+**Where the denominator is missing — `coverage-review`.** Its contract scopes it to one
+test-and-code file pair (`[test file path] [code file path]`). It tells you which branches of the
+one file in front of it have no guard. Nothing in its output says how many of the repo's source
+files never reached it at all. The line percentage it reports for that one file, in
+instrumentation mode, is a *within-file* denominator, not a repo-level one. A repo-level
+denominator needs a driver that finds an *untested* module — a file with no matching test. That
+is exactly the seam [#180](https://github.com/TzolkinB/skills/issues/180) exists to fill
+([ADR-0044](adr/0044-repo-level-coverage-inventory-obligation-driver.md)). Until that lands, this
+document states the gap plainly, instead of hiding it.
 
-## Flake-diagnosis evidence: the Cypress ↔ Playwright symmetry (in-lane, feeds stage 5–6)
+## Flake-diagnosis evidence: Cypress and Playwright have matching tools (feeds stages 5–6)
 
-`debug-test` flake mode's honest stance (stage 5) is **detect → quarantine → route the cause**, and
-it explicitly *refuses to verdict the cause itself* — it hands root-cause off to a tool that carries
-real evidence. Playwright already has that evidence source first-party (**trace viewer / Test
-Replay**). Cypress's side was thin. **cypress-flaky-test-audit** fills it symmetrically:
+`debug-test` flake mode's honest approach at stage 5 is **detect, set aside, then route the
+cause**, and it explicitly *refuses to judge the cause itself* — it hands the root cause to a tool
+that carries real evidence. Playwright already has that evidence source, first-party (**trace
+viewer / Test Replay**). Cypress's side was thin. **cypress-flaky-test-audit** fills that gap, on
+the Cypress side:
 
-- **What it is** (README verified at source, 2026-07-12): a Cypress-internals runtime tracer. Hooks
-  the command queue and records **enqueue-vs-execution order, per-command timing, internal retries,
-  pass/fail, and never-run (dead) commands**, rendered as console/terminal/HTML with command graphs
-  and side-by-side retry diffs. It is a flake **diagnosis** aid — it explains *why* a Cypress test is
-  flaky. It does **not** detect flakiness for you, does **not** mutate, does **not** judge
-  credibility, and — importantly — **does not push to green** (unlike the self-healers), so it's
-  aligned with, not hostile to, the honest-flake stance.
-- **Where it sits:** *downstream* of `debug-test` flake detection (stage 5), as the Cypress-side
-  root-cause evidence for stage 6 — the exact slot Playwright trace viewer occupies. Clean symmetry:
-  **Cypress flake → cypress-flaky-test-audit; Playwright flake → trace viewer.**
-- **Orchestrate, don't absorb.** The right move is a *pointer* — flake mode routes a flagged Cypress
-  spec here for command-level root cause. Building queue-interception into this toolset would drag a
-  skills/orchestration layer into a runtime-instrumentation plugin (category change, against the
-  thesis and Kim's lane). Ideas worth pulling as *heuristics* debug-test can reference (not code to
-  port): enqueue-vs-execution mismatch and never-run commands as flake signals; retry side-by-side
-  diff as the root-cause lens.
-- **Not an audit-test overlap.** Different axis entirely: timing/order vs. credibility. No
-  competition with stage 3.
+- **What it is** (README verified at the source, 2026-07-12): a runtime tracer for Cypress
+  internals. It hooks the command queue. It records the **order commands enter the queue versus
+  the order they run, per-command timing, internal retries, pass or fail, and commands that never
+  ran**, rendered as console, terminal, or HTML output, with command graphs and side-by-side
+  retry comparisons. It is a **diagnosis** aid for test instability — it explains *why* a Cypress
+  test is unstable. It does **not** detect instability for you. It does **not** change the code.
+  It does **not** judge credibility. This matters: it also **does not push the test toward a
+  pass** (unlike the auto-repair tools), so it works with the honest-flake approach, not against
+  it.
+- **Where it sits:** *downstream* of `debug-test`'s instability detection (stage 5), as the
+  Cypress-side root-cause evidence for stage 6 — the exact slot the Playwright trace viewer
+  occupies. The symmetry is clean: **an unstable Cypress test routes to
+  cypress-flaky-test-audit; an unstable Playwright test routes to the trace viewer.**
+- **Point to it; do not absorb it.** The right move is a *pointer* — flake mode routes a flagged
+  Cypress spec here for command-level root cause. Building queue-interception into this project's
+  own tools turns a skills-and-orchestration layer into a runtime-instrumentation plugin (a
+  change of category, against the thesis and against Kim's own focus). Some ideas are worth
+  pulling as *heuristics* `debug-test` references, not as code to copy: an
+  enqueue-versus-execution mismatch and commands that never ran, both as instability signals; a
+  side-by-side retry comparison as the root-cause lens.
+- **Not an overlap with `audit-test`.** The two work on entirely different axes: timing and
+  order, versus credibility. There is no competition with stage 3.
 
-> **Provenance note:** an external Gemini "comparative architecture" report on this tool vs. Sentinel
-> was **fabricated** — it invented a Sentinel that is a "runtime telemetry/observability framework"
-> with an "MVP0 Playwright core," "queue interception," and a "driver-adapter pattern," and its
-> headline advice (build a Cypress driver adapter *into* Sentinel) is for that fictional product.
-> Discarded. Only its *description of cypress-flaky-test-audit itself* matched the real README. This
-> is the [[external-review-reliability]] pattern again — verify LLM design claims against source.
+> **Provenance note:** an external Gemini "comparative architecture" report on this tool versus
+> Sentinel was **fabricated** — it invented a version of Sentinel that is a "runtime
+> telemetry/observability framework," with an "MVP0 Playwright core," "queue interception," and a
+> "driver-adapter pattern," and its headline advice (build a Cypress driver adapter *into*
+> Sentinel) applies only to that invented product. The team discarded the report. Only its
+> *description of cypress-flaky-test-audit itself* matched the real README. This is the
+> [[external-review-reliability]] pattern again — verify an LLM's design claims against the
+> source.
 
-## Adjacent: code-quality / design review (complementary, NOT our lane)
+## Adjacent: code-quality and design review (not this project's lane)
 
-Some tools review the *code's design*, not the *tests' credibility* — a different axis, same
-PR-review moment. Cataloged so the map is honest about the neighborhood, but out of our competitive
-lane:
+Some tools review the *design of the code*, not the *credibility of the tests* — a different
+axis, at the same point in a PR review. This map catalogs them so the map is honest about its
+neighborhood, but these tools sit outside this project's competitive lane:
 
-- **Cursor `thermo-nuclear-code-quality-review`** (first-party, free in cursor-team-kit) — aggressive
-  **static** maintainability/architecture review (abstraction quality, file-size >1000 lines,
-  spaghetti conditionals, missed simplifications). Verified from source (SKILL.md, 2026-07-12): does
-  **not** execute, does **not** verify test behavior, no mutation, no E2E. Its *"do not approve merely
-  because behavior seems correct"* rhymes with our *"a green is not proof"* — **same skeptical spirit,
-  independent target.** A team runs both: thermo-nuclear (is the code well-built?) + audit-test (do the
-  tests prove it works?). Nearest in-repo neighbor is `qa-review` / `codebase-design`, not audit.
-- **Strategic signal:** the majors are shipping static code-*quality* review, **not** test-*credibility*
-  proof — which *reinforces* the audit lane rather than closing it. A Cursor user with thermo-nuclear
-  installed still has the exact hollow-test gap `audit-test` fills.
+- **Cursor `thermo-nuclear-code-quality-review`** (first-party, free in cursor-team-kit) — an
+  aggressive **static** review of maintainability and architecture (abstraction quality, files
+  over 1,000 lines, tangled conditional logic, missed simplifications). Verified from the source
+  (SKILL.md, 2026-07-12): it does **not** execute code, does **not** verify test behavior, has no
+  mutation check, and has no E2E check. Its own rule, *"do not approve merely because behavior
+  seems correct,"* echoes this project's own rule, *"a green result is not proof"* — **the same
+  skeptical spirit, aimed at a different target.** A team runs both: thermo-nuclear asks whether
+  the code is well built; `audit-test` asks whether the tests prove it works. The nearest
+  neighbor to this tool inside this project is `qa-review` or `codebase-design`, not audit.
+- **Strategic signal:** the major AI-coding tools ship static code-*quality* review, not
+  test-*credibility* proof. This *reinforces* the audit lane rather than closing it. A Cursor
+  user with thermo-nuclear installed still has the exact gap `audit-test` fills: a passing test
+  that checks nothing real.
 
 ---
 
-## Evidence ledger — the "why ours, and is it proven?" column
+## Evidence ledger: why this recommendation, and is it proven?
 
-Each core claim, with its provenance label ([ADR-0013](adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) and what backs it. **This is the answer to "why use our recommendation over another."** Unproven ≠ deleted — it's labeled and given a path to proof.
+Each core claim below carries its provenance label
+([ADR-0013](adr/0013-evidence-provenance-sentinel-labels-not-gates.md)) and the evidence that
+backs it. **This table answers "why use this recommendation over another one."** An unproven
+claim is not deleted — the table labels it, and gives it a path toward proof.
 
-| Claim | Label | Backed by / what would upgrade it |
+| Claim | Label | Backed by / what upgrades it |
 |---|---|---|
-| Stryker/Tautest can't audit app-driven Playwright/Cypress (reachability wall) | **Confirmed** | Tautest cloned + read: Stryker-only, Vitest/Jest runners, zero Playwright/Cypress in source, explicitly routes E2E out of mutation scope. StrykerJS mutate-model verified at docs. |
-| `audit-test` *can* prove an app-driven Playwright test, on dev-served targets | **Confirmed** | Ran on Memory app: mutated `Main.reducer.ts:38`, dev-served → test failed (real 🟢); stale `preview(dist)` → false 🔴 (the staleness-guard gap, ADR-0016). |
-| Playwright/Cypress first-party agents optimize toward green and don't audit | **Confirmed** | Playwright docs verified: healer "skips the test if functionality appears broken." Cypress AI = author + self-heal. Neither has an auditor. |
-| **`audit-test` catches a Playwright-Healer-produced green-locked regression** | **Confirmed (with caveat)** — EXPERIMENT-0002 (internal, un-tracked), run 2026-07-11 | Blinded healer green-locked a real regression (assertion 12→10); blinded `audit-test` flagged it 🔴/🟡 ("enforces the regression, would reject the fix"). **Caveat:** the catch relied on intent being recoverable from source — *pure mechanical mutation alone missed it* (assertion still had teeth). Robust defense = Audit **+** assertion-diff/intent signal. No single stage catches the healer alone. |
-| Gate's marginal value on hard-failure ambiguous E2E cases is nil-to-negative today | **Confirmed** | Ran real `witness-claude` CLI: `classifyFlaky` only fires on retry-then-pass; gate HOLDs on every red (EXPERIMENT-0001). |
-| Gate earns the ship-verdict via a calibration loop | **Unexamined — PARKED** | Design intent only; calibration is longitudinal (can't prove in a session) and props up the part experiments already deflated (nil-to-negative on hard E2E cases). Not worth a dedicated experiment now. Must not be pitched as a live capability. |
-| ~~`debug-test` flake mode beats "Playwright flag + read the trace" on the ambiguous subset~~ → **REFRAMED**: flake mode's value = **disposition + routing**, not detection | **Likely (by inspection 2026-07-11)** | Vetted SKILL + ADR-0012 directly: detection *is* the framework's own burn (`--repeat-each`/`status:"flaky"`) = the baseline, **by design** — it claims no detection edge. Marginal value = quarantine-not-skip + routing the cause to a skill that can *confirm* it (`audit-test`). Honest-by-design: unlike Gate it explicitly **refuses to verdict the cause**. But it's a workflow prescription whose technical proof is **borrowed from `audit-test`** (already Confirmed); no independent win. The heavy injected-corpus A/B tests a claim the tool doesn't make (ambiguous-subset *resolution*) → **not worth running.** |
-| cypress-flaky-test-audit does per-command queue/execution-order, timing, retry-diff and never-run-command tracing for Cypress (HTML/console/terminal), diagnosis-only, does not heal-to-green | **Confirmed (README at source, 2026-07-12)** | Fetched the GitHub README directly; features match. Upgrade: run it on a real flaky Cypress spec and confirm the reported command graph. |
-| cypress-flaky-test-audit is the Cypress-side stage-6 root-cause evidence source that `debug-test` flake mode should *route to* (symmetric to Playwright trace viewer); orchestrate-not-absorb | **Likely (reasoned 2026-07-12)** | Follows from the map's orchestrate-not-rebuild thesis + the tool being diagnosis-only (aligned with honest-flake). Not yet demonstrated: no live handoff run. Upgrade: flake mode flags a Cypress spec → hand to this tool → confirm the root cause is legible end-to-end. |
-| **TEA** (BMAD Test Architect, free) does P0–P3 risk tables (Plan) + a categorical PASS/CONCERNS/FAIL/WAIVED governance gate with NFR/compliance evidence (Gate) | **Confirmed (docs at source, 2026-07-17)** | [BMAD TEA docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/): `test-design` risk tables, `trace` categorical gate, `nfr-assess`. **Credibility/governance-side ally**, not a green-pusher (its stated enemy: "AI tests that rot"). Verified *absences* → the audit/Gate gap: **no mutation, no live-execution ingest, no calibration** (see #96; reviewer-facing writeup: [`comparisons/tea.md`](comparisons/tea.md)). |
-| **TEA `trace` gates on coverage *presence*** — Step 3 maps each requirement to a matching test (FULL/PARTIAL/NONE) and Step 5 is deterministic arithmetic over those percentages (`P0 < 100 → FAIL`; `P0 = 100 ∧ P1 ≥ 90 ∧ overall ≥ 80 → PASS`), with **no** mutation or credibility input → a P0 requirement covered only by a **hollow** test gates **PASS** | **Confirmed (workflow source, `main` @ v1.19.1, 2026-07-29; re-verified unchanged @ v1.21.4, 2026-08-04)** | Read `bmad-testarch-trace/steps-c/step-03-map-criteria.md` + `step-05-gate-decision.md`; **zero** hits for mutation/hollow/would-fail/kill-score across the whole trace tree (SKILL, instructions, 671-line checklist, 4 step files); test quality appears only as a printed step-04 recommendation, not a gate input. **Limits:** a *synthetic* oracle downgrades PASS→CONCERNS, so the clean PASS needs formal requirements; composing `test-review` doesn't close the presence gap either — static review isn't mutation proof. **Not TEA-specific** — presence-based coverage is the category default; TEA is just the one with readable source (Qase **Likely**, docs-only; closed tools **Unexamined**). Falsifier: a TEA release adding a credibility input to Step 5. Detail: [`comparisons/tea.md`](comparisons/tea.md) §3 |
-| **Playwright Planner agent** explores the running app → a human-readable Markdown test plan (first-party) | **Confirmed (docs at source, 2026-07-17)** | [playwright.dev/docs/test-agents](https://playwright.dev/docs/test-agents). Green-pushing (front of the authoring pipeline); doesn't rank by *this diff's* blast radius → yields to `test-plan`/`threat-model`. |
-| **Playwright Generator agent** turns the plan into executable tests, verifying selectors/assertions live | **Confirmed (docs at source, 2026-07-17)** | Same docs. Green-pushing — live-authoring *correctness*, not a credibility proof (would it fail if the code broke?) → `qa-review`/`audit-test` downstream. |
-| **Cypress AI** (`cy.prompt()` NL→tests + self-heal, Studio AI auto-assert, first-party `cypress-author` skill) | **Confirmed (docs at source, 2026-07-17)** | [cy.prompt](https://docs.cypress.io/api/commands/prompt) / [Studio AI](https://docs.cypress.io/app/guides/cypress-studio) docs + [ai-toolkit](https://github.com/cypress-io/ai-toolkit). Green-pushing; `cy.prompt()` self-heals → **surface with the heal-to-green hazard caveat** (ADR-0025). |
-| **Exspec** is a *static test-quality linter* (multi-lang incl. TS/Jest+Vitest) — flags assertion-free tests, over-mocking, oversized tests, implementation coupling, naming (17 rules, zero-LLM, no execution) | **Confirmed (README at source, 2026-07-17)** | [morodomi/exspec](https://github.com/morodomi/exspec). **Credibility-side ally**, not a green-pusher — a cheap static pre-screen for the same smells `qa-review`/`coverage-review`/`prune-tests` catch. Static can't mutation-prove an assertion *matters* → `audit-test` downstream. |
-| **coverage-guard** auto-generates + updates tests, looping until **100% line coverage** (JS/TS AI skill) | **Confirmed (README at source, 2026-07-17)** | [sametcelikbicak/coverage-guard](https://github.com/sametcelikbicak/coverage-guard). **Green-pusher — a manufactured-confidence hazard**, not credibility advice: 100% line coverage from auto-gen tests with no assertion-quality check is the exact slop `coverage-review`/`audit-test` exist to catch. Surface with a caveat, like the self-healers. |
+| Stryker and Tautest cannot audit app-driven Playwright or Cypress tests (the reachability wall) | **Confirmed** | The team cloned and read Tautest: Stryker-only, Vitest/Jest runners, zero Playwright/Cypress code in the source, and it explicitly routes E2E tests out of mutation scope. The team verified StrykerJS's mutate-model at its docs. |
+| `audit-test` proves an app-driven Playwright test, on dev-served targets | **Confirmed** | Run on the Memory app: the team mutated `Main.reducer.ts:38`. Dev-served, the test failed (a real 🟢); a stale `preview(dist)` build gave a false 🔴 (the staleness-guard gap, ADR-0016). |
+| Playwright and Cypress first-party agents optimize toward a green result and do not audit | **Confirmed** | Verified at the Playwright docs: the healer agent "skips the test if functionality appears broken." Cypress AI writes tests and self-heals. Neither product has an auditor. |
+| **`audit-test` catches a Playwright-Healer-produced regression locked in by a green result** | **Confirmed (with caveat)** — EXPERIMENT-0002 (internal, not tracked), run 2026-07-11 | A blinded healer locked in a real regression as green (an assertion changed from 12 to 10); a blinded `audit-test` flagged it 🔴/🟡 ("enforces the regression, would reject the fix"). **Caveat:** the catch depended on recovering intent from the source code — *mechanical mutation alone missed it* (the assertion still had teeth). A robust defense needs Audit **plus** an assertion-diff or intent signal. No single stage catches the healer alone. |
+| Gate's extra value on hard-failure, ambiguous E2E cases is nil-to-negative today | **Confirmed** | Run against the real `witness-claude` CLI: `classifyFlaky` only fires on a fail-then-pass-on-retry result; gate HOLDs on every red result (EXPERIMENT-0001). |
+| Gate earns the ship-verdict through a calibration loop | **Unexamined — PARKED** | Design intent only. Calibration needs data collected over time, so a single session gives no proof of it. It also props up the exact part experiments already deflated — nil-to-negative value on hard E2E cases. A dedicated experiment is not worth running now. This claim must not appear as a live capability. |
+| ~~`debug-test` flake mode beats "Playwright flag + read the trace" on the ambiguous subset~~ → **REFRAMED**: flake mode's value is **disposition and routing**, not detection | **Likely (by inspection, 2026-07-11)** | The team checked the SKILL file and ADR-0012 directly: detection *is* the framework's own signal (`--repeat-each`/`status:"flaky"`) — that is the baseline, **by design** — it claims no detection edge over that baseline. Its value is quarantine instead of skip, plus routing the cause to a skill that *confirms* it (`audit-test`). It is honest by design: unlike Gate, it explicitly **refuses to judge the cause**. But this is a workflow prescription, and its technical proof is **borrowed from `audit-test`** (already Confirmed) — it has no independent proof of its own. A heavy injected-test-corpus A/B test proves a claim this tool does not make (resolving the ambiguous subset), so **it is not worth running.** |
+| cypress-flaky-test-audit traces, per command, the queue order versus execution order, timing, a retry comparison, and commands that never ran, for Cypress (as HTML, console, or terminal output); diagnosis only; it does not auto-repair the test to force a pass | **Confirmed (README at the source, 2026-07-12)** | The team fetched the GitHub README directly; the features match. To upgrade this: run the tool on a real unstable Cypress spec and confirm the reported command graph. |
+| cypress-flaky-test-audit is the Cypress-side stage-6 root-cause evidence source that `debug-test` flake mode routes to (symmetric to the Playwright trace viewer); point to it, do not absorb it | **Likely (reasoned, 2026-07-12)** | This follows from the map's own thesis of pointing to a tool instead of rebuilding it, plus the tool being diagnosis only (aligned with the honest-flake approach). Not yet demonstrated: no live handoff has run yet. To upgrade this: flake mode flags a Cypress spec, hands it to this tool, and the team confirms the root cause reads clearly end to end. |
+| **TEA** (BMAD Test Architect, free) produces P0–P3 risk tables (Plan), plus a categorical PASS/CONCERNS/FAIL/WAIVED governance gate with NFR and compliance evidence (Gate) | **Confirmed (docs at the source, 2026-07-17)** | [BMAD TEA docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/): `test-design` risk tables, the `trace` categorical gate, `nfr-assess`. TEA is a **credibility and governance-side ally**, not a tool that pushes toward green (its stated enemy is "AI tests that rot"). The team verified what TEA *lacks* — the audit and Gate gap: **no mutation check, no live-execution ingest, no calibration** (see #96; the reviewer-facing writeup is [`comparisons/tea.md`](comparisons/tea.md)). |
+| **TEA's `trace` gate checks only whether coverage exists, not whether it works** — Step 3 maps each requirement to a matching test (FULL/PARTIAL/NONE), and Step 5 is deterministic arithmetic over those percentages (`P0 < 100 → FAIL`; `P0 = 100 ∧ P1 ≥ 90 ∧ overall ≥ 80 → PASS`), with **no** mutation or credibility input → a P0 requirement covered only by a test that checks nothing real still gates **PASS** | **Confirmed (workflow source, `main` @ v1.19.1, 2026-07-29; re-verified unchanged @ v1.21.4, 2026-08-04)** | The team read `bmad-testarch-trace/steps-c/step-03-map-criteria.md` and `step-05-gate-decision.md`; **zero** hits for mutation/hollow/would-fail/kill-score across the whole trace tree (the SKILL file, instructions, a 671-line checklist, 4 step files); test quality appears only as a printed step-04 recommendation, never as a gate input. **Limits:** a *synthetic* oracle downgrades PASS to CONCERNS, so a clean PASS needs formally written requirements; adding `test-review` does not close the gap either — a static review is not mutation proof. **This is not specific to TEA** — presence-based coverage is the default across this category of tool; TEA is simply the one whose source the team read directly (Qase **Likely**, docs only; closed tools **Unexamined**). Falsifier: a TEA release that adds a credibility input to Step 5. Detail: [`comparisons/tea.md`](comparisons/tea.md) §3 |
+| **Playwright Planner agent** explores the running app and produces a human-readable Markdown test plan (first-party) | **Confirmed (docs at the source, 2026-07-17)** | [playwright.dev/docs/test-agents](https://playwright.dev/docs/test-agents). It pushes toward green (it sits at the front of the authoring pipeline) and does not rank tasks by *this diff's* blast radius → it yields to `test-plan`/`threat-model` for that. |
+| **Playwright Generator agent** turns the plan into executable tests, and verifies selectors and assertions live | **Confirmed (docs at the source, 2026-07-17)** | Same docs. It pushes toward green — it authors for live *correctness*, not for credibility proof (does the test fail when the code breaks?) → `qa-review`/`audit-test` handle that downstream. |
+| **Cypress AI** (`cy.prompt()` turns natural language into tests, plus self-heal; Studio AI auto-asserts; first-party `cypress-author` skill) | **Confirmed (docs at the source, 2026-07-17)** | [cy.prompt](https://docs.cypress.io/api/commands/prompt) / [Studio AI](https://docs.cypress.io/app/guides/cypress-studio) docs + [ai-toolkit](https://github.com/cypress-io/ai-toolkit). It pushes toward green; `cy.prompt()` self-heals → **state this alongside the auto-repair-to-green hazard caveat** (ADR-0025). |
+| **Exspec** is a *static test-quality linter* (works across languages, including TS/Jest and Vitest) — flags tests with no assertion, over-mocked tests, oversized tests, tests coupled to implementation details, and naming problems (17 rules, no LLM, no execution) | **Confirmed (README at the source, 2026-07-17)** | [morodomi/exspec](https://github.com/morodomi/exspec). A **credibility-side ally**, not a tool that pushes toward green — a cheap, static, first pass for the same problems `qa-review`/`coverage-review`/`prune-tests` catch. A static check cannot prove through mutation that an assertion *matters* → `audit-test` handles that downstream. |
+| **coverage-guard** auto-generates and updates tests, in a loop, until it reaches **100% line coverage** (a JS/TS AI skill) | **Confirmed (README at the source, 2026-07-17)** | [sametcelikbicak/coverage-guard](https://github.com/sametcelikbicak/coverage-guard). It **pushes toward green — a manufactured-confidence hazard**, not credibility advice: 100% line coverage from auto-generated tests, with no check on assertion quality, is exactly the low-quality result `coverage-review`/`audit-test` exist to catch. State this alongside a caveat, the same way as the auto-repair tools. |
 
-| **Schema validation against a published OpenAPI doc catches retypes but is near-blind to drop/rename** — 98.6% / 23.8% / 25.2% kill rates across 1,152 published response schemas, because **62.6% declare no `required`** (drop caught **0.0%** in those) | **Confirmed** — [EXPERIMENT-0049](experiments/EXPERIMENT-0049-schema-permissiveness.md) Arm A, run 2026-07-31 | 18,648 mutants (drop/rename/retype — ADR-0021's three named drifts) over apis.guru, one spec per provider, AJV 8.20 (the engine `core-ajv-schema-validator` wraps). Bimodal: 57.6% of schemas sit at exactly 33.3% (types only), 19.0% at 100%. **Falsifier:** an internal-spec corpus showing materially higher `required` coverage. |
-| **"Hollow" response schemas — ones that catch nothing — are ~1% of the wild, so a hollow-schema auditor has no population** | **Confirmed** — EXPERIMENT-0049 Arm A | 9 of 1,111 (0.8%) fully hollow; a further 3.6% declare no properties at all. Published schemas nearly always declare `type`. This is why ADR-0049 builds a per-operation `required` read instead of an auditor skill. |
-| **OpenAPI generators split on `required`: FastAPI/Pydantic and NestJS emit it automatically, springdoc only on annotation** | **Confirmed** — EXPERIMENT-0049 Arm B (generated + source-verified, 2026-07-31) | FastAPI 0.141.1/Pydantic 2.13.4 and `@nestjs/swagger` 8.1.1 both emitted `required:["id","label","capacity","owner"]` from the source type. swagger-core `ModelResolver`: every `addRequiredItem` site needs `@Schema`/`@JsonProperty(required)`/`@NotNull`-family, and the type-aware overload is documented to *ignore* the JavaType (`ModelResolver.java:2440`). **Consequence:** neither a blanket recommendation nor a blanket caveat is correct → read the spec per-operation. **Unexamined:** .NET (Swashbuckle/NSwag), and the NestJS CLI-plugin path. |
-| `cypress-schema-validator` / `playwright-schema-validator` (MIT, both wrapping `core-ajv-schema-validator`) validate a live response against a published OpenAPI/Swagger doc **from inside the test** — the insertion point an SDET can adopt without touching production code | **Confirmed (READMEs + npm manifests at source, 2026-07-31)** | [cypress-schema-validator](https://github.com/sclavijosuero/cypress-schema-validator) 2.0.0 / playwright-schema-validator 1.0.0. **Route-to, don't rebuild** — `contract-guard` Tier 1b ([ADR-0049](adr/0049-contract-guard-test-boundary-validation-tier.md)) proposes them, never installs or runs them. **Name the current packages:** the far more-downloaded `cypress-ajv-schema-validator` (14k/mo) and `playwright-ajv-schema-validator` (24k/mo) are superseded predecessors — the legacy README says so at source. Must be surfaced **with** the drift-coverage caveat above, or it becomes a green-pusher. |
+| **Schema validation against a published OpenAPI doc catches a changed type, but nearly misses a dropped or renamed field** — kill rates of 98.6% / 23.8% / 25.2% across 1,152 published response schemas, because **62.6% declare no `required` field** (in those, drop caught **0.0%**) | **Confirmed** — [EXPERIMENT-0049](experiments/EXPERIMENT-0049-schema-permissiveness.md) Arm A, run 2026-07-31 | 18,648 mutants (drop, rename, retype — the three types of change ADR-0021 names) over apis.guru, one spec per provider, AJV 8.20 (the engine `core-ajv-schema-validator` wraps). The result is bimodal: 57.6% of schemas sit at exactly 33.3% (types checked only), 19.0% at 100%. **Falsifier:** an internal-spec corpus that shows materially higher `required` coverage. |
+| **Response schemas that catch nothing are about 1% of the wild, so a tool that audits only for empty schemas has almost nothing to check** | **Confirmed** — EXPERIMENT-0049 Arm A | 9 of 1,111 (0.8%) caught nothing at all; a further 3.6% declared no properties at all. Published schemas almost always declare a `type`. This is why ADR-0049 builds a per-operation `required` read, instead of an auditor skill. |
+| **OpenAPI generators differ on `required`: FastAPI/Pydantic and NestJS emit it automatically; springdoc emits it only with an annotation** | **Confirmed** — EXPERIMENT-0049 Arm B (generated and source-verified, 2026-07-31) | FastAPI 0.141.1/Pydantic 2.13.4 and `@nestjs/swagger` 8.1.1 both emitted `required:["id","label","capacity","owner"]` directly from the source type. In swagger-core's `ModelResolver`, every `addRequiredItem` call site needs a `@Schema`, `@JsonProperty(required)`, or `@NotNull`-family annotation, and the type-aware overload is documented to *ignore* the JavaType (`ModelResolver.java:2440`). **Consequence:** neither a blanket recommendation nor a blanket caveat is correct here — read each spec per operation. **Unexamined:** .NET (Swashbuckle/NSwag), and the NestJS CLI-plugin path. |
+| `cypress-schema-validator` / `playwright-schema-validator` (MIT, both wrapping `core-ajv-schema-validator`) validate a live response against a published OpenAPI/Swagger document **from inside the test** — the insertion point an SDET adopts without touching production code | **Confirmed (READMEs + npm manifests at the source, 2026-07-31)** | [cypress-schema-validator](https://github.com/sclavijosuero/cypress-schema-validator) 2.0.0 / playwright-schema-validator 1.0.0. **Point to these tools; do not rebuild them** — `contract-guard` Tier 1b ([ADR-0049](adr/0049-contract-guard-test-boundary-validation-tier.md)) proposes them, and never installs or runs them itself. **Name the current packages:** the far more-downloaded `cypress-ajv-schema-validator` (14k/month) and `playwright-ajv-schema-validator` (24k/month) are superseded predecessors — the legacy README says so, at the source. State this **alongside** the caveat above, about gaps in mismatch coverage, or the claim becomes a push toward green. |
 
-**Reading rule:** anything **Unexamined** in this ledger is a *research to-do we are honest about*,
-not advice we're giving. A recommendation graduates to advice only at **Likely** (verified reasoning)
-and to a *claim of superiority* only at **Confirmed** (observed result).
+**Reading rule:** anything labeled **Unexamined** in this ledger is a *research to-do this
+project states honestly*, not advice. A recommendation becomes advice only at **Likely** (verified
+reasoning), and becomes a *claim of superiority* only at **Confirmed** (an observed result).
 
 ---
 
 ## Where Gate fits
 
-Gate is **our gap-tool at the Gate stage (7)** — the execution/evidence pipeline: ingest
-Playwright/Cypress JSON + an `audit-test` verdict → one content-addressed evidence bundle → a
-**categorical, worst-wins** `ship`/`canary`/`hold` decision (**no** confidence number — the gate
-reasons over categories, not magnitudes, and the schema's honesty guard forbids a numeric field in
-the gate entry) → (planned) calibration loop.
+Gate is **this project's gap-tool at the Gate stage (7)** — the execution and evidence pipeline.
+It ingests Playwright/Cypress JSON and an `audit-test` verdict, combines them into one
+content-addressed evidence bundle, and derives a **categorical, worst-wins**
+`ship`/`canary`/`hold` decision. It carries **no** confidence number: the gate reasons over
+categories, not magnitudes, and the schema's honesty guard forbids a numeric field in the gate
+entry. A calibration loop is planned.
 
-But its role in *this* framing is bigger and more defensible than "smarter flake classifier"
-(experiments killed that claim — see caveats). In an orchestration layer, **the single source of
-truth is the aggregated evidence artifact at the end of the pipeline. Gate *is* that artifact.**
+But Gate's role, in this framing, is bigger and more defensible than "a smarter classifier of
+test instability" — experiments already ruled that claim out; see the caveats below. In an
+orchestration layer, **the single source of truth is the combined evidence artifact at the end of
+the pipeline. Gate *is* that artifact.**
 
-> **Gate = the confluence point.** It's the layer that ingests the *outputs of every other
-> cataloged tool* — Stryker/Tautest mutation verdicts, coverage numbers, `audit-test`
-> confirmed/likely/unexamined labels, Playwright/Cypress results — into **one evidence bundle + one
-> gate.** Not a competitor to any single tool; the place the whole map converges. This is the
-> "single source of truth + workflow orchestration" win literally instantiated as a tool.
+> **Gate is the point where everything meets.** It is the layer that ingests the *outputs of
+> every other cataloged tool* — Stryker/Tautest mutation verdicts, coverage numbers, `audit-test`
+> confirmed/likely/unexamined labels, Playwright/Cypress results — into **one evidence bundle and
+> one gate decision.** It does not compete with any single tool; it is the place the whole map
+> converges. This is the "single source of truth plus workflow orchestration" win, built directly
+> into a tool.
 
 So Gate plays two roles:
-1. **Stage-7 gate tool** for E2E release confidence (its original scope).
-2. **The orchestration substrate** — the evidence contract + gate that the rest of the map feeds
-   into. This is the stronger, more defensible position.
+1. **The stage-7 gate tool** for E2E release confidence (its original scope).
+2. **The orchestration substrate** — the evidence contract and gate that the rest of the map
+   feeds into. This is the stronger, more defensible position.
 
-**Honest caveats (carry these forward — they're load-bearing):**
-- On the **ambiguous hard-failure** cases that carry the real E2E-triage burden, Gate's marginal
-  value over "Playwright `flaky` flag + read the trace" is **nil-to-negative** today: its
-  `classifyFlaky` only runs on retry-then-pass tests, and its gate HOLDs on every red (can't tell a
-  real defect from a non-defect flake on a hard fail). *Don't sell Gate as a better classifier.*
-- Gate is **downstream of the review-burden problem** that actually drives adoption — a green
-  Gate score over slop tests is manufactured confidence. It presupposes trustworthy tests, which
-  is stages 3–5's job. **Gate without the earlier stages is theater.** That's exactly why it
-  belongs *at the end of an orchestrated pipeline*, not standalone.
-- The **calibration loop** (log human overrides, track judge-agreement, revise) is the thing that
-  earns Gate the right to own the verdict. It's the rigor no other QA-AI tool has. Without it,
-  the 0–100 score is the false-precision the repo's own honesty rules exist to fight.
-- Gate now ingests **both** Playwright (JSON report) and **Cypress** (Module API `CypressRunResult`)
-  on one worst-wins execution axis (ADR-0030) — Cypress's flaky signal is *derived* from per-test
-  `attempts[]` (it emits no flaky count), labelled `flakyDerived`. Unit/component ingest is still a later
-  increment.
+**Honest caveats — carry these forward; they are load-bearing:**
+- On the **ambiguous hard-failure** cases that carry the real E2E-triage burden, Gate's extra
+  value over "read the Playwright `flaky` status and check the trace" is **nil-to-negative**
+  today. Its `classifyFlaky` function only runs on a test that fails, then passes on retry. Its
+  gate HOLDs on every red result. On a hard failure, it cannot tell a real defect from an unstable
+  test. *Do not sell Gate as a better classifier.*
+- Gate sits **downstream of the review-burden problem** that actually drives adoption — a green
+  Gate score over low-quality tests is manufactured confidence. Gate assumes trustworthy tests
+  already exist, which is stages 3–5's job. **Gate without the earlier stages is theater.** That
+  is exactly why Gate belongs *at the end of an orchestrated pipeline*, not on its own.
+- The **calibration loop** (log human overrides, track judge agreement, revise) is what earns
+  Gate the right to own the verdict. It is rigor no other QA-AI tool has. Without it, a 0–100
+  score is exactly the false precision this repo's own honesty rules exist to fight.
+- Gate now ingests **both** Playwright (JSON report) and **Cypress** (Module API
+  `CypressRunResult`) on one worst-wins execution axis (ADR-0030) — Cypress's instability signal
+  is *derived* from per-test `attempts[]` (Cypress emits no aggregate instability count), and is
+  labeled `flakyDerived`. Ingest for unit and component tests is still a later step.
 
-**Net:** Gate's defensible home in this repo is *the evidence-aggregation + gate substrate the
-orchestration map converges on*, backed by the calibration loop — **not** a standalone smarter-flake
-tool. It only has value sitting on top of trustworthy stages 3–5.
+**Net result:** Gate's defensible place in this repo is *the evidence-aggregation and gate
+substrate the orchestration map converges on*, backed by the calibration loop — **not** a
+standalone, smarter classifier of test instability. It only has value on top of trustworthy
+stages 3–5.
 
 ---
 
 ## Open questions
 
-1. **Cataloged vs. owned boundary** — for each stage, is our tool a thin wrapper that *invokes* the
-   best free tool (e.g. `audit-test` orchestrating Stryker where it fits), or a genuine replacement
-   in the E2E domain? Probably *both, per stage*.
-2. **Router — resolved.** `qa-compass` *is* the ecosystem's top-level router now ([ADR-0025](adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
-   [ADR-0027](adr/0027-ask-sentinel-orchestrated-sequence-mode.md)): stack-aware, routes to external tools and to these skills alike,
-   and returns either one best tool (à la carte) or an ordered stage path (a lifecycle ask). It routes across
-   thirteen skills plus itself.
-3. **The gate-verdict ownership question — resolved.** (from `sentinel-witness-split`):
-   Stages 3–5 emit *credibility evidence*; Gate stage 7 owns the *ship verdict*,
-   earned via calibration. `skills/qa-pass/SKILL.md` and `docs/qa-pass.md` now say plainly
-   that `/qa-pass` is a QA judgment read, not the release gate, and point to `/gate` for the
-   actual ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
-4. **Spin-out** — user flagged this may become its own project. Decide when the map stabilizes.
+1. **The cataloged-versus-owned boundary.** For each stage: is this project's tool a thin wrapper
+   that *invokes* the best free tool (for example, `audit-test`, which orchestrates Stryker where
+   Stryker fits), or a genuine replacement in the E2E domain? The likely answer is *both, per
+   stage*.
+2. **The router — resolved.** `qa-compass` *is* the ecosystem's top-level router now
+   ([ADR-0025](adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
+   [ADR-0027](adr/0027-ask-sentinel-orchestrated-sequence-mode.md)). It is stack-aware, and it
+   routes to external tools and to these skills alike. It returns either one best tool (for a
+   standalone ask) or an ordered stage path (for a lifecycle ask). It routes across thirteen
+   skills, plus itself.
+3. **The gate-verdict ownership question — resolved** (from `sentinel-witness-split`). Stages
+   3–5 emit *credibility evidence*; Gate, stage 7, owns the *ship verdict*, earned through
+   calibration. `skills/qa-pass/SKILL.md` and `docs/qa-pass.md` now state plainly that
+   `/qa-pass` is a QA judgment read, not the release gate, and point to `/gate` for the actual
+   ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
+4. **Spin-out.** The user flagged this map as a candidate for its own project. Decide this when
+   the map stabilizes.
 
 ## Next artifact — shipped
-The proposal below was to turn one stage into a fully executable Skill proving the
-"orchestrate free tools + fill the gap" pattern end-to-end. **Done**: `audit-orchestrator`
-(issue #43) is that Skill for stage 3 — it detects the stack, routes unit JS/TS to
-Tautest/StrykerJS where they fit, and falls back to `audit-test` (dev-served) for app-driven
-Playwright/Cypress, with the ADR-0016/0019 staleness guard.
+The proposal below was to turn one stage into a fully executable skill, to prove the "combine
+free tools and fill the gap" pattern end to end. **Done:** `audit-orchestrator` (issue #43) is
+that skill, for stage 3 — it detects the stack, routes unit JS/TS tests to Tautest/StrykerJS
+where they fit, and falls back to `audit-test` (dev-served) for app-driven Playwright/Cypress
+tests, with the ADR-0016/0019 staleness guard.

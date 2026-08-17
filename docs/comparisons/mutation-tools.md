@@ -1,151 +1,155 @@
-# Why not *just* a mutation tool? (Stryker / Tautest / Exspec / Pitest·Arcmutate)
+# Why not _just_ a mutation tool? (Stryker / Tautest / Exspec / Pitest·Arcmutate)
 
-**TL;DR** — If your priority is *never being given false confidence*, and your tests are **unit
-tests**, reach for a real mutation runner — **[StrykerJS](https://stryker-mutator.io/)** (full
-campaign) or **[Tautest](https://github.com/tautest/tautest)** (PR diff-scoped), or
-**[Pitest](https://pitest.org/)/[Arcmutate](https://www.arcmutate.com/)** on the JVM. They *execute*:
-they mutate your source, re-run the suite, and show you the survivors. That is a stronger
-false-confidence signal than any judgement layer, because it can't be talked out of a survivor — it
-watched the test stay green while the code was broken. **On the unit layer, they win, and this repo
-routes you to them** ([`audit-orchestrator`](../../skills/audit-orchestrator/SKILL.md),
-[ADR-0004](../adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md): *route, not rivalry*).
+**TL;DR** — If your top priority is zero false confidence, and your tests are **unit tests**, use a
+real mutation runner. Three options: **[StrykerJS](https://stryker-mutator.io/)** for a full
+campaign, **[Tautest](https://github.com/canblmz1/tautest)** for a PR-diff-scoped run, or
+**[Pitest](https://pitest.org/)**/**[Arcmutate](https://www.arcmutate.com/)** on the JVM. These tools
+_execute_: they change(mutate) your source code, run the suite again(with unit-test runners Jest, Vitest, or JUnit on the JVM), and show you which mutations survive.
+This is a stronger false-confidence signal than any judgment layer gives. The proof needs no
+argument: the tool watched the test stay green while the code was broken. **On the unit layer, these
+tools win, and this repo routes you to them** ([`audit-orchestrator`](../../skills/audit-orchestrator/SKILL.md),
+[ADR-0004](../adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md): _route, not rivalry_).
 
-Reach for **`audit-test`** for the layer those tools **structurally cannot enter**: app-driven
-**Playwright/Cypress** end-to-end tests. Every one of these mutators is source-mutate + unit-runner
-(Jest/Vitest, or JUnit on the JVM); a hollow E2E assertion is invisible to them. `audit-test` runs a
-targeted mutation against a **dev-served** E2E test and shows whether it goes red — the same
-execution-grounded proof, one layer up.
+Use **`audit-test`** for the layer these tools **cannot enter**: app-driven **Playwright** and
+**Cypress** end-to-end tests. This is a structural limit, not a temporary gap. `audit-test` runs one targeted mutation against a **dev-served** end-to-end test and
+shows whether the test goes red. This is the same execution-grounded proof, one layer up.
 
-And read **Gate** for exactly what it is: an **aggregator that composes evidence**, not an executor.
-It does not re-run anything. If false confidence is the bar, your trust comes from the *execution*
-pieces underneath Gate (a mutation runner at the unit layer, `audit-test` at the E2E layer) — Gate
-weighs and reports them, it is **not itself the thing that verifies**.
+Read about **Gate**, too. Gate is an **aggregator that combines evidence**; it is not an executor.
+Gate does not rerun anything. If zero false confidence is your bar, your trust comes from the
+_execution_ underneath Gate: a mutation runner at the unit layer, `audit-test` at the end-to-end
+layer. Gate weighs this evidence and reports it. Gate itself does not verify anything.
 
-This is a "why ours, not just theirs?" note, held to the same bar as the rest of the repo: **no claim
-here that isn't a real capability boundary, stated in the tools' favor where they win.** The central
-reachability claim is **Confirmed** (Tautest cloned + read; see the how-to-check lines). If a future
-release of any of these tools ships app-driven E2E mutation, the relevant section is wrong and should
-be updated.
+This note answers "why ours, not just theirs?" It follows the same evidence bar as the rest of this
+repository: **every claim here names a real capability boundary, and states it in the tool's favor
+where the tool wins.** The central reachability claim carries a **Confirmed** label (Tautest cloned
+and read; see the "how to check" lines below). If a future release of any of these tools ships
+app-driven end-to-end mutation, this section is wrong. Update it then.
 
 ---
 
 ## What these tools actually are (and why the question is fair)
 
-These are not strawmen — mutation testing is the **gold standard** for detecting a hollow test, and
-asking "why not just run a mutation tool?" is the right question to interrogate.
+These tools are not weak comparisons set up to be easily dismissed. Mutation testing is the **gold standard** for finding a test that does
+not fail when the code breaks. "Why not just run a mutation tool?" is a fair question to ask.
 
-| Tool | What it is | Scope | Executes? |
-|---|---|---|---|
-| **StrykerJS** | Full mutation-testing framework for JS/TS | **Unit** (Jest/Vitest/Jasmine/Karma/…) | **Yes** — mutates source, re-runs the suite |
-| **Tautest** | PR **diff-scoped** mutation (Stryker under the hood) | **Unit**, JS/TS | **Yes** — mutates only changed lines |
-| **Exspec** | Static test-quality linter (assertion-free / over-mocked / coupled tests) | Multi-language, test files | **No** — reads tests, never runs them |
-| **Pitest / Arcmutate** | JVM mutation testing (Arcmutate = commercial extensions to the free Pitest engine) | **Unit**, JVM (Java/Kotlin) | **Yes** — mutates bytecode, re-runs JUnit |
+| Tool                   | What it is                                                                         | Scope                                  | Executes?                                  |
+| ---------------------- | ---------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------ |
+| **StrykerJS**          | Full mutation-testing framework for JS/TS                                          | **Unit** (Jest/Vitest/Jasmine/Karma/…) | **Yes** — mutates source, reruns the suite |
+| **Tautest**            | PR **diff-scoped** mutation (Stryker under the hood)                               | **Unit**, JS/TS                        | **Yes** — mutates only changed lines       |
+| **Exspec**             | Static test-quality linter (assertion-free / over-mocked / coupled tests)          | Multi-language, test files             | **No** — reads tests, never runs them      |
+| **Pitest / Arcmutate** | JVM mutation testing (Arcmutate = commercial extensions to the free Pitest engine) | **Unit**, JVM (Java/Kotlin)            | **Yes** — mutates bytecode, reruns JUnit   |
 
-On their home turf — proving a **unit** test isn't hollow — a mutation runner is the strongest tool
-that exists, and Exspec is a genuinely useful cheap static pre-filter. This note is not a takedown;
-it's a boundary line, and the boundary is the **test layer**, not the quality of the tool.
+For unit tests specifically, a mutation runner is the strongest tool that exists for proving a **unit** test
+does not fail when the code breaks. Exspec is a genuinely useful, cheap static pre-filter. This note does not criticize these tools. It draws a boundary line at the **test layer**, not at tool quality.
 
 ## The layered answer: "false confidence" is not one problem
 
-False confidence lives at **every** test layer, and the right tool is different at each. Conflating
-them is how you end up trusting the wrong thing.
+False confidence exists at **every** test layer. The right tool differs at each layer. If you
+mix up the layers, you trust the wrong tool.
 
-- **Unit layer → run the mutation tool.** A survived mutant is execution-grounded proof a unit test
-  is hollow. Nothing a judgement layer says beats *watching* the mutant survive. `audit-test` does
-  **not** try to out-compete Stryker here and shouldn't be sold as if it does — it's a triage
-  *funnel* (deep-audit the suspicious few), not a full campaign. Its unit-layer value is narrow and
-  honest: when a full mutation run is impractical (huge suite, no harness wired up, CI-time budget),
-  the real alternative to a targeted `audit-test` mutation is **nothing** — not Stryker. Targeted
-  proof beats flying blind; it does not beat a full mutation campaign you can actually afford to run.
-- **E2E / integration layer → the mutation tools cannot help you at all.** This is not a gap they
-  haven't gotten to; it's structural (next section). Here the alternative to `audit-test` really *is*
-  nothing — no mutation tool reaches this layer.
+- **Unit layer: run the mutation tool.** A mutant that survives is execution-grounded proof — the
+  unit test does not fail when the code breaks. No judgment layer beats watching a mutant survive.
+  `audit-test` does **not** try to out-compete Stryker at this layer. Do not sell it that way:
+  `audit-test` is a triage _funnel_ that deep-audits the suspicious few tests, not a full campaign.
+  Its unit-layer value is narrow and honest. If a full mutation run is impractical — a huge suite, no
+  harness set up, a tight CI-time budget — the real alternative is not Stryker. The real alternative
+  is **nothing**. A targeted `audit-test` mutation beats no proof at all. It does not beat a full
+  mutation campaign that fits your budget.
+- **End-to-end and integration layer: the mutation tools cannot help you at all.** This is not a gap
+  the tools have not gotten to yet. It is structural (see the next section). Here, the real
+  alternative to `audit-test` is nothing. No mutation tool reaches this layer.
 
 ## The one thing these tools structurally cannot do — audit an app-driven E2E test
 
-A Playwright test can pass because it never actually asserts the outcome it claims to, or because a
-self-healer quietly edited the expected value to match a regression. To *prove* that, you have to
-break the code the test exercises and watch the test stay green. A mutation runner does exactly that —
-but only for code its **unit runner** can reach. Stryker/Tautest mutate source and re-run
-Jest/Vitest; Pitest mutates bytecode and re-runs JUnit. **None of them drive a browser, hit a running
-app, or execute a Playwright/Cypress spec.** The app-driven E2E test is outside the reachable set —
-so the exact false-confidence trap that matters most at the E2E layer is the one they are blind to.
+A Playwright test sometimes passes for a bad reason. It never asserts the outcome it claims to check.
+Or a self-healer quietly edits the expected value to match a regression. To _prove_ either case, break
+the code the test exercises and watch whether the test stays green. A mutation runner does exactly
+that, but only for code its **unit runner** reaches. Stryker and Tautest mutate source code and rerun
+Jest or Vitest. Pitest mutates bytecode and reruns JUnit. **None of them drive a browser, hit a
+running app, or run a Playwright or Cypress spec.** The app-driven end-to-end test sits outside their
+reach. So the exact false-confidence trap that matters most at the end-to-end layer is the one trap
+these tools cannot see.
 
-`audit-test` closes that: it proposes the single most-likely-breaking change, runs that one targeted
-mutation against a **dev-served** Playwright/Cypress test, and checks whether the test goes red —
-execution-grounded, one layer up from where the mutators stop.
+`audit-test` closes that gap. It proposes the single change most likely to break the code. It runs
+that one targeted mutation against a **dev-served** Playwright or Cypress test. It checks whether the
+test goes red. This proof comes from real execution, one layer up from where the mutation tools stop.
 
-> **How to check (Confirmed, 2026-07-12):** clone Tautest — it's Stryker-only, wired to Jest/Vitest
-> runners, has zero Playwright/Cypress in source, and its own docs route E2E *out* of mutation scope.
-> StrykerJS's mutate-model is verified at its docs (unit runners only). For Pitest, check its runner
-> list: JUnit/TestNG, no browser driver. See the Evidence Ledger in
-> [`../orchestration-map.md`](../orchestration-map.md) (Audit row, "reachability wall").
+> **How to check (Confirmed, 2026-07-12):** Clone Tautest. It is Stryker-only, wired to the Jest and
+> Vitest runners. Its source has zero Playwright or Cypress code, and its own docs route end-to-end
+> testing _out_ of mutation scope. StrykerJS's mutate-model is verified at its docs: unit runners
+> only. For Pitest, check its runner list: JUnit and TestNG, no browser driver. See the Evidence
+> Ledger in [`../orchestration-map.md`](../orchestration-map.md) (Audit row, "reachability wall").
 
 **Frame this precisely.** The win is **coverage scope** — "we reach a test layer they cannot execute
-against" — *not* "we out-trust execution." At the unit layer, execution out-trusts *us*. Claiming
-otherwise is the exact overclaim this repo exists to catch; the scope claim survives a hostile
-reviewer, the trust claim would not.
+against" — _not_ "we out-trust execution." At the unit layer, execution beats this repo's own tools
+too. Claiming otherwise is the exact overclaim this repo exists to catch. The scope claim survives a
+hostile reviewer. The trust claim does not.
 
-## Where these tools beat us — say it plainly
+## Where these tools have the advantage — say it plainly
 
-An honest positioning note names the ground it *loses*:
+An honest note names the ground where this repo's own tools lose:
 
-- **Unit-layer false-confidence proof — the mutation tools win, full stop.** A full Stryker/Pitest
-  campaign is more exhaustive than `audit-test`'s funnel and is not subject to any judgement-layer
-  caveat. If you have a unit suite and can afford the run, **run the mutation tool** — this repo's
-  own `audit-orchestrator` routes you there rather than to `audit-test`.
-- **Static test-quality linting — Exspec is a real ally, not a rival.** It cheaply flags
-  assertion-free and over-mocked tests across languages with no execution cost. `qa-review` overlaps
-  it. Neither "wins"; run Exspec as a fast pre-filter *before* you spend a mutation on anything.
+- **Unit-layer false-confidence proof: the mutation tools win, full stop.** A full Stryker or Pitest
+  campaign is more exhaustive than `audit-test`'s funnel. It carries no judgment-layer caveat. If you
+  have a unit suite and the run fits your budget, **run the mutation tool.** This repo's own
+  `audit-orchestrator` routes you there, not to `audit-test`.
+- **Static test-quality linting: Exspec is a real ally, not a rival.** Exspec flags assertion-free and
+  over-mocked tests across languages, cheaply, with no execution cost. `qa-review` overlaps it.
+  Neither tool "wins." Run Exspec as a fast pre-filter _before_ you spend a mutation on anything.
 
 ## Gate is an aggregator, not the trust anchor
 
-If your priority is zero false confidence, be clear-eyed about Gate: it **ingests existing evidence
-and never re-runs** ([ADR-0038](../adr/0038-gate-trust-boundary-and-examined-floor-population.md),
-[ADR-0010](../adr/0010-execution-out-temporal-deferred-behind-a-seam.md)). A producer that wants to
-report a hollow suite as solid can hand Gate a clean-looking report; Gate's invariants make that
-report *internally consistent*, they are **not** an independent re-verification of whether the
-mutation actually ran and killed. Gate says so itself — its credibility axis is *"a shape-checked,
-cross-checked self-report, not an independent re-verification."*
+If zero false confidence is your priority, be clear-eyed about Gate. Gate **ingests existing evidence
+and never reruns anything** ([ADR-0038](../adr/0038-gate-trust-boundary-and-examined-floor-population.md),
+[ADR-0010](../adr/0010-execution-out-temporal-deferred-behind-a-seam.md)). Suppose a producer's tests
+do not fail when the code breaks, and the producer wants to report the suite as solid anyway. Nothing
+stops them: they hand Gate a clean-looking report. Gate's checks make that report _internally
+consistent_. They are **not** an independent re-verification of whether the mutation actually ran and
+killed the code. Gate says so itself. Its credibility axis is _"a shape-checked, cross-checked
+self-report, not an independent re-verification."_
 
-That is a **deliberate** product choice, not a missing feature: re-running mutations to independently
-verify would cross the execution seam and turn Gate from an aggregator that composes with *any* test
-runner into an executor that competes with them — a different product. So the trust in a Gate verdict
-is only ever as strong as the **execution evidence underneath it**: a mutation runner at the unit
-layer, `audit-test` at the E2E layer. Gate weighs and reports; the execution pieces verify.
+This is a **deliberate** product choice, not a missing feature. If Gate reruns mutations to verify
+them independently, it crosses the execution seam. It turns from an aggregator that combines with
+_any_ test runner into an executor that competes with them — a different product. So the trust in a
+Gate verdict is only as strong as the **execution evidence underneath it**: a mutation runner at the
+unit layer, `audit-test` at the end-to-end layer. Gate weighs and reports the evidence. The execution
+tools verify it.
 
-## How they fit together — orchestrate, don't replace
+## How they fit together — orchestrate, do not replace
 
-These are **additive**, layered by test level, not a replacement for each other:
+These tools are **additive**. They layer by test level; none replaces another:
 
-- **Unit layer:** StrykerJS / Tautest (or Pitest·Arcmutate on the JVM) prove the unit tests, with
-  Exspec as a cheap static pre-filter. `audit-orchestrator` routes suspicious unit tests here.
-- **E2E / integration layer:** `audit-test` proves the app-driven tests the mutators can't reach.
-- **Release:** Gate aggregates both execution results into one readable, advisory ship/canary/hold
-  bundle — composing with whatever produced them, verifying nothing itself.
+- **Unit layer:** StrykerJS, Tautest, or Pitest/Arcmutate on the JVM prove the unit tests, with Exspec
+  as a cheap static pre-filter. `audit-orchestrator` routes suspicious unit tests here.
+- **End-to-end and integration layer:** `audit-test` proves the app-driven tests the mutation tools
+  cannot reach.
+- **Release:** Gate combines both execution results into one readable, advisory ship/canary/hold
+  bundle. Gate composes with whatever produced the results; it verifies nothing itself.
 
-Net: **mutation runners prove the units; `audit-test` proves the E2E layer they can't reach; Gate
-composes the evidence.** You can run Stryker on your unit suite *today* and slot `audit-test` in for
-the Playwright/Cypress layer it structurally can't touch — without giving up either.
+Net result: **mutation runners prove the units; `audit-test` proves the end-to-end layer the mutation
+tools cannot reach; Gate combines the evidence.** Run Stryker on your unit suite _today_, and add
+`audit-test` for the Playwright or Cypress layer it structurally cannot touch. Neither replaces the
+other.
 
 ## Caveats worth stating plainly
 
-- **The moat is scope, not superior trust.** At the unit layer, execution beats a judgement layer —
-  including ours. Lead with "we reach the E2E layer they can't," never with "we're more trustworthy
-  than a mutation run."
+- **The advantage is scope, not superior trust.** At the unit layer, execution beats a judgment
+  layer, including this repo's own. Lead with "we reach the end-to-end layer they cannot," never with
+  "we are more trustworthy than a mutation run."
 - **Gate is orchestration, not verification.** Its verdict is only as trustworthy as the execution
-  evidence fed into it. Don't pitch the aggregated verdict as a trust boundary.
+  evidence fed into it. Do not pitch the combined verdict as a trust boundary.
 - **`audit-test` is a funnel, not a Stryker substitute** ([ADR-0004](../adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)).
-  It deep-audits the suspicious few; it does not replace a full mutation campaign where one is
+  It deep-audits the suspicious few. It does not replace a full mutation campaign where one is
   affordable.
-- **Arcmutate is commercial and JVM-only** — out of the JS/Playwright/Cypress ecosystem this repo
-  targets; named here for completeness of the mutation-testing landscape, not as a free dependency.
+- **Arcmutate is commercial and JVM-only.** It sits outside the JS/Playwright/Cypress ecosystem this
+  repo targets. It is named here for completeness of the mutation-testing landscape, not as a free
+  dependency.
 
 ---
 
-*Map context: [`../orchestration-map.md`](../orchestration-map.md) — the mutation tools sit at stage 3
-(Audit); the evidence-ledger row records the reachability wall as **Confirmed**. Trust-boundary
+_Map context: [`../orchestration-map.md`](../orchestration-map.md). The mutation tools sit at stage 3
+(Audit). The evidence-ledger row records the reachability wall as **Confirmed**. Trust-boundary
 posture: [ADR-0038](../adr/0038-gate-trust-boundary-and-examined-floor-population.md) and
-[ADR-0010](../adr/0010-execution-out-temporal-deferred-behind-a-seam.md). Route-not-rivalry with
-Stryker: [ADR-0004](../adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md). Reachability
-claim verified against Tautest source, 2026-07-12.*
+[ADR-0010](../adr/0010-execution-out-temporal-deferred-behind-a-seam.md). Route, not rivalry, with
+Stryker: [ADR-0004](../adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md). This repo
+verified the reachability claim against Tautest source on 2026-07-12._
