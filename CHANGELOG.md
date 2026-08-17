@@ -21,6 +21,8 @@ change can be traced back to its source without a git-log search.
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-08-17
+
 ### Changed
 
 - **BREAKING: renamed `/ask-sentinel` → `/qa-compass` and `/sentinel` → `/qa-pass`** —
