@@ -64,206 +64,133 @@ change can be traced back to its source without a git-log search.
   now supports a per-case `fixture_ref`; `--live` checks out `fixture/sentinel-payments-refund`, a real
   runnable branch with a genuinely mutation-survivable test, and confirms the check catches it.
 
-- **`contract-guard`: Tier 1b (test-boundary validation) + per-operation drift-coverage reporting** —
-  [#217](https://github.com/TzolkinB/skills/issues/217), decided in
-  [ADR-0049](docs/adr/0049-contract-guard-test-boundary-validation-tier.md), backed by
-  [EXPERIMENT-0049](docs/experiments/EXPERIMENT-0049-schema-permissiveness.md) (two arms, both
-  Confirmed). ADR-0021's Tier 1 proposes response-schema validation at the *application's* fetch
-  boundary — production code the stranded QA/SDET usually can't merge. Tier 1b is the complement: when
-  the consumer reads untyped JSON and a published spec is available, `contract-guard` now also proposes
-  validating the response **inside the suite** the SDET already owns, naming the stack-matching
-  plugin (`cypress-schema-validator` / `playwright-schema-validator` — the current MIT packages, not
-  the more-downloaded superseded `*-ajv-schema-validator` predecessors). Tier 1 keeps precedence;
-  Tier 1b is proposed and never installed or run (ADR-0003/ADR-0010). The recommendation is qualified,
-  not flat: EXPERIMENT-0049 mutation-tested 1,152 published response schemas and found the plugin
-  catches retypes 98.6% of the time but misses drop/rename ~75% of the time wherever the operation's
-  schema declares no `required` (62.6% of the corpus) — so every Tier 1b recommendation now carries a
-  per-operation drift-coverage line, reading `required` on the resolved operation and stating
-  categorically which of rename/drop/retype the validation would actually catch, naming the uncovered
-  fields (no percentage, no global claim, ADR-0013). The same `required` read promotes the
-  optional/nullable flag from a footnote to a first-class output. An unresolvable operation or
-  malformed document degrades the coverage line to `no-spec`, the same honest-degrade path Tier 2
-  already uses — never a fabricated coverage claim.
+- [#225](https://github.com/TzolkinB/skills/pull/225) `73fbd56` **`contract-guard`: Tier 1b — test-boundary
+  validation + per-operation drift-coverage** ([#217](https://github.com/TzolkinB/skills/issues/217),
+  [ADR-0049](docs/adr/0049-contract-guard-test-boundary-validation-tier.md),
+  [EXPERIMENT-0049](docs/experiments/EXPERIMENT-0049-schema-permissiveness.md)). Complements Tier 1 (which
+  validates at the app's fetch boundary — code the stranded QA/SDET usually can't merge): when a published
+  spec exists and the consumer reads untyped JSON, `contract-guard` now also proposes validating the
+  response *inside the suite*, naming the matching MIT plugin (`cypress-schema-validator` /
+  `playwright-schema-validator`). Proposed only, never installed or run (ADR-0003/ADR-0010); Tier 1 still
+  wins when both apply. Every recommendation states, per operation, which of rename/drop/retype the
+  validator would actually catch — EXPERIMENT-0049 mutation-tested 1,152 real schemas and found it misses
+  drop/rename ~75% of the time wherever the operation declares no `required` (62.6% of the corpus) — and
+  promotes the optional/nullable flag from a footnote to a first-class output. Degrades to `no-spec` on an
+  unresolvable or malformed spec, never a fabricated claim.
 
-- **`gate`: producer-recorded SHA provenance — bind an execution/audit-test report to the commit it actually ran against** —
-  [#177](https://github.com/TzolkinB/skills/issues/177), the mature closure
-  [ADR-0043](docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md) scoped over a git-timestamp
-  cross-check that was considered and rejected (it doesn't even catch a report regenerated *now* for the wrong
-  commit, and its only usable signal false-positives the ordinary test-then-commit local workflow). The
-  Playwright/Cypress ingest adapters now record the git commit `gate.mjs` was run against — `GITHUB_SHA` (or an
-  equivalent CI-supplied SHA; authoritative in CI) if set, else `git rev-parse HEAD` (the honest local signal) —
-  plus a dirty-worktree flag from `git status --porcelain`, captured once per invocation, always on, no new
-  flag. The `audit-test` emission carries its own version — `commitSha`/`dirty`, captured by the model at audit
-  time (`gate-audit-test/v0.4`). `gate()` cross-checks the recorded `commitSha` against `--commit`: a mismatch
-  caps an otherwise-`ship` proposal at `canary`, named in rationale prose only — **no new field on
-  `gatePredicate.inputs[]`** (honesty guard #1/#3 unaffected, same discipline `--max-age` already holds itself
-  to); a report with no recorded SHA is unaffected either way (necessary-not-sufficient, same as
-  content-addressing and the examined/executed floors). A dirty worktree at capture time is disclosed in
-  rationale, never a cap on its own — a mutation audit legitimately runs against uncommitted changes,
-  and there is no single commit that fully describes evidence captured that way. Schema bumped to
-  `gate-evidence-bundle/v0.9` (additive — `producer.commitSha`/`producer.dirty`); a bundle that never records
-  either is byte-for-byte unaffected. Honest, not adversary-proof: a producer can lie about its own recorded
-  SHA (but then the content-addressed input bytes wouldn't correspond to the real commit either) — this closes
-  the *accidental* wrong-commit case, not a motivated adversary, consistent with Gate's advisory/self-signed
-  posture everywhere else.
+- [#224](https://github.com/TzolkinB/skills/pull/224) `1a1fdf9` **`gate`: producer-recorded SHA
+  provenance** ([#177](https://github.com/TzolkinB/skills/issues/177),
+  [ADR-0043](docs/adr/0043-report-to-commit-provenance-over-git-timestamp.md)). Binds a report to the
+  commit it actually ran against, closing the "fresh-looking report regenerated for the wrong commit
+  still gates cleanly" gap. Playwright/Cypress ingest adapters now record the commit `gate.mjs` ran
+  against (`GITHUB_SHA` in CI, else `git rev-parse HEAD`) plus a dirty-worktree flag; `audit-test`
+  emissions carry the same (`commitSha`/`dirty`, `gate-audit-test/v0.4`). `gate()` cross-checks the
+  recorded commit against `--commit` — a mismatch caps an otherwise-`ship` proposal at `canary`, named
+  only in rationale prose (no new gate-predicate field). A dirty worktree is disclosed, never a cap on
+  its own; a report with no recorded SHA is unaffected either way. Honest, not adversary-proof — a
+  producer could lie about its own recorded SHA. Schema bump: `gate-evidence-bundle/v0.9` (additive).
 
-- **`gate`: `tea-to-trace-matrix.mjs` — convert a real TEA `trace` run into `--trace-json`, instead of hand-authoring it** —
-  [#220](https://github.com/TzolkinB/skills/issues/220), decided in
-  [ADR-0050](docs/adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md). #199 shipped the
-  business-risk join but not its last mile: pointing it at a real TEA run meant writing the JSON by hand.
-  Re-reading the `bmad-testarch-trace` source at **v1.21.4** (up from #199's v1.19.1; the §3 presence-gap
-  claim re-verified **unchanged**) corrected the premise the issue was filed on — `e2e-trace-summary.json`
-  and `gate-decision.json` carry aggregates and a gate signal only, and `traceability-matrix.md` carries
-  rows but **no test titles**, while step-04 writes a **Phase-1 coverage-matrix JSON** carrying both, with
-  its path recorded in the `.md` frontmatter as `tempCoverageMatrixPath`. The converter reads that JSON
-  (directly, or by following the pointer from `--trace-md`) and never parses the Markdown body: Gate's join
-  key is `<file>::<title>`, so a key transcribed from that body would be fabricated or guessed from a
-  drifting line number, and a wrong key renders as plausible `unverified` coverage rather than as an error.
-  TEA's five-valued coverage vocabulary flattens to Gate's three (`UNIT-ONLY`/`INTEGRATION-ONLY` →
-  `PARTIAL`, never `FULL` — a conversion may not widen TEA's own presence call), keeping the verbatim value
-  on each row as `teaCoverage`. Anything unconvertible **refuses**, names the row, and writes nothing
-  (exit 2); the output is validated by importing `gate.mjs`'s own `parseTraceMatrix`, so it can never emit
-  bytes Gate would reject. `--audit-test-json` cross-checks how many keys actually join *before* gating —
-  TEA spells files as repo paths while an `audit-test` emission may use basenames, and a zero-match matrix
-  yields a complete, honest-looking report in which every requirement reads `unverified`; `--test-key=basename`
-  is the disclosed fix, refused when two directories share a spec basename **among the files TEA mapped** (an
-  ambiguity that exists only on the `audit-test` side is undetectable by construction — which is why `path` is
-  the default). **`gate.mjs` gains no gate logic** — only three `export` keywords, so the converter shares its
-  constants instead of copying them; the conversion stays a separate script precisely so the gate never learns
-  a tool's private format. The TEA-side fixture is built from TEA's source, not captured from an observed
-  `trace` run: **Confirmed at source, Unexamined at runtime** (ADR-0050 Consequences).
+- [#222](https://github.com/TzolkinB/skills/pull/222) `32469b7` **`gate`: convert a real TEA `trace` run
+  into `--trace-json`** ([#220](https://github.com/TzolkinB/skills/issues/220),
+  [ADR-0050](docs/adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)). #199 shipped
+  the business-risk join but not a way to feed it a real TEA run — that meant hand-authoring the matrix
+  JSON. New `tea-to-trace-matrix.mjs` reads TEA's Phase-1 coverage-matrix JSON (the only TEA artifact
+  carrying both file paths and test titles; TEA's Markdown output has no titles, so it's never parsed)
+  and converts it to Gate's own matrix shape. TEA's five-valued coverage flattens to Gate's three
+  (`UNIT-ONLY`/`INTEGRATION-ONLY` → `PARTIAL`, never `FULL`), keeping the raw value as `teaCoverage`.
+  Anything unconvertible refuses loudly on the offending row (exit 2) rather than writing a wrong guess,
+  validated against Gate's own parser so it can't emit bytes Gate would reject; `--test-key=basename` is
+  a disclosed fix for a path-vs-basename mismatch between TEA and `audit-test`, refused on ambiguity.
+  `gate.mjs` itself gains no new gate logic, only exports three constants for the converter to share.
+  Built and verified against TEA's source, not an observed run — Confirmed at source, Unexamined at
+  runtime.
 
-- **`gate`: business-risk coverage — a stateless join over an external trace matrix + `audit-test`, not a risk register** —
-  [#199](https://github.com/TzolkinB/skills/issues/199), builds
-  [ADR-0045](docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md). TEA's `trace` workflow is
-  presence-based — verified against its source (v1.19.1): a requirement is marked covered because a
-  matching test *exists*, never because it would fail if the code broke, so a P0 requirement whose only
-  test is hollow reads as covered and gates PASS
-  ([`comparisons/tea.md`](docs/comparisons/tea.md) §3). A new optional `--trace-json` reads a
-  requirement→test matrix in Gate's own minimal shape
-  ([`gate-trace-matrix/v0`](skills/gate/schema/trace-matrix.v0.schema.json), not TEA's internal format)
-  and joins it against `--audit-test-json`'s `runs[]` on test identity, resolving each requirement to
-  **mutation-proven** (every mapped test execution-confirmed solid), **unverified** (mapped, no
-  execution-confirmed evidence), **hollow** (a mapped test survived a mutation — the exact gap this
-  closes), or **not-covered** (the matrix already says so). Deliberately kept out of `gate()`'s decision
-  loop — the entry is appended to the bundle only *after* the ship/canary/hold decision is computed, so
-  it can never become a decision input and a bundle with no `--trace-json` is byte-for-byte unaffected
-  (schema bumped to `gate-evidence-bundle/v0.8`, additive). A malformed matrix is **rejected**, the same
-  distinct-from-absent treatment `--audit-test-json` gets. TEA (`bmad-testarch-trace`) is MIT-licensed
-  (BMad Code, LLC) — confirmed at source; this join reads its own independently-defined schema, not any
-  of TEA's code.
-- **`debug-test`: Step 4.5 classifies the heal instead of trusting the healer's green** —
-  [#190](https://github.com/TzolkinB/skills/issues/190), write side of
-  [ADR-0047](docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2. The old branch
-  logic was "healer passes → done," which collapsed a locator touch-up and *an assertion rewritten to
-  match a regression* into the same outcome — the self-healer failure mode
-  [ADR-0017](docs/adr/0017-audit-test-baseline-lock-suspected.md) exists to catch, and one a mutation
-  can never see (the green-locked assertion still kills mutations). Step 4.5 now `git diff`s the test
-  file after a healer pass and buckets it, in
-  [`skills/debug-test/reference/heal-classification.md`](skills/debug-test/reference/heal-classification.md):
-  **selector / timeout / wait only** clears on the diff alone (no mutation spent on the low-risk common
-  case), **an expected-value literal changed** routes to `audit-test`'s baseline-lock check via the
-  `Skill` tool — the invocation carries the assertion co-change itself and names the test as a triage
-  suspect, because the healer's edit is uncommitted and `audit-test` resolves `--changed` from committed
-  history — with the verdict reported inline before "done", and **setup / fixture / flow changed**
-  is never auto-cleared — that heals by changing the story, not the mechanics, so it shows the diff and
-  requires human review. Mixed diffs are worst-wins (`flow-data` > `assertion-value` > `locator`), and an
-  assertion *removed* counts as `flow-data`, not as a value change. Classification reads the diff, never
-  the healer's account of itself.
-- **`debug-test`: a proposed `Healed-by:` / `Heal-bucket:` commit-trailer block** — the durable half of
-  #190. Step 4.5 runs at exactly the moment a commit is being made, so it emits the trailers that make
-  the classification readable later, with the three buckets as the single vocabulary
-  [#194](https://github.com/TzolkinB/skills/issues/194) will read (`locator` | `assertion-value` |
-  `flow-data`). **All three buckets get a trailer, `locator` included** — "the same spec healed four
-  times for a locator" is precisely the repeat-heal pattern the cheap rows make visible. **Proposed,
-  never applied:** `debug-test` does not create or amend a commit and writes no store of its own — git
-  is the ledger. The accepted limit is named rather than engineered around: a heal that is never
-  committed leaves no record.
-- **`evals`: two `debug-test` heal-classification cases** — `heal-classification-assertion-value` (the
-  `toHaveCount(12)` → `toHaveCount(10)` green-lock must reach the baseline-lock check, not "done") and
-  `heal-classification-locator-cheap-path` (the cheap bucket must stay cheap *and* still emit a trailer).
-  Their negative samples record the two ways this goes wrong: reporting the healer's pass as done, and
-  suppressing the locator trailer as noise while spending a mutation on it.
-- **`debug-test`: Step 4.6 reads git history for a repeat-heal pattern** — [#194](https://github.com/TzolkinB/skills/issues/194),
-  read side of [ADR-0047](docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2. Right
-  after Step 4.5 classifies a heal, this step reads the test file's own history —
-  `git log --follow` filtered on the `Heal-bucket` trailer #190 writes — and flags 🔁 **repeat-heal**
-  when the same bucket shows up 3+ times in the last 90 days (this heal included), naming the count,
-  bucket, and what each occurrence touched. Nothing new is written or stored:
-  [`skills/debug-test/reference/repeat-heal.md`](skills/debug-test/reference/repeat-heal.md) computes it
-  fresh from git every time. The trailer-coverage read is graded on the two-rung ladder ADR-0047 itself
-  specifies, nothing added: **bucket-accurate** (every relevant commit carries the trailer) or
-  **churn-only** (even one missing trailer degrades the whole read to a plain, bucket-less file-edit
-  count, labelled as the weaker signal — no intermediate "mostly-bucketed" credit). An empty or
-  trailer-less read is never reported as "no repeats" — it always says what history was actually
-  available. **Reads the shared trunk, not just the local branch:** the `git log` starts from the
-  union of `origin/<default-branch>` (resolved dynamically via `git symbolic-ref`, never hardcoded as
-  `main`) and `HEAD`, so a teammate's already-merged heal isn't invisible on an unrebased branch, and
-  a heal already committed on the current branch isn't invisible either. Falls back to `HEAD` alone,
-  stated explicitly, when there's no `origin` remote; flags a shallow clone rather than letting a
-  truncated history read as clean.
-- **`evals`: two `debug-test` repeat-heal cases** — `repeat-heal-trailer-based` (three same-bucket heals,
-  all trailer-tagged, must surface as a named 🔁 finding rather than disappear because each was the cheap
-  bucket) and `repeat-heal-churn-fallback` (an all-trailerless history must degrade to the weaker churn
-  count, not read as "clean"). Their negative samples record the two ways this goes wrong: reporting a
-  matching history as "no repeats found," and treating an untrailered history as clean rather than
-  unreadable.
-- **A shared `--digest` evidence card across the seven judgment skills** (`test-plan`, `qa-review`,
-  `coverage-review`, `audit-test`, `prune-tests`, `threat-model`, `sentinel`) — [#193](https://github.com/TzolkinB/skills/issues/193),
-  [ADR-0048](docs/adr/0048-shared-digest-card-and-inline-next-footers.md). `--digest` replaces the full
-  report with a header line carrying scope + tally and at most three cards: **Risk** (one line) /
-  **Evidence** (the exact observation — `file:line`, the literal assertion, the command and its exit code)
-  / **Action** (one concrete step) / **Confidence** (`Confirmed` | `Likely` | `Unexamined`). It generalizes
-  the four-field shape `audit-test`'s single-test entry already had, and it is defined **once** in
-  [`skills/shared/digest-format.md`](skills/shared/digest-format.md) — each skill's Output Format links it
-  rather than restating it. The load-bearing rule: **a digest may only say less than the report it
-  replaces, and never upgrades a label.** The shared doc fixes a confidence ceiling per skill —
-  `Likely` for the four that execute nothing, split for `coverage-review` (`Confirmed` only for
-  line/branch facts from a *fresh* instrumentation report), verdict-mapped for `audit-test`, and
-  worst-wins for `sentinel` — so seven skills can't each invent their own answer to "how well is this
-  known."
-- **A one-line `Next:` footer on every judgment report** (full *and* `--digest`), tabulated in
-  [`skills/shared/next-footers.md`](skills/shared/next-footers.md) and derived from `ask-sentinel` —
-  its routing signals plus its intended-flow diagram. Not a copy of them: the router is keyed by
-  *situation*, a footer by *result* (a 🔴 `audit-test` routes back into a re-run after the fix; a 🟡
-  routes to making the code runnable, or to `/audit-orchestrator` if it can't be). Generalizes the
-  inline hand-off `prune-tests` already shipped as `Deferred to audit-test`, so the next step arrives
-  with the finding instead of behind a second `/ask-sentinel` lookup, with `ask-sentinel` authoritative
-  where the two ever name different destinations. `debug-test`, `e2e-impact`,
-  `contract-guard`, `bug-report`, `audit-orchestrator`, and `gate` are named as out of scope for now
-  rather than silently skipped.
-- **`evals`: an `audit-test --digest` case** (`digest-honest-label`) asserting the digest keeps the four
-  fields, the footer, and the label the full run earned; its negative sample is the failure the flag
-  invites — the full report emitted unchanged, with no card, no footer, and evidence dropped to a
-  characterization.
-- **`coverage-review`: an "Escalate to audit-test" section** — [#191](https://github.com/TzolkinB/skills/issues/191).
-  Turns the Loose Assertions findings it already produces into named `/audit-test` candidates, one line
-  each: the assertion, why it's worth a mutation, and the invocation. Copies `prune-tests`' existing
-  `Deferred to audit-test` hand-off pattern rather than adding new analysis, and is omitted entirely when
-  there are no loose or incidental assertions to escalate — coverage-review still never runs a mutation
-  itself, the section only names the candidate.
-- **`prune-tests`: `--audit-evidence=<path>` ingests an `audit-test` emission to close the Hand-off loop**
-  — [#192](https://github.com/TzolkinB/skills/issues/192). Reads a prior `/audit-test --emit-json=<path>`
-  run and promotes a `Deferred to audit-test` entry to a new **Confirmed Prune (mutation-backed)**
-  category — the highest confidence tier this skill can carry — when the evidence's `runs[]` trace names
-  that exact test as `confirmedHollow`. Deliberately narrow: it matches by test *identity*, never by
-  count alone, so `likelyHollow` and `baseline-lock` verdicts never promote (they never get a `runs[]`
-  record to match against in the first place), a missing evidence file leaves the Deferred list
-  unchanged, and a schema-version mismatch is ignored rather than guessed at. Still proposal-only, still
-  gated behind `--apply`.
+- [#221](https://github.com/TzolkinB/skills/pull/221) `91cca75` **`gate`: business-risk coverage — join
+  an external trace matrix against `audit-test`** ([#199](https://github.com/TzolkinB/skills/issues/199),
+  [ADR-0045](docs/adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). TEA's `trace` gate is
+  presence-based (verified at source, v1.19.1) — a P0 requirement whose only test is hollow still reads
+  covered and gates PASS ([`docs/comparisons/tea.md`](docs/comparisons/tea.md) §3). New optional
+  `--trace-json` reads a requirement→test matrix in Gate's own minimal schema (not TEA's format) and
+  joins it against `--audit-test-json` on test identity, resolving each requirement to
+  **mutation-proven** / **unverified** / **hollow** / **not-covered**. Purely informational: appended to
+  the bundle only *after* the ship/canary/hold decision, so it can never become a decision input; a
+  bundle with no `--trace-json` is unaffected (schema bump `v0.8`, additive). A malformed matrix is
+  rejected, not silently dropped. Reads its own independently-defined schema — no TEA code vendored.
+
+- [#216](https://github.com/TzolkinB/skills/pull/216) `ca16bc3` **`debug-test`: Step 4.5 classifies a
+  self-healer's fix instead of trusting its green** ([#190](https://github.com/TzolkinB/skills/issues/190),
+  [ADR-0047](docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2). The old rule was
+  "healer passes → done," which treated a cheap locator touch-up the same as an assertion rewritten to
+  match a regression — a green-locked bug a mutation can never see
+  ([ADR-0017](docs/adr/0017-audit-test-baseline-lock-suspected.md)). Step 4.5 now diffs the test file
+  after a heal and buckets it: **selector/timeout/wait-only** clears on the diff alone; **an
+  expected-value literal changed** routes straight into `audit-test`'s baseline-lock check (carrying the
+  uncommitted co-change, since `audit-test` normally resolves `--changed` from committed history);
+  **setup/fixture/flow changed** is never auto-cleared and always shown for human review. Mixed diffs are
+  worst-wins (`flow-data` > `assertion-value` > `locator`). Also proposes a `Healed-by:`/`Heal-bucket:`
+  commit trailer — every bucket gets one, `locator` included, so a repeat-heal pattern stays visible even
+  in the cheap case — proposed only, never auto-applied. Adds two eval cases covering the assertion-value
+  escalation and the cheap-path-still-trailers requirement.
+
+- [#219](https://github.com/TzolkinB/skills/pull/219) `8a74127` **`debug-test`: Step 4.6 reads git
+  history for a repeat-heal pattern** ([#194](https://github.com/TzolkinB/skills/issues/194),
+  [ADR-0047](docs/adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md) §2). Right after Step
+  4.5 classifies a heal, this reads the test file's own history (`git log --follow`, filtered on the
+  `Heal-bucket` trailer #190 writes) and flags 🔁 when the same bucket recurs 3+ times in 90 days, naming
+  the count and what each occurrence touched. Nothing is stored — computed fresh from git every run.
+  Graded on two rungs, no partial credit: **bucket-accurate** (every relevant commit carries the trailer)
+  or **churn-only** (even one missing trailer degrades the whole read to a weaker, bucket-less count); an
+  empty or trailer-less history is always reported as such, never as "no repeats." Reads the union of
+  `origin/<default-branch>` (resolved dynamically, never hardcoded) and `HEAD`, so neither a teammate's
+  already-merged heal nor one on the current branch is invisible; falls back to `HEAD` alone (stated
+  explicitly) with no `origin`, and flags a shallow clone rather than reading truncated history as clean.
+  Adds two eval cases for the trailer-based read and the churn fallback.
+
+- [#211](https://github.com/TzolkinB/skills/pull/211) `0fd24cc` **Shared `--digest` evidence card + inline
+  `Next:` footer across the seven judgment skills** ([#193](https://github.com/TzolkinB/skills/issues/193),
+  [ADR-0048](docs/adr/0048-shared-digest-card-and-inline-next-footers.md)). `--digest` trims
+  `test-plan`/`qa-review`/`coverage-review`/`audit-test`/`prune-tests`/`threat-model`/`sentinel`'s full
+  report to a header line (scope + tally) plus up to three **Risk** / **Evidence** / **Action** /
+  **Confidence** (`Confirmed`|`Likely`|`Unexamined`) cards — generalizing the four-field card `audit-test`
+  already had for a single test. Defined once in
+  [`skills/shared/digest-format.md`](skills/shared/digest-format.md); load-bearing rule: **a digest may
+  only say less than the full report, never upgrade a label** — the confidence ceiling is fixed per skill
+  (e.g. `Likely` for the four that execute nothing, worst-wins for `sentinel`). Every judgment report,
+  full or digest, now also closes with a one-line `Next:` footer
+  ([`skills/shared/next-footers.md`](skills/shared/next-footers.md)) — keyed by *result*, not situation,
+  so the next step arrives with the finding instead of a second `ask-sentinel` lookup. `debug-test`,
+  `e2e-impact`, `contract-guard`, `bug-report`, `audit-orchestrator`, and `gate` are explicitly out of
+  scope for now. Adds the `digest-honest-label` eval case.
+
+- [#212](https://github.com/TzolkinB/skills/pull/212) `56df0d9` **`coverage-review`: adds an "Escalate to
+  audit-test" section** ([#191](https://github.com/TzolkinB/skills/issues/191)). Turns the Loose
+  Assertions findings it already produces into named `/audit-test` candidates — the assertion, why it's
+  worth a mutation, and the ready-to-run invocation. Mirrors `prune-tests`' existing hand-off pattern
+  rather than adding new analysis; omitted entirely when there's nothing to escalate. Still never runs a
+  mutation itself.
+
+- [#213](https://github.com/TzolkinB/skills/pull/213) `1b9fc69` **`prune-tests`: `--audit-evidence=<path>`
+  closes the hand-off loop with `audit-test`** ([#192](https://github.com/TzolkinB/skills/issues/192)).
+  Reads a prior `/audit-test --emit-json` run and promotes a matching `Deferred to audit-test` entry to a
+  new, highest-confidence **Confirmed Prune (mutation-backed)** category — only when the evidence's
+  `runs[]` trace names that exact test as `confirmedHollow`. Matches by test identity, never by count
+  alone, so `likelyHollow`/baseline-lock verdicts can't promote; a missing evidence file or
+  schema-version mismatch leaves behavior unchanged. Still proposal-only, still gated behind `--apply`.
 
 ### Fixed
 
-- **`evals/changed.mjs` missed the shared-contract surface.** A `skills/shared/**` edit changes seven
-  skills' output but matches no `skills/<name>/SKILL.md` path, so change detection would have selected
-  **zero** evals for it. It now fans a shared-contract change out to every skill with a case, the same
-  way a harness-core change does, with a self-test row proving it.
-- **`evals/cases/coverage-review.json`: the `must_not` anchor on bare `"mutation"` was over-broad.** It
-  fired on a faithful run that merely *names* `/audit-test` as the next step — the exact hand-off the new
-  footer makes — rather than on one that actually ran a mutation. Narrowed to the doing-it phrasings
-  (`applied the mutation`, `ran the mutation`, `mutation survived`, …) and the rubric now says naming the
-  escalation is allowed. The pass sample carries the footer, so the case guards the distinction instead of
-  tripping over it.
+- [#211](https://github.com/TzolkinB/skills/pull/211) `0fd24cc` **`evals/changed.mjs` missed the
+  shared-contract surface.** A `skills/shared/**` edit changes seven skills' output but matched no
+  `skills/<name>/SKILL.md` path, so change detection selected **zero** evals for it. Now fans a
+  shared-contract change out to every skill with a case, the same way a harness-core change already
+  does, with a self-test row proving it.
+
+- [#211](https://github.com/TzolkinB/skills/pull/211) `0fd24cc` **`evals/cases/coverage-review.json`: the
+  `must_not` anchor on bare `"mutation"` was over-broad.** It fired on a faithful run merely *naming*
+  `/audit-test` as the next step — the exact hand-off the new `Next:` footer makes — rather than one that
+  actually ran a mutation. Narrowed to doing-it phrasings (`applied the mutation`, `ran the mutation`,
+  `mutation survived`, …); the pass sample now carries the footer so the case guards the distinction
+  instead of tripping over it.
 
 ## [1.0.0] - 2026-07-27
 
