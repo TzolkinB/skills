@@ -1,14 +1,13 @@
-# Why not *just* TEA?
+# Why use these skills and not just TEA?
+
+- Test Engineering Architect (TEA) in BMAD created by Murat Ozcan
 
 **TL;DR** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
 what it does well: risk planning, static test review, requirement-to-test mapping, scaffolding, and a
-governance gate with a compliance audit trail. Turn to `audit-test` and Gate for what TEA's own docs
+governance gate with a compliance audit trail. Turn to `audit-test` and Gate for what TEA's docs
 and source show it **cannot** do.
 
-The first gap: TEA does not **run a mutation to check whether a passing test does not fail when the
-code breaks.** `audit-test` does this today, as a shipping skill. A survived mutation is an
-execution-grounded counterexample: the test does not fail when the code breaks. A killed mutation
-confirms the test works *against that specific break* — never a blanket guarantee.
+The first gap: TEA does not run a mutation. `audit-test` runs mutations today, as a shipping skill. If a test does not fail after a mutation, the mutation survived. A survived mutation is proof, from real execution, that the test does not fail when the code breaks. If a test does fail after a mutation, the mutation was killed. A killed mutation proves only that the test caught that one change, it does not prove the test will ctach every other change.
 
 The second gap: combining that evidence with live execution into a **risk-weighted, calibrated**
 release confidence that **learns from your gate overrides.** Gate aims to close this gap. Treat this
@@ -20,7 +19,7 @@ The third gap follows from the first. `trace`'s gate runs on arithmetic over **c
 with no credibility input. So a P0 requirement whose only test does not fail when the code breaks
 still reads as covered, and the gate returns **PASS** (§3, verified at source).
 
-TEA plans and governs. It does not run a mutation to check a test. These three gaps slot *into* TEA's
+TEA plans and governs. It does not run a mutation to check a test. These three gaps slot _into_ TEA's
 gate. They do not replace it.
 
 This note answers "why ours, not just theirs?" It follows the same evidence bar as the rest of this
@@ -37,21 +36,20 @@ TEA is the **BMAD Test Architect module**
 ([`bmad-method-test-architecture-enterprise`](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise),
 free). It is not a single-purpose tool. It is a near-complete testing **orchestration method**: a
 prompt-persona agent with nine workflows that span most of the same QA lifecycle this repo's map
-covers. This is exactly why "why use yours, not just TEA?" is a real question, not a strawman. Its
+covers. This is exactly why "why use yours, not just TEA?" is a real question. Its
 nine workflows:
 
-| TEA workflow | What it does | Map stage it covers |
-|---|---|---|
-| `test-design` | P0–P3 risk tiers + NFR planning | 1 · Plan |
-| `test-review` | Static quality audit → 0–100 score + violations + fixes | 2–3 · Static review |
-| `trace` | Requirement→test matrix + categorical gate (PASS/CONCERNS/FAIL/WAIVED) | 4 · Traceability / 7 · Gate |
-| `nfr-assess` | NFR evidence audit | 7 · Gate (governance) |
-| `framework` / `ci` / `atdd` / `automate` | Scaffold, pipelines, ATDD, expand suites | Setup / authoring |
+| TEA workflow                             | What it does                                                           | Map stage it covers         |
+| ---------------------------------------- | ---------------------------------------------------------------------- | --------------------------- |
+| `test-design`                            | P0–P3 risk tiers + NFR planning                                        | 1 · Plan                    |
+| `test-review`                            | Static quality audit → 0–100 score + violations + fixes                | 2–3 · Static review         |
+| `trace`                                  | Requirement→test matrix + categorical gate (PASS/CONCERNS/FAIL/WAIVED) | 4 · Traceability / 7 · Gate |
+| `nfr-assess`                             | NFR evidence audit                                                     | 7 · Gate (governance)       |
+| `framework` / `ci` / `atdd` / `automate` | Scaffold, pipelines, ATDD, expand suites                               | Setup / authoring           |
 
-TEA states its enemy plainly: *"AI tests that rot."* TEA is a **credibility-side ally**, not a tool
-that pushes for green results. On its home ground — risk-ranked planning, static review, traceability,
-and a governance gate with an NFR/compliance audit trail — use TEA. This note is not a takedown. It
-draws a boundary line.
+TEA states its enemy plainly: _"AI tests that rot."_ TEA is a **credibility-side ally**, not a tool
+that pushes for green results. For risk-ranked planning, static review, traceability,
+and a governance gate with an NFR/compliance audit trail, use TEA. This note is not an argument against TEA. It states where TEA's role ends and this repo's tools begin.
 
 ## The three things TEA's own docs and source show it cannot do
 
@@ -65,19 +63,19 @@ It cannot tell you whether the test fails when the code breaks, because it never
 `audit-test` does exactly that. It proposes the single change most likely to break the code. It runs
 that one targeted mutation. It checks whether the test goes red — **execution-grounded, not
 reasoning.** A survived mutation is a counterexample: it proves the test does not fail when the code
-breaks. A killed mutation confirms the test works *against that one mutation* — not a blanket
+breaks. A killed mutation confirms the test works _against that one mutation_ — not a blanket
 guarantee the test is fine. TEA has no mutation step of any kind. This is the cleanest, least-contested
 ground in the whole comparison: mutation-grounded evidence is a capability TEA's docs simply do not
 contain.
 
 > **How to check:** Search TEA's workflow docs for "mutation," "would this test fail," or "kill
-> score." `test-review` scores *test quality* statically; nothing runs a mutation. (Verified
+> score." `test-review` scores _test quality_ statically; nothing runs a mutation. (Verified
 > 2026-07-17.)
 
 ### 2. A risk-weighted, calibrated release confidence that learns from overrides — Gate
 
 TEA's `trace` gate is **categorical**: PASS, CONCERNS, FAIL, or WAIVED. Its P0–P3 risk tiers inform
-planning, but the ranking never becomes a *weight* on the final gate. The gate algorithm is not
+planning, but the ranking never becomes a _weight_ on the final gate. The gate algorithm is not
 transparent. And here is the load-bearing gap: **TEA is stateless.** TEA logs a WAIVED decision as a
 governance artifact. It does not track whether that override was later shown to be right. It does not
 measure its own agreement with human calls. It does not learn. Nothing in TEA improves from the last
@@ -86,11 +84,11 @@ hundred gate decisions.
 Gate is designed to be that missing layer. Gate combines execution and credibility evidence into a
 **numeric, risk-weighted** release confidence, and **calibrates** it against your gate overrides over
 time. TEA governs each release in isolation. Gate is meant to be the layer that reads across
-releases — calibrating against an override history it *reads*, never one it stores itself
+releases — calibrating against an override history it _reads_, never one it stores itself
 ([ADR-0047](../adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)).
 
-> **Honest caveat, load-bearing:** The *audit-test* half of this pitch is credible **today.** It is a
-> shipping skill. Run it on your own tests in ten minutes. The *Gate* half is a **design, not a
+> **Honest caveat, load-bearing:** The _audit-test_ half of this pitch is credible **today.** It is a
+> shipping skill. Run it on your own tests in ten minutes. The _Gate_ half is a **design, not a
 > confirmed capability.** The calibrated number is only as good as the calibration loop, and that loop
 > has not yet proven itself on a real corpus. It needs a labeled history first: tests that pass and
 > fail with no code change, each paired with its verdict. **Do not read "calibrated release
@@ -99,7 +97,7 @@ releases — calibrating against an override history it *reads*, never one it st
 > against. This note over-claims nothing on the Gate side. If the reviewer pitch ever does, that is a
 > bug in the pitch.
 
-### 3. `trace` gates on coverage *presence*, so a test that never fails still reads as covered
+### 3. `trace` gates on coverage _presence_, so a test that never fails still reads as covered
 
 This repo verified this claim against the workflow **source** (not the docs) on 2026-07-29 —
 `bmad-testarch-trace`, v1.19.1. This repo **re-verified the claim unchanged at v1.21.4 on 2026-08-04**
@@ -107,10 +105,10 @@ while building the `trace`-to-Gate conversion ([#220](https://github.com/Tzolkin
 That re-read turned up two corrections, noted below.
 
 - **`steps-c/step-03-map-criteria.md`** marks each oracle item **FULL / PARTIAL / NONE** by mapping it
-  to a *matching test*. Every validation rule in this step is a presence check: endpoint, auth,
+  to a _matching test_. Every validation rule in this step is a presence check: endpoint, auth,
   error-path, and UI-state coverage marked "present or missing," plus a not-happy-path-only rule. None
   of these rules checks whether a mapped test fails when the code breaks.
-  **Correction (v1.21.4):** the vocabulary has *five* values, not three. Step-03 §1 marks
+  **Correction (v1.21.4):** the vocabulary has _five_ values, not three. Step-03 §1 marks
   "FULL / PARTIAL / NONE / **UNIT-ONLY** / **INTEGRATION-ONLY**," and step-05 §3b treats all four
   non-NONE values as coverage-eligible. This does not change the presence claim — all five values are
   presence calls — but it is the vocabulary any tool converting TEA's output has to handle.
@@ -131,13 +129,13 @@ covered, so `trace` returns **PASS**. This repo's own
 [`fixtures/audit-test/booking.spec.js`](../../fixtures/audit-test/booking.spec.js) is exactly this
 shape. Its "rejects overlapping bookings" test asserts only that `save()` was called, with
 `findOverlapping` stubbed to `[]`, so the guard it is named for never runs. Because it reads as a
-*rejection* test, it also satisfies Step 3's error-path-present and not-happy-path-only heuristics.
+_rejection_ test, it also satisfies Step 3's error-path-present and not-happy-path-only heuristics.
 
 **Two limits on this claim, stated plainly:**
 
 - On a **synthetic** oracle (no formal requirements), Step 5 downgrades PASS to CONCERNS when oracle
   confidence is not high. The clean PASS needs formal requirements. So this bites hardest for teams
-  with the *most* mature requirements practice, not the least.
+  with the _most_ mature requirements practice, not the least.
 - Running `test-review` alongside `trace` does **not** close this gap. Per §1, a test sometimes scores
   100/100 on static review and still does not fail when the code breaks.
 
@@ -149,17 +147,17 @@ shape. Its "rejects overlapping bookings" test asserts only that `save()` was ca
 
 #### What `trace` actually writes (the machine-readable side)
 
-This matters because Gate *joins* against this output. What the output does and does not contain
+This matters because Gate _joins_ against this output. What the output does and does not contain
 decides what a conversion honestly produces. Read at v1.21.4 on 2026-08-04:
 
-| Artifact | Where it is written | Per-requirement rows? | Per-test **title**? |
-|---|---|---|---|
-| `e2e-trace-summary.json` | step-05 §3b | no — `coverage.inventory`, `priority_breakdown`, `by_level`, test counts | no |
-| `gate-decision.json` | step-05 §3b, gate-eligible runs only | no — `gate_status` + `p0`/`p1`/`overall` status | no |
-| `traceability-matrix.md` | step-03/05 (`trace-template.md`) | **yes** | **no** — `Detailed Mapping` renders each test as `` `id` `` - `file`:`line` |
-| Phase-1 coverage-matrix JSON | step-04 §5–6 → `/tmp/tea-trace-coverage-matrix-<ts>.json`, path recorded in the `.md` frontmatter as `tempCoverageMatrixPath` | **yes** | **yes** — `tests[]` carry `id`, `title`, `file`, `line`, `level`, skip flags |
+| Artifact                     | Where it is written                                                                                                           | Per-requirement rows?                                                    | Per-test **title**?                                                          |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| `e2e-trace-summary.json`     | step-05 §3b                                                                                                                   | no — `coverage.inventory`, `priority_breakdown`, `by_level`, test counts | no                                                                           |
+| `gate-decision.json`         | step-05 §3b, gate-eligible runs only                                                                                          | no — `gate_status` + `p0`/`p1`/`overall` status                          | no                                                                           |
+| `traceability-matrix.md`     | step-03/05 (`trace-template.md`)                                                                                              | **yes**                                                                  | **no** — `Detailed Mapping` renders each test as `` `id` `` - `file`:`line`  |
+| Phase-1 coverage-matrix JSON | step-04 §5–6 → `/tmp/tea-trace-coverage-matrix-<ts>.json`, path recorded in the `.md` frontmatter as `tempCoverageMatrixPath` | **yes**                                                                  | **yes** — `tests[]` carry `id`, `title`, `file`, `line`, `level`, skip flags |
 
-**Correction to an earlier reading:** the durable Markdown report is *not* the only per-requirement
+**Correction to an earlier reading:** the durable Markdown report is _not_ the only per-requirement
 artifact — the Phase-1 JSON is real, machine-readable, and is what TEA's own step-05 §1 reads back. It
 is also a **temp** file, which is the one real fragility in consuming it. That is what
 [`tea-to-trace-matrix.mjs`](../../skills/gate/tea-to-trace-matrix.mjs) converts, and why it never
@@ -168,7 +166,7 @@ parses the Markdown ([ADR-0050](../adr/0050-tea-trace-converts-from-its-phase-1-
 **This is not a flaw specific to TEA, and this note does not pitch it as one.** Presence-based
 coverage is the category default: Qase's requirements-traceability report links test cases to issues,
 and the same shape appears in commercial tools whose internals this repo cannot inspect. TEA is simply
-the one tool whose source is open, which makes it the one place this pattern is *verifiable* rather
+the one tool whose source is open, which makes it the one place this pattern is _verifiable_ rather
 than inferred. Label the generalization honestly — **Confirmed** for TEA (source), **Likely** for
 Qase (docs only), **Unexamined** for closed tools. The transferable claim is about the category, and
 it is TEA's openness that lets this repo make that claim at all.
@@ -179,9 +177,9 @@ An honest note names the ground where this repo's own tools do not win:
 
 - **`coverage-review` versus TEA — SOFT overlap, with one hard exception.** TEA's `test-review` plus
   `trace` already cover much of what `coverage-review` does, and `coverage-review`'s edge there stays
-  narrow: granularity and *real instrumentation* (it reads code-to-coverage data when present) against
+  narrow: granularity and _real instrumentation_ (it reads code-to-coverage data when present) against
   TEA's requirement-to-test matrix. **Do not lead a "why not just TEA" pitch with additive coverage
-  gap-finding.** The exception is coverage ***traceability***: §3 shows `trace` counts a requirement as
+  gap-finding.** The exception is coverage **_traceability_**: §3 shows `trace` counts a requirement as
   covered on the strength of a test that does not fail when the code breaks, which is a
   source-verified gap rather than a soft overlap. This exception is safe to lead with — but it routes
   to `audit-test`, not to `coverage-review`.
@@ -194,7 +192,7 @@ An honest note names the ground where this repo's own tools do not win:
 
 The two gaps described above are **additive to TEA, not a replacement for it.** "Integration" here
 means **orchestration, not code**: TEA is a prompt-persona agent, not an API, so the pattern is to
-route to TEA and pass evidence between the tools (this repo's *orchestrate, not absorb* thesis), not
+route to TEA and pass evidence between the tools (this repo's _orchestrate, not absorb_ thesis), not
 to absorb TEA's workflows. Two concrete seams feed TEA's gate rather than compete with it:
 
 - **Business-risk coverage join (TEA to Gate) — SHIPPED.** `--trace-json` ([#199](https://github.com/TzolkinB/skills/issues/199),
@@ -204,7 +202,7 @@ to absorb TEA's workflows. Two concrete seams feed TEA's gate rather than compet
   as the risk-weighting seam below: this join is purely informational and never touches the
   ship/canary/hold arithmetic; it only reports alongside it.
 - **Risk-weighting seam (TEA to Gate) — still a design sketch, #96.** TEA emits P0–P3 tiers. The
-  design: Gate uses these tiers as the *weight* on combined, credibility-adjusted execution evidence —
+  design: Gate uses these tiers as the _weight_ on combined, credibility-adjusted execution evidence —
   a P0 requirement whose tests `audit-test` flags as never failing when the code breaks contributes
   about zero confidence, not a false pass. Unlike the join above, this seam changes the gate's own
   decision arithmetic. It is unbuilt, and parked with the rest of the calibrated-confidence work.
@@ -214,7 +212,7 @@ to absorb TEA's workflows. Two concrete seams feed TEA's gate rather than compet
   [ADR-0047](../adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md), nothing in this repo
   accumulates a store of its own, so "Gate becomes the memory" is not the design. Two caveats before
   anyone relies on this: where TEA stores that trail is **unverified** (the 2026-07-29 teardown
-  verified `trace` at the source, not the WAIVED trail), and an override is a *proxy* label — it
+  verified `trace` at the source, not the WAIVED trail), and an override is a _proxy_ label — it
   records the human's call at gate time, not whether that call was later shown to be right.
 
 Net: **TEA plans and governs; `audit-test` checks by execution; Gate, eventually, weighs — reading a
@@ -237,8 +235,8 @@ structurally lacks — today, without adopting anything else.
 
 ---
 
-*Evidence base and the two-seam design detail: issue #96. Map context:
+_Evidence base and the two-seam design detail: issue #96. Map context:
 [`../orchestration-map.md`](../orchestration-map.md) (TEA sits at stages 1 and 7; the evidence-ledger
 row records the verified absences). This repo verified all TEA capability and absence claims against
 [TEA's published docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/)
-on 2026-07-17.*
+on 2026-07-17._
