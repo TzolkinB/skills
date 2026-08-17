@@ -1,6 +1,8 @@
 # prune-tests — which tests cost more than they protect?
 
-> **Agent instructions:** [`skills/prune-tests/SKILL.md`](../skills/prune-tests/SKILL.md) · **Run:** `/prune-tests tests/` (add `--apply` to act)
+> **Agent instructions:** [`skills/prune-tests/SKILL.md`](../skills/prune-tests/SKILL.md)
+>
+> **Run:** `/prune-tests tests/` (add `--apply` to act)
 
 ## What it does
 
@@ -14,9 +16,9 @@
 - AI generated a pile of tests, and you want the redundant, over-mocked, and stale ones surfaced.
 - You want a safe, reviewable prune plan. With `--apply` on a clean tree, it applies the conservative removals automatically.
 
-## When *not* to use it
+## When _not_ to use it
 
-- **You want the *missing* tests** → [`coverage-review`](./coverage-review.md). `prune-tests` never adds tests.
+- **You want the _missing_ tests** → [`coverage-review`](./coverage-review.md). `prune-tests` never adds tests.
 - **A test looks like it never verifies its code** → [`audit-test`](./audit-test.md), which proves it by mutation. `prune-tests` defers these rather than guessing.
 - **You want it to delete things automatically.** It deletes nothing without `--apply` on a clean git tree. Even then, only high-confidence removes and merges apply automatically.
 
@@ -39,7 +41,7 @@ Fixture: [`fixtures/prune-tests/`](../fixtures/prune-tests/) ([expected findings
 - **Rename or rewrite (high confidence)** — `returns cents as a formatted string`: the name and the Given/When/Then comment claim a `"$X.XX"` string contract, but the assertion checks `typeof === 'number'`. The test name no longer matches its own behavior.
 - **Keep** — `empty cart totals zero`: a real boundary condition and a unique signal.
 
-What the run does *not* do: it does not claim that any test is confirmed false-confidence. That needs a mutation, so it hands off to [`audit-test`](./audit-test.md) instead. It also does not propose new tests for missing paths.
+What the run does _not_ do: it does not claim that any test is confirmed false-confidence. That needs a mutation, so it hands off to [`audit-test`](./audit-test.md) instead. It also does not propose new tests for missing paths.
 
 ### Closing the loop: `--audit-evidence=<path>`
 
@@ -55,5 +57,5 @@ Take a test the evidence names `confirmedHollow` — execution-confirmed: a muta
 
 - **Deleting a weak-looking test that is the only guard of a real behavior.** When scenario equivalence is uncertain, keep the test. This is the whole conservative stance.
 - **Merging across scenario classes.** Expected-use, edge, and failure cases do not consolidate just because their setup looks similar.
-- **Manufacturing prunes to fill the template.** If the suite is already lean, say so and list only *Keep*.
+- **Manufacturing prunes to fill the template.** If the suite is already lean, say so and list only _Keep_.
 - **Judging false confidence here.** Whether a test never verifies its code is [`audit-test`](./audit-test.md)'s call. List it as deferred. Do not prune it based on a guess.

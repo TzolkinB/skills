@@ -1,6 +1,8 @@
 # gate — one readable evidence bundle, one advisory ship decision
 
-> **Agent instructions:** [`skills/gate/SKILL.md`](../skills/gate/SKILL.md) · **Run:** `/gate [Playwright results.json and/or Cypress result.json] [audit-test emission .json or report .md] [optional: a trace-matrix .json]`
+> **Agent instructions:** [`skills/gate/SKILL.md`](../skills/gate/SKILL.md)
+>
+> **Run:** `/gate [Playwright results.json and/or Cypress result.json] [audit-test emission .json or report .md] [optional: a trace-matrix .json]`
 
 ## What it does
 
@@ -12,9 +14,9 @@ From the bundle, Gate derives one advisory category: **ship**, **canary**, or **
 
 The bar for `ship` is deliberately hard to clear. Every E2E suite passed to Gate must be green. It must also clear an **executed-floor**: the share of the report's own discovered tests that actually ran. A suite that ran only a sliver of what it found is capped at `canary`, not read as green.
 
-`ship` also needs a *parsed* `audit-test` verdict. That verdict must show that no deep-audited test is hollow. (A hollow test passes, even when the code it checks is broken.) The deep-audited fraction must also clear an **examined-floor**.
+`ship` also needs a _parsed_ `audit-test` verdict. That verdict must show that no deep-audited test is hollow. (A hollow test passes, even when the code it checks is broken.) The deep-audited fraction must also clear an **examined-floor**.
 
-An *opaque* `audit-test` report — human-readable, but not machine-parsed — floors the decision at `canary`. No `audit-test` at all has the same effect. A bare green E2E run never becomes `ship` on its own.
+An _opaque_ `audit-test` report — human-readable, but not machine-parsed — floors the decision at `canary`. No `audit-test` at all has the same effect. A bare green E2E run never becomes `ship` on its own.
 
 Signing the bundle is optional. Pass a self-signed ed25519 key, and Gate wraps the bundle in a DSSE envelope. A reader then checks that nothing changed after Gate produced it. This is self-signed, not Sigstore. Signing is off by default.
 
@@ -23,13 +25,13 @@ Signing the bundle is optional. Pass a self-signed ed25519 key, and Gate wraps t
 Clearing both floors is required to reach `ship`. Clearing them does not mean the suite is trustworthy — it means the suite hit a specific minimum. Each bullet below shows a gap that clearing a floor does not close:
 
 - **Examined-floor threshold.** The default is 50% of everything triaged. Lower the threshold if needed; the minimum is 25%. If the deep-audited fraction falls short of the threshold, the report states this plainly. The decision still stays capped at `canary` — a narrow clean audit never counts as if it cleared the floor.
-- **The executed-floor trusts the report's own denominator.** It compares the tests that ran against the tests the report says it *discovered*. That discovered count comes from the report itself. Because of this, a discovery, filter, or config change that narrows the suite *before* the report is written stays uncaught. The narrowed suite looks fully executed.
+- **The executed-floor trusts the report's own denominator.** It compares the tests that ran against the tests the report says it _discovered_. That discovered count comes from the report itself. Because of this, a discovery, filter, or config change that narrows the suite _before_ the report is written stays uncaught. The narrowed suite looks fully executed.
 - **A parsed `audit-test` verdict is a shape-checked self-report.** It is not an independent re-verification. Gate never re-runs a mutation ([ADR-0038](./adr/0038-gate-trust-boundary-and-examined-floor-population.md)).
-- **Signing scope.** The DSSE envelope wraps an in-toto-*shaped* Statement. Standard in-toto tooling does **not** consume this bundle as-is. The signature covers four things: the decision itself, content-addressed digests of the files Gate ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion`. `--verify` proves that the bundle did not change after Gate produced it. It proves nothing about whether any producer's report was honest — Gate signs its own bundle, not the truthfulness of what went into it.
+- **Signing scope.** The DSSE envelope wraps an in-toto-_shaped_ Statement. Standard in-toto tooling does **not** consume this bundle as-is. The signature covers four things: the decision itself, content-addressed digests of the files Gate ran on, a digest of every parsed evidence entry, and `producedOn`/`schemaVersion`. `--verify` proves that the bundle did not change after Gate produced it. It proves nothing about whether any producer's report was honest — Gate signs its own bundle, not the truthfulness of what went into it.
 
 ## Business-risk coverage (optional, `--trace-json`)
 
-This section answers one question: *"What business risks are actually covered?"* Gate answers it as a **stateless join**. Gate never maintains a risk register of its own ([#199](https://github.com/TzolkinB/skills/issues/199), [ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)).
+This section answers one question: _"What business risks are actually covered?"_ Gate answers it as a **stateless join**. Gate never maintains a risk register of its own ([#199](https://github.com/TzolkinB/skills/issues/199), [ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)).
 
 Pass an optional requirement-to-test traceability matrix with `--trace-json`, alongside `--audit-test-json`. The matrix uses Gate's **own** minimal shape, [`gate-trace-matrix/v0`](../skills/gate/schema/trace-matrix.v0.schema.json) — not any external tool's internal format. ([`tea-to-trace-matrix.mjs`](../skills/gate/tea-to-trace-matrix.mjs) converts a TEA `trace` run into this shape; see below.)
 
@@ -37,14 +39,14 @@ With both flags passed, Gate resolves each requirement into one of four states. 
 
 - **covered and mutation-proven** — every test mapped to the requirement killed a mutation, confirmed by execution.
 - **covered but unverified** — a test is mapped to the requirement, but audit-test never execution-confirmed it. The test was not deep-audited, or audit-test only reasoned about it; a `likely-hollow` or `baseline-lock` finding carries no per-test record.
-- **covered by a test we proved hollow** — a mapped test **survived** a mutation. This is the gap the join exists to close: [`comparisons/tea.md`](./comparisons/tea.md) §3 checks the `bmad-testarch-trace` workflow source (v1.19.1). TEA's own `trace` gate is **presence**-based. A requirement is marked covered because a matching test *exists*, not because it fails when the code breaks. So a P0 requirement whose only test is hollow reads as covered, and TEA's gate reports PASS.
+- **covered by a test we proved hollow** — a mapped test **survived** a mutation. This is the gap the join exists to close: [`comparisons/tea.md`](./comparisons/tea.md) §3 checks the `bmad-testarch-trace` workflow source (v1.19.1). TEA's own `trace` gate is **presence**-based. A requirement is marked covered because a matching test _exists_, not because it fails when the code breaks. So a P0 requirement whose only test is hollow reads as covered, and TEA's gate reports PASS.
 - **not covered** — the matrix itself says so (`status: NONE`). Gate never invents a row to fill the table.
 
-This business-risk read is **purely informational**. It never touches the ship/canary/hold decision. Gate appends this entry to the bundle *after* it computes the decision. The entry never appears among the gate predicate's own `inputs`.
+This business-risk read is **purely informational**. It never touches the ship/canary/hold decision. Gate appends this entry to the bundle _after_ it computes the decision. The entry never appears among the gate predicate's own `inputs`.
 
 The read degrades honestly. No `--trace-json` means no section at all. A malformed matrix is **rejected**, not silently dropped — the same distinct-state treatment `--audit-test-json` gets. A valid matrix with no paired `--audit-test-json` (or one with no per-test `runs[]`) reads every mapped requirement as `unverified`. Gate never makes a stronger claim than the evidence supports.
 
-Two caveats carry over from `comparisons/tea.md` §3. On a *synthetic* oracle, TEA itself downgrades PASS to CONCERNS, so a clean PASS needs formal requirements. Also, a test that scores 100/100 on a static review does not change its state here — only an executed mutation does.
+Two caveats carry over from `comparisons/tea.md` §3. On a _synthetic_ oracle, TEA itself downgrades PASS to CONCERNS, so a clean PASS needs formal requirements. Also, a test that scores 100/100 on a static review does not change its state here — only an executed mutation does.
 
 ```
 node "<skill base dir>/gate.mjs" --playwright=results.json --audit-test-json=tally.json \
@@ -78,13 +80,13 @@ The input is a temp file. Convert it in the same session as the `trace` run.
 - At the end of a PR. Gate turns a Playwright/Cypress result and an `audit-test` verdict into one honest, human-readable release recommendation. You no longer read two separate reports by hand.
 - You want a tamper-evident record of the exact evidence behind a ship decision.
 
-## When *not* to use it
+## When _not_ to use it
 
 - **You want to run the suite or a browser.** This is out of scope, by design. Gate ingests existing evidence only ([ADR-0010](./adr/0010-execution-out-temporal-deferred-behind-a-seam.md)).
-- **You want to know if a passing test is hollow.** Use [`audit-test`](./audit-test.md) instead. Gate *consumes* its report; Gate does not produce one.
+- **You want to know if a passing test is hollow.** Use [`audit-test`](./audit-test.md) instead. Gate _consumes_ its report; Gate does not produce one.
 - **You want to know which specs a diff hits, or to diagnose a red one.** Use [`e2e-impact`](./e2e-impact.md) or [`debug-test`](./debug-test.md).
 - **You want a QA judgment read across a branch.** Use [`qa-pass`](./qa-pass.md). It feeds Gate, but it does not decide shippability.
-- **You want requirement-to-test mapping, or a persistent risk register.** That is TEA `trace`'s turf. Gate does not rebuild it, by design ([ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). Gate only *joins* TEA's output against `audit-test`, statelessly, at gate time.
+- **You want requirement-to-test mapping, or a persistent risk register.** That is TEA `trace`'s turf. Gate does not rebuild it, by design ([ADR-0045](./adr/0045-business-risk-coverage-is-a-join-not-a-register.md)). Gate only _joins_ TEA's output against `audit-test`, statelessly, at gate time.
 
 ## Prerequisites
 
@@ -96,7 +98,7 @@ Gate makes no network calls. It reads local files only.
 
 ## Worked example
 
-Fixtures for Gate live under [`skills/gate/fixtures/`](../skills/gate/fixtures/), not the shared `fixtures/` directory. Gate's decision arithmetic already has its own golden-truth-table self-test: `node skills/gate/gate.mjs --self-test`. The eval here grades the skill's honest *reporting* of the decision, not the arithmetic itself ([expected findings](../fixtures/gate/expected-findings.md)).
+Fixtures for Gate live under [`skills/gate/fixtures/`](../skills/gate/fixtures/), not the shared `fixtures/` directory. Gate's decision arithmetic already has its own golden-truth-table self-test: `node skills/gate/gate.mjs --self-test`. The eval here grades the skill's honest _reporting_ of the decision, not the arithmetic itself ([expected findings](../fixtures/gate/expected-findings.md)).
 
 Case one: a green Playwright report, paired with a **present-but-opaque** `audit-test.report.md`. This yields **🟡 CANARY**. Playwright proposes `ship`, but an unparsed Markdown report floors the credibility axis at `canary` — a human still has to read it.
 
