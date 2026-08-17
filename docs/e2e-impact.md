@@ -1,6 +1,8 @@
 # e2e-impact — which E2E specs does this diff hit?
 
-> **Agent instructions:** [`skills/e2e-impact/SKILL.md`](../skills/e2e-impact/SKILL.md) · **Run:** `/e2e-impact [base ref or diff]`
+> **Agent instructions:** [`skills/e2e-impact/SKILL.md`](../skills/e2e-impact/SKILL.md)
+>
+> **Run:** `/e2e-impact [base ref or diff]`
 
 ## What it does
 
@@ -17,10 +19,10 @@ If a changed file reaches no spec through any signal, it lands in an explicit **
 - You want to run E2E on a PR, and want only the subset that plausibly matters — not the whole suite.
 - You want a defensible answer to "which specs does this change touch," for app-driven Playwright/Cypress tests. The module graph gives no answer here.
 
-## When *not* to use it
+## When _not_ to use it
 
-- **You want to run or diagnose a spec** → [`debug-test`](./debug-test.md). This skill only selects. It does not run tests.
-- **You want to know if a *passing* spec catches a real break** → [`audit-test`](./audit-test.md).
+- **You want to run or diagnose a spec** → run the selected specs yourself, then hand any red one to [`debug-test`](./debug-test.md). This skill only selects. It does not run tests. `debug-test` diagnoses one spec at a time, it does not batch-execute this skill's output.
+- **You want to know if a _passing_ spec catches a real break** → [`audit-test`](./audit-test.md).
 - **A spec is already red with no clear cause** → [`debug-test --drift`](./debug-test.md) reads this skill's source-to-spec map, inverted. It checks whether any changed file plausibly reaches it ([ADR-0018](./adr/0018-debug-test-drift-triage.md)).
 
 ## Prerequisites
@@ -37,9 +39,9 @@ In cypress-realworld-app, editing `SkeletonList.tsx` — which renders `data-tes
 
 ## Where it fits
 
-This skill sits before E2E execution — stage 1 of the [orchestration map](./orchestration-map.md), at the point where a PR decides what to run. Its output is the source-to-spec relevance map. [`debug-test --drift`](./debug-test.md) reads this same map, inverted. This skill asks: which specs does this diff hit? Drift mode asks: did any diff hit this already-red spec at all?
+This skill sits before E2E execution — stage 1 of the [orchestration map](./orchestration-map.md), at the point where a PR decides what to run. Its output is the source-to-spec relevance map, a list of specs to run, not a pass/fail result. Something still has to execute that list. [`qa-pass`](./qa-pass.md) runs the branch's tests and routes any failures to `debug-test` for you. [`debug-test --drift`](./debug-test.md) reads this same map, inverted. This skill asks: which specs does this diff hit? Drift mode asks: did any diff hit this already-red spec at all?
 
-This skill only selects specs. Running and diagnosing stay with `debug-test`. Proving that a selected spec catches a real break stays with [`audit-test`](./audit-test.md).
+This skill only selects specs. Running them comes next; diagnosing a spec that comes back red is `debug-test`'s job, one spec at a time. Proving that a selected spec catches a real break stays with [`audit-test`](./audit-test.md).
 
 ## Anti-patterns
 

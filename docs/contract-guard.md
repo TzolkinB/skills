@@ -1,12 +1,14 @@
 # contract-guard — did the backend change without the frontend seeing it?
 
-> **Agent instructions:** [`skills/contract-guard/SKILL.md`](../skills/contract-guard/SKILL.md) · **Run:** `/contract-guard [endpoint or red spec] [published spec path/URL]`
+> **Agent instructions:** [`skills/contract-guard/SKILL.md`](../skills/contract-guard/SKILL.md)
+>
+> **Run:** `/contract-guard [endpoint or red spec] [published spec path/URL]`
 
 ## What it does
 
-Pact is the standard tool for catching a backend change before it breaks a consumer. But Pact needs the *provider* to run verification. An enterprise frontend team often depends on a backend that another team owns, on a different release schedule. If that backend team does not participate in Pact, the frontend gets **no coverage at all**. The backend renames a field, drops a field, or changes a field's type. The frontend's green E2E suite goes red on a contract change it did not cause. The frontend team is not able to fix the change at the source.
+Pact is the standard tool for catching a backend change before it breaks a consumer. But Pact needs the _provider_ to run verification. An enterprise frontend team often depends on a backend that another team owns, on a different release schedule. If that backend team does not participate in Pact, the frontend gets **no coverage at all**. The backend renames a field, drops a field, or changes a field's type. The frontend's green E2E suite goes red on a contract change it did not cause. The frontend team is not able to fix the change at the source.
 
-`contract-guard` is the consumer-side check for that stranded team. It gives what Pact does not. It reads what the frontend already has — its response-consumption code, and any in-code schema — against the provider's **published** OpenAPI/Swagger document. That published document is almost always *readable* across the org boundary, even when the provider will not *run* verification.
+`contract-guard` is the consumer-side check for that stranded team. It gives what Pact does not. It reads what the frontend already has — its response-consumption code, and any in-code schema — against the provider's **published** OpenAPI/Swagger document. That published document is almost always _readable_ across the org boundary, even when the provider will not _run_ verification.
 
 The skill is **tiered, and it starts with the cheapest check**.
 
@@ -16,7 +18,7 @@ Tier 1 applies to an untyped consumer. It proposes and scaffolds response-schema
 
 Tier 1b applies when a published spec is also available. It additionally proposes validating the live response **inside the suite the SDET already owns** — `cypress-schema-validator` or `playwright-schema-validator`. These are the current MIT packages. Do not use their more-downloaded, superseded `*-ajv-schema-validator` predecessors. Tier 1b needs **zero production code**.
 
-That plugin only catches what the operation's schema declares as `required`. So every Tier 1b recommendation carries a per-operation **drift-coverage** line, read directly off `required`. The line states plainly which of rename, drop, or retype the check actually catches on *this* endpoint, and it names the uncovered fields. It never gives a percentage ([ADR-0013](./adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). The same `required` read also promotes the optional/nullable flag to a first-class output, not an aside.
+That plugin only catches what the operation's schema declares as `required`. So every Tier 1b recommendation carries a per-operation **drift-coverage** line, read directly off `required`. The line states plainly which of rename, drop, or retype the check actually catches on _this_ endpoint, and it names the uncovered fields. It never gives a percentage ([ADR-0013](./adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). The same `required` read also promotes the optional/nullable flag to a first-class output, not an aside.
 
 Tier 2 handles the hard case: an untyped consumer facing an **empty-diff mismatch** — the repo changed nothing, yet the suite turned red. Tier 2 compares what the consumer expects against the published spec and returns one of three verdicts:
 
@@ -31,7 +33,7 @@ An unresolvable operation degrades the drift-coverage line to `no-spec` the same
 - A frontend E2E suite turns red with an empty diff, and the likely cause is a backend team you do not control.
 - You want to know whether a backend contract change is deliberate — documented in its published spec — or an undocumented break. You want the answer without waiting for the provider to run anything.
 
-## When *not* to use it
+## When _not_ to use it
 
 - **The spec is already red and you have not classified why** → [`debug-test --drift`](./debug-test.md) is the first stop. It recommends this skill for the harder empty-diff case, instead of duplicating the differ inline.
 - **You want to know which specs a diff hits** → [`e2e-impact`](./e2e-impact.md).
