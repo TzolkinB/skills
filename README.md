@@ -2,21 +2,34 @@
 
 **Know which passing tests protect you.**
 
-If a regression occurs, some of your passing tests catch it. Others pass and hide it. A coverage number does not show which type each test is. This gap is the **coverage illusion**.
+## What it does
 
-A direct method finds the answer: break the code a test covers, on purpose, then check if the test fails. Mutation tools, for example StrykerJS and Tautest, do this. However, they work only for unit tests. They change your source code and run it again under Vitest or Jest. A Playwright or Cypress test that drives a real browser is out of their reach.
+A passing test suite hides a gap: some passing tests catch a regression, others pass right through it. A coverage number never shows you which kind each test is — this is the **coverage illusion**.
 
-Browser-test tools work in the opposite direction. The Playwright and Cypress agents write and repair tests, to make them pass. If the repair agent decides that the function is broken, it marks the test as skipped. It does not repair the test.
+**[`/audit-test`](./skills/audit-test/SKILL.md)** closes that gap for Playwright and Cypress tests. It breaks the code behind a test on purpose, runs the test, and reports whether the test noticed. A caught mutation confirms the test catches *that one* break, not any break. An uncaught mutation is proof — from real execution — that the test checks nothing real. Every finding gets a **Confirmed** or **Likely** label, never an invented score.
 
-**[`/audit-test`](./skills/audit-test/SKILL.md)** breaks the code behind a Playwright or Cypress test. It checks if the test notices the break. It picks the change most likely to expose the test. It applies the change to your dev-served app. It runs that one test and reports the result.
+**Start here:** `/audit-test` needs one test and one command, not the full plugin.
 
-A caught mutation confirms the test catches that one break, not any break. An uncaught mutation is proof, from real execution, that the test checks nothing real. The skill labels each finding as **Confirmed** or **Likely**. It never gives an invented score.
+### Why not a mutation tool?
 
-Start with `/audit-test`. It needs one test and one command, not the full plugin.
+Mutation tools like StrykerJS and Tautest run the same "break it on purpose" check, but only for unit tests: they change your source code and rerun it under Vitest or Jest, so a Playwright or Cypress test that drives a real browser is out of their reach. Browser-test *repair* agents go the other direction — they rewrite a test until it passes, or skip it if they decide the code is broken; they do not check whether the test itself is worth trusting.
 
-A seven-stage map sits behind it. The map shows the best free tool for each point in the QA workflow. These skills fill the gaps those tools leave.
+A QA professional built these skills, backed by [a seven-stage map](#where-these-skills-fit-in-the-ecosystem) of the best free tool for each point in the QA workflow. These skills fill the gaps those tools leave.
 
-A QA professional built these skills. Many AI-written tests pass but do not catch real bugs. That is why this project exists.
+## Contents
+
+- [Install](#install) / [Update](#update)
+- [When to reach for each skill](#the-skills-when-you-use-each-one)
+- [Gate](#gate) — the release-decision layer
+- [Where these skills fit in the ecosystem](#where-these-skills-fit-in-the-ecosystem)
+- [Dependencies](#dependencies)
+- [Privacy](#privacy-what-each-skill-reads-runs-and-sends-out)
+- [New to testing?](#new-to-testing-start-here) / [`--digest`](#in-a-hurry---digest)
+- [Bootstrapping an existing project](#existing-project-bootstrap-one-time)
+- [Roadmap](#roadmap)
+- [Examples](#examples)
+- [Philosophy](#philosophy)
+- [FAQ](#faq)
 
 ## Install
 
@@ -45,6 +58,25 @@ Then use these commands, in any Claude Code session:
 ## The Skills: When You Use Each One
 
 Not sure which skill fits? Run `/qa-compass`. Describe your situation. It routes you to the skill that fits. Sometimes it points you to an external tool instead, when that tool is the better choice.
+
+| Your situation | Run this |
+| --- | --- |
+| A test passes but you don't trust it | [`/audit-test`](./skills/audit-test/SKILL.md) |
+| AI just wrote the tests | [`/coverage-review`](./skills/coverage-review/SKILL.md) |
+| A passing test looks suspicious, and you're not sure which tool proves it | [`/audit-orchestrator`](./skills/audit-orchestrator/SKILL.md) |
+| The suite is slow or full of false alarms | [`/prune-tests`](./skills/prune-tests/SKILL.md) |
+| The code doesn't exist yet — define what to test, and at which layer | [`/test-plan`](./skills/test-plan/SKILL.md) |
+| During code review, catching untestable code before it ships | [`/qa-review`](./skills/qa-review/SKILL.md) |
+| Before you ship something risky | [`/threat-model`](./skills/threat-model/SKILL.md) |
+| A Playwright test fails | [`/debug-test`](./skills/debug-test/SKILL.md) |
+| A frontend suite fails because the backend no longer matches it | [`/contract-guard`](./skills/contract-guard/SKILL.md) |
+| Something breaks in production | [`/bug-report`](./skills/bug-report/SKILL.md) |
+| Find which user journeys a PR affects | [`/e2e-impact`](./skills/e2e-impact/SKILL.md) |
+| Before you merge, one QA judgment pass over the branch | [`/qa-pass`](./skills/qa-pass/SKILL.md) |
+| End of a PR, to show release readiness | [`/gate`](./skills/gate/SKILL.md) |
+| Not sure which of these fits | [`/qa-compass`](./skills/qa-compass/SKILL.md) |
+
+Each entry below has the full detail: what evidence it produces, and its exact limits.
 
 ### The Coverage Illusion
 
@@ -94,18 +126,18 @@ Gate is the release-decision layer. It never runs a test suite. It **reads the e
 
 - **[`/gate`](./skills/gate/SKILL.md)** — Use this skill at the end of a PR, to show **release readiness** to another person. It combines your Playwright or Cypress results and an `audit-test` verdict into one evidence bundle. From this bundle, it makes an advisory decision: `ship`, `canary`, or `hold`.
 
-  The skill uses a **worst-wins** rule:
+  **The rule is worst-wins:**
   1. If any input says `hold`, the decision is `hold`.
   2. If not, and any input says `canary`, the decision is `canary`.
   3. If neither applies, the decision is `ship`.
 
-  Playwright's JSON reporter writes its result to disk automatically. Cypress does not do this; it needs a small Module API wrapper first. See [`docs/gate.md`](./docs/gate.md) for this wrapper.
+  **Cypress needs a wrapper.** Playwright's JSON reporter writes its result to disk automatically. Cypress does not do this; it needs a small Module API wrapper first. See [`docs/gate.md`](./docs/gate.md) for this wrapper.
 
-  The decision comes from deterministic code. It carries no confidence number. The decision is advisory; it does not stop your build. A plain passing E2E run never becomes `ship` on its own. A `ship` decision needs a parsed `audit-test` verdict that has passed a minimum check. A suite that ran only a small part of what it found is limited to `canary`.
+  **The decision is advisory, not a stop on your build.** It carries no confidence number. A plain passing E2E run never becomes `ship` on its own — a `ship` decision needs a parsed `audit-test` verdict that has passed a minimum check. A suite that ran only a small part of what it found is limited to `canary`.
 
-  Signing the bundle is optional. Use your own ed25519 key and DSSE to sign it. A reader then verifies that the bundle was not changed after signing. This method is self-signed, not Sigstore. It never claims that the producer was honest.
+  **Signing is optional.** Use your own ed25519 key and DSSE to sign it. A reader then verifies that the bundle was not changed after signing. This method is self-signed, not Sigstore. It never claims that the producer was honest.
 
-  The minimum requirements are necessary, but not sufficient. Read their exact limits before you rely on them: [what the floors do and do not catch](./docs/gate.md#what-the-floors-do-and-dont-catch).
+  **The minimum requirements are necessary, but not sufficient.** Read their exact limits before you rely on them: [what the floors do and do not catch](./docs/gate.md#what-the-floors-do-and-dont-catch).
 
 ## Where These Skills Fit in the Ecosystem
 
@@ -135,7 +167,7 @@ Every other skill needs only Claude Code: `/test-plan`, `/coverage-review`, `/au
 
 ## Privacy: What Each Skill Reads, Runs, and Sends Out
 
-These skills add no network calls of their own. No skill sends your code to a third-party service. Only one outbound request exists in any skill: `/contract-guard` optionally fetches a published OpenAPI spec, from a URL that you supply. This is a static document, never your code. These skills run inside Claude Code. Your code goes through Anthropic's API in the same way as in any Claude Code session; this transport belongs to the platform, not to a skill call. The one Anthropic call in this repository is maintainer tooling: the eval harness ([`evals/lib/judge-llm.mjs`](./evals/lib/judge-llm.mjs)). This is not a skill that you run. The table below shows what each skill touches. Use the table to run a skill on private code with confidence.
+**These skills add no network calls of their own.** No skill sends your code to a third-party service. Only one outbound request exists in any skill: `/contract-guard` optionally fetches a published OpenAPI spec, from a URL that you supply. This is a static document, never your code. These skills run inside Claude Code. Your code goes through Anthropic's API in the same way as in any Claude Code session; this transport belongs to the platform, not to a skill call. The one Anthropic call in this repository is maintainer tooling: the eval harness ([`evals/lib/judge-llm.mjs`](./evals/lib/judge-llm.mjs)). This is not a skill that you run. The table below shows what each skill touches. Use the table to run a skill on private code with confidence.
 
 | Skill | Reads | Runs (executes) | Routes externally |
 | --- | --- | --- | --- |
@@ -154,17 +186,17 @@ These skills add no network calls of their own. No skill sends your code to a th
 | `/qa-pass` | Files in the change | Combines the skills above; runs only what they run | Only what `/debug-test` routes to, and only when a failing test is present |
 | `/gate` | A Playwright/Cypress result file, plus an optional `audit-test` emission or report that you pass in | Its bundled Node script, locally, plus `git rev-parse HEAD` for the subject | Nothing |
 
-`/debug-test` and `/audit-orchestrator` hand work to external tools. `/contract-guard` sometimes fetches a published OpenAPI spec, from a URL that you supply; it never sends your code anywhere. Every other skill reads and reasons statically. The two skills that do execute code, `/audit-test` and `/prune-tests --apply`, run only on a clean git tree. Both are prose skills, not executable programs. Their verdicts are the agent's own account of what it ran in your session, not an independently verified measurement. Watch the tool calls.
+`/debug-test` and `/audit-orchestrator` hand work to external tools. `/contract-guard` sometimes fetches a published OpenAPI spec, from a URL that you supply; it never sends your code anywhere. Every other skill reads and reasons statically. **The two skills that do execute code**, `/audit-test` and `/prune-tests --apply`, run only on a clean git tree. Both are prose skills, not executable programs. Their verdicts are the agent's own account of what it ran in your session, not an independently verified measurement. Watch the tool calls.
 
 ## New to Testing? Start Here
 
-Eight skills teach as they work: `/qa-review`, `/threat-model`, `/qa-pass`, `/coverage-review`, `/test-plan`, `/audit-test`, `/bug-report`, `/prune-tests`. Each of these skills supports a `--explain` flag. The default output stays short, for daily use. Add `--explain`, and each report gets a "Why This Matters" section. This section teaches the idea behind the finding, not only the finding itself. Example: `/qa-review UserService.ts --explain`.
+**Eight skills teach as they work:** `/qa-review`, `/threat-model`, `/qa-pass`, `/coverage-review`, `/test-plan`, `/audit-test`, `/bug-report`, `/prune-tests`. Each of these skills supports a `--explain` flag. The default output stays short, for daily use. Add `--explain`, and each report gets a "Why This Matters" section. This section teaches the idea behind the finding, not only the finding itself. Example: `/qa-review UserService.ts --explain`.
 
-Five skills run a fixed check instead: `/debug-test`, `/audit-orchestrator`, `/contract-guard`, `/e2e-impact`, `/gate`. These skills do not support `--explain`. They run a fixed check. They do not reason toward a finding, so there is no reasoning to teach.
+**Five skills run a fixed check instead:** `/debug-test`, `/audit-orchestrator`, `/contract-guard`, `/e2e-impact`, `/gate`. These skills do not support `--explain`. They run a fixed check. They do not reason toward a finding, so there is no reasoning to teach.
 
 ## In a Hurry? `--digest`
 
-The seven judgment skills also take a `--digest` flag: `/test-plan`, `/qa-review`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/threat-model`, `/qa-pass`. This flag is the opposite of `--explain`. It replaces the full report with at most three evidence cards. Each card has one line of risk, the specific evidence behind it, one concrete action, and a label: `Confirmed`, `Likely`, or `Unexamined`. The label states how well the finding is known. Example: `/audit-test tests/booking.spec.ts --digest`.
+**Seven judgment skills take a `--digest` flag:** `/test-plan`, `/qa-review`, `/coverage-review`, `/audit-test`, `/prune-tests`, `/threat-model`, `/qa-pass`. This flag is the opposite of `--explain`. It replaces the full report with at most three evidence cards. Each card has one line of risk, the specific evidence behind it, one concrete action, and a label: `Confirmed`, `Likely`, or `Unexamined`. The label states how well the finding is known. Example: `/audit-test tests/booking.spec.ts --digest`.
 
 A digest is a *trim*, not a new summary. A digest states less than the full report, never more, and never raises a label to a stronger one: a finding that is `Likely` stays `Likely`, at any length. One document defines this format: [`skills/shared/digest-format.md`](./skills/shared/digest-format.md) ([ADR-0048](./docs/adr/0048-shared-digest-card-and-inline-next-footers.md)).
 
@@ -191,15 +223,15 @@ This bootstrap process is deliberately light. You do not need to classify your w
 
 ## Roadmap
 
-The team shipped `/gate` and `/audit-test` narrower than the full design, by choice. See [`docs/roadmap.md`](./docs/roadmap.md) for what is deferred, why, and the order for future work. Four of the original items are closed: a taxonomy-wording fix, ship rules that use coverage, real evidence signing, and report-to-commit provenance. One build item remains:
+The team shipped `/gate` and `/audit-test` narrower than the full design, by choice. See [`docs/roadmap.md`](./docs/roadmap.md) for what is deferred, why, and the order for future work. **Four of the original items are closed:** a taxonomy-wording fix, ship rules that use coverage, real evidence signing, and report-to-commit provenance. **One build item remains:**
 
 - **Calibration loop** — a real confidence number instead of a bare category.
 
-Report-to-commit provenance shipped ([#177](https://github.com/TzolkinB/skills/issues/177)). The Playwright and Cypress ingest adapters, and the `audit-test` emission, now record the git commit that they ran against. If that recorded commit does not match `--commit`, Gate caps an otherwise-`ship` report at `canary`: a report about a _different_ commit than the one under review.
+**Report-to-commit provenance shipped** ([#177](https://github.com/TzolkinB/skills/issues/177)). The Playwright and Cypress ingest adapters, and the `audit-test` emission, now record the git commit that they ran against. If that recorded commit does not match `--commit`, Gate caps an otherwise-`ship` report at `canary`: a report about a _different_ commit than the one under review.
 
 (The team considered a git-timestamp cross-check for this purpose, and **rejected** it. Timestamps are too unreliable, and a timestamp check does not even catch the wrong-commit case. The [roadmap](./docs/roadmap.md) explains why, and what shipped instead.)
 
-Separately, these items are not yet built, on the authoring side:
+**Not yet built, on the authoring side:**
 
 - [ ] Starter templates for common frameworks (Jest, pytest, Playwright)
 - [ ] Step-by-step guide: unit tests, then integration tests, then E2E tests
