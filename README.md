@@ -12,9 +12,17 @@ A passing test suite hides a gap: some passing tests catch a regression, others 
 
 ### Why not a mutation tool?
 
-Mutation tools like StrykerJS and Tautest run the same "break it on purpose" check, but only for unit tests: they change your source code and rerun it under Vitest or Jest, so a Playwright or Cypress test that drives a real browser is out of their reach. Browser-test *repair* agents go the other direction — they rewrite a test until it passes, or skip it if they decide the code is broken; they do not check whether the test itself is worth trusting.
+Mutation tools like StrykerJS and Tautest run the same "break it on purpose" check, but only for unit tests. They change your source code and rerun it under Vitest or Jest. A Playwright or Cypress test that drives a real browser is out of their reach.
 
-A QA professional built these skills, backed by [a seven-stage map](#where-these-skills-fit-in-the-ecosystem) of the best free tool for each point in the QA workflow. These skills fill the gaps those tools leave.
+Browser-test *repair* agents go the other direction: they rewrite a test until it passes. If the repair agent decides the code is broken, it marks the test as skipped instead. It does not repair the test.
+
+| | Layer | What a pass proves |
+| --- | --- | --- |
+| Mutation tools (StrykerJS, Tautest) | Unit | The test fails when the code is wrong |
+| Browser-test repair agents | E2E | The test runs — not that it checks anything real |
+| **[`/audit-test`](./skills/audit-test/SKILL.md)** | Playwright/Cypress, dev-served | The test fails when the code is wrong, at the layer the other two can't reach |
+
+A seven-stage map sits behind these skills. It names the best free tool for each point in the QA workflow; these skills fill the gaps those tools leave. A QA professional built these skills: many AI-written tests pass but do not catch real bugs, and that is why this project exists.
 
 ## Contents
 
@@ -29,6 +37,7 @@ A QA professional built these skills, backed by [a seven-stage map](#where-these
 - [Roadmap](#roadmap)
 - [Examples](#examples)
 - [Philosophy](#philosophy)
+- [It's working if](#its-working-if)
 - [FAQ](#faq)
 
 ## Install
@@ -133,7 +142,7 @@ Gate is the release-decision layer. It never runs a test suite. It **reads the e
 
   **Cypress needs a wrapper.** Playwright's JSON reporter writes its result to disk automatically. Cypress does not do this; it needs a small Module API wrapper first. See [`docs/gate.md`](./docs/gate.md) for this wrapper.
 
-  **The decision is advisory, not a stop on your build.** It carries no confidence number. A plain passing E2E run never becomes `ship` on its own — a `ship` decision needs a parsed `audit-test` verdict that has passed a minimum check. A suite that ran only a small part of what it found is limited to `canary`.
+  **The decision comes from deterministic code, and it is advisory — it does not stop your build.** It carries no confidence number. A plain passing E2E run never becomes `ship` on its own — a `ship` decision needs a parsed `audit-test` verdict that has passed a minimum check. A suite that ran only a small part of what it found is limited to `canary`.
 
   **Signing is optional.** Use your own ed25519 key and DSSE to sign it. A reader then verifies that the bundle was not changed after signing. This method is self-signed, not Sigstore. It never claims that the producer was honest.
 
@@ -291,6 +300,17 @@ Testing is not about green lights. Testing is about confidence. A test suite tha
 3. **Practical work over perfect work.** You do not need 100% coverage. You do not need zero technical debt. You need to ship fast, and verify that your code works.
 
 See [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the reasons behind specific design choices: why the repository uses many small skills instead of one, why it uses a 3-state verdict, and what the tradeoffs are.
+
+## It's Working If
+
+- `/audit-test` gives you a **Confirmed** or **Likely** label, never a bare score.
+- A caught mutation only claims to cover *that one* break — not "this test is good."
+- `/gate` never marks `ship` from a plain passing E2E run alone; it needs a passed `audit-test` minimum too.
+- `/qa-pass` gives you 🟢, 🟡, or 🔴, not a pass/fail — and you use the color to decide your next step, not to stop there.
+- A `--digest` card never states a stronger label than the full report would.
+- Every judgment report ends with a `Next:` footer, so you always have a next step without re-running `/qa-compass`.
+
+If a report ever *does* invent a score, silently upgrades a label, or asserts something it did not run, that is a bug in the skill — file it. See [Contributing & Support](#contributing--support).
 
 ## FAQ
 
