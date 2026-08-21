@@ -15,9 +15,44 @@ suspicion first.
 
 At each stage, the map also names the best free tool someone else built, and states plainly when
 to reach for that tool instead. The recommendation favors the other tool wherever the evidence
-supports it. One gap stops those tools completely: a test that drives a real browser. They work
-by changing your source code and running the test again under Vitest or Jest, so a Playwright or
-Cypress test is out of their reach. That gap is why these skills exist.
+supports it. **One gap stops those tools completely: a test that drives a real browser.** They
+work by changing your source code and running the test again under Vitest or Jest, so a Playwright
+or Cypress test is out of their reach. That gap is why these skills exist.
+
+---
+
+## The seven QA workflow stages
+
+```
+PLAN ─► AUTHOR ─► AUDIT ─► COVERAGE ─► FLAKE/RELIABILITY ─► TRIAGE ─► GATE
+```
+
+Each stage lists three things: the best free tool or tools for it, the point where those tools
+stop (especially the point where app-driven E2E work stops them), and this project's own tool
+that fills that gap.
+
+| # | Stage | Best free tool(s) | Where free tools stop | This project's tool |
+|---|-------|-------------------|------------------------|----------------------|
+| 1 | **Plan** — turn a ticket or feature into a risk-ranked plan | **Playwright Planner agent** (explores the running app and writes a Markdown plan; first-party; `init-agents --loop=claude`); **TEA** (risk tables) | Planner explores the app. It does not rank tasks by *this diff's* blast radius or by threat model | `test-plan`, `threat-model` |
+| 2 | **Author** — write the tests | **Playwright Generator agent** plus **Cypress AI** (`cy.prompt()`, Studio AI, the `cypress-author` skill — both first-party, app-driven, and verify selectors and assertions live) | Generation is now a solved, common capability. *Trustworthy* generation is not — these tools optimize toward a **green** result, not toward a *meaningful* one | `qa-review` (testability) |
+| 3 | **Audit** — is this *passing* test proof of anything real? | **StrykerJS** (full mutation), **Tautest** (PR diff-mutation, JS/TS **unit**), **Exspec** (a static test-quality linter — flags assertion-free, over-mocked, and coupled tests, multi-language, no execution) | The mutation tools change source code and run only under Vitest or Jest → they **cannot reach app-driven Playwright or Cypress tests** (the reachability wall). Exspec is a real ally, but it is **static — it cannot prove through mutation that an assertion *matters***. **No first-party agent audits at all.** | **`audit-test`** (mutation-proof on **dev-served** Playwright/Cypress tests) — the ADR-0016 staleness guard is the net-new piece |
+| 4 | **Coverage** — what code has no test? | V8/istanbul (Vitest/Jest), Playwright coverage; `coverage-guard` (an AI skill — **auto-generates tests in a loop until it reaches 100% line coverage → a manufactured-confidence hazard**, not a credibility check) | A line-coverage number is not the same as assertion quality — and `coverage-guard` *manufactures* its number by auto-writing tests to reach it (no check on assertion quality); it is also blind to app-driven paths | `coverage-review` |
+| 5 | **Flake / reliability** — is this test run stable? | Playwright's own **`flaky` status**; auto-repair tools (Playwright Healer, Cypress self-heal, Healenium, CodeceptJS heal); Tautest's static `flakiness` check | The `flaky` status catches only a test that **fails, then passes on retry**; the auto-repair tools **hide instability — they change the test until it passes, and the pass hides the problem** (a credibility hazard); the static check never runs a test | **`debug-test` flake mode** (finds instability by running the test, sets it aside, and routes the cause — it does *not* auto-repair the test to hide the problem) |
+| 6 | **Triage / repair** — why did the test fail? | **Playwright Healer agent** (replays the test, relocates elements, and patches it — it **skips the test if the app's behavior looks broken**); Cypress self-heal; trace viewer/Test Replay; **cypress-flaky-test-audit** (Cypress-side, per-command runtime evidence — queue order versus execution order, timing, a retry comparison, commands that never ran; **diagnosis only — it does *not* auto-repair the test to force a pass**) | The auto-repair tools push the test toward a pass, and sometimes **mask a real regression or skip it silently** — none of them judges whether the failure was a *real defect*, and none of them records *what* changed to reach a pass | `debug-test` (Step 4.5 **classifies the repair** from the diff — a selector or wait fix clears cheaply, a changed expected value routes to `audit-test`'s baseline-lock check, a rewritten setup blocks the automatic clear — and proposes the `Heal-bucket:` commit trailer), `diagnosing-bugs`, `bug-report` |
+| 7 | **Gate** — is this change ready to ship? | CI pass/fail; **TEA** (evidence artifacts, categorical) | Pass/fail on the raw suite gives no credibility check (it does not ask whether the green result is real), no live-execution evidence bundle, and no calibration | **Gate** (combines execution evidence and credibility evidence into a **categorical, worst-wins** decision; a calibration loop is planned) — see below |
+
+**The core pattern, confirmed by checking the first-party agents directly:** the *entire* free,
+first-party, app-driven ecosystem **optimizes tests toward a GREEN result.** This ecosystem
+includes Playwright's planner, generator, and healer; Cypress AI; Healenium; and CodeceptJS.
+Writing tests and auto-repairing them are now common, first-party capabilities. **Nothing in the
+app-driven space proves that a green result means anything** — and auto-repair is actively
+*hostile* to credibility: it repairs the test, or *skips* it, to reach green, and that hides both real
+regressions and test instability. So Kim's own focus is not "build Playwright or Cypress tools
+that author or auto-repair tests" (first-party tools already own that) — it is the **trust and
+credibility counterweight** to a green-pushing ecosystem: **Audit** (prove the green result is
+real), **honest flake handling** (find instability, set the test aside, and route the cause,
+never auto-repair to hide the problem), and **Gate** (combine the evidence, and, in future,
+calibrate it). That is the sharpest, most defensible statement of the gap.
 
 ## Two ways to use this: standalone, or in sequence
 
@@ -74,39 +109,6 @@ these skills:
   TEA's own docs show it does not do.
 
 ---
-
-## The seven QA workflow stages
-
-```
-PLAN ─► AUTHOR ─► AUDIT ─► COVERAGE ─► FLAKE/RELIABILITY ─► TRIAGE ─► GATE
-```
-
-Each stage lists three things: the best free tool or tools for it, the point where those tools
-stop (especially the point where app-driven E2E work stops them), and this project's own tool
-that fills that gap.
-
-| # | Stage | Best free tool(s) | Where free tools stop | This project's tool |
-|---|-------|-------------------|------------------------|----------------------|
-| 1 | **Plan** — turn a ticket or feature into a risk-ranked plan | **Playwright Planner agent** (explores the running app and writes a Markdown plan; first-party; `init-agents --loop=claude`); **TEA** (risk tables) | Planner explores the app. It does not rank tasks by *this diff's* blast radius or by threat model | `test-plan`, `threat-model` |
-| 2 | **Author** — write the tests | **Playwright Generator agent** plus **Cypress AI** (`cy.prompt()`, Studio AI, the `cypress-author` skill — both first-party, app-driven, and verify selectors and assertions live) | Generation is now a solved, common capability. *Trustworthy* generation is not — these tools optimize toward a **green** result, not toward a *meaningful* one | `qa-review` (testability) |
-| 3 | **Audit** — is this *passing* test proof of anything real? | **StrykerJS** (full mutation), **Tautest** (PR diff-mutation, JS/TS **unit**), **Exspec** (a static test-quality linter — flags assertion-free, over-mocked, and coupled tests, multi-language, no execution) | The mutation tools change source code and run only under Vitest or Jest → they **cannot reach app-driven Playwright or Cypress tests** (the reachability wall). Exspec is a real ally, but it is **static — it cannot prove through mutation that an assertion *matters***. **No first-party agent audits at all.** | **`audit-test`** (mutation-proof on **dev-served** Playwright/Cypress tests) — the ADR-0016 staleness guard is the net-new piece |
-| 4 | **Coverage** — what code has no test? | V8/istanbul (Vitest/Jest), Playwright coverage; `coverage-guard` (an AI skill — **auto-generates tests in a loop until it reaches 100% line coverage → a manufactured-confidence hazard**, not a credibility check) | A line-coverage number is not the same as assertion quality — and `coverage-guard` *manufactures* its number by auto-writing tests to reach it (no check on assertion quality); it is also blind to app-driven paths | `coverage-review` |
-| 5 | **Flake / reliability** — is this test run stable? | Playwright's own **`flaky` status**; auto-repair tools (Playwright Healer, Cypress self-heal, Healenium, CodeceptJS heal); Tautest's static `flakiness` check | The `flaky` status catches only a test that **fails, then passes on retry**; the auto-repair tools **hide instability — they change the test until it passes, and the pass hides the problem** (a credibility hazard); the static check never runs a test | **`debug-test` flake mode** (finds instability by running the test, sets it aside, and routes the cause — it does *not* auto-repair the test to hide the problem) |
-| 6 | **Triage / repair** — why did the test fail? | **Playwright Healer agent** (replays the test, relocates elements, and patches it — it **skips the test if the app's behavior looks broken**); Cypress self-heal; trace viewer/Test Replay; **cypress-flaky-test-audit** (Cypress-side, per-command runtime evidence — queue order versus execution order, timing, a retry comparison, commands that never ran; **diagnosis only — it does *not* auto-repair the test to force a pass**) | The auto-repair tools push the test toward a pass, and sometimes **mask a real regression or skip it silently** — none of them judges whether the failure was a *real defect*, and none of them records *what* changed to reach a pass | `debug-test` (Step 4.5 **classifies the repair** from the diff — a selector or wait fix clears cheaply, a changed expected value routes to `audit-test`'s baseline-lock check, a rewritten setup blocks the automatic clear — and proposes the `Heal-bucket:` commit trailer), `diagnosing-bugs`, `bug-report` |
-| 7 | **Gate** — is this change ready to ship? | CI pass/fail; **TEA** (evidence artifacts, categorical) | Pass/fail on the raw suite gives no credibility check (it does not ask whether the green result is real), no live-execution evidence bundle, and no calibration | **Gate** (combines execution evidence and credibility evidence into a **categorical, worst-wins** decision; a calibration loop is planned) — see below |
-
-**The core pattern, confirmed by checking the first-party agents directly:** the *entire* free,
-first-party, app-driven ecosystem **optimizes tests toward a GREEN result.** This ecosystem
-includes Playwright's planner, generator, and healer; Cypress AI; Healenium; and CodeceptJS.
-Writing tests and auto-repairing them are now common, first-party capabilities. **Nothing in the
-app-driven space proves that a green result means anything** — and auto-repair is actively
-*hostile* to credibility: it repairs the test, or *skips* it, to reach green, and that hides both real
-regressions and test instability. So Kim's own focus is not "build Playwright or Cypress tools
-that author or auto-repair tests" (first-party tools already own that) — it is the **trust and
-credibility counterweight** to a green-pushing ecosystem: **Audit** (prove the green result is
-real), **honest flake handling** (find instability, set the test aside, and route the cause,
-never auto-repair to hide the problem), and **Gate** (combine the evidence, and, in future,
-calibrate it). That is the sharpest, most defensible statement of the gap.
 
 ## Denominator honesty
 
@@ -268,8 +270,8 @@ content-addressed evidence bundle, and derives a **categorical, worst-wins**
 categories, not magnitudes, and the schema's honesty guard forbids a numeric field in the gate
 entry. A calibration loop is planned.
 
-But Gate's role, in this framing, is bigger and more defensible than "a smarter classifier of
-test instability" — experiments already ruled that claim out; see the caveats below. In an
+**Gate's role, in this framing, is bigger and more defensible than "a smarter classifier of test
+instability"** — experiments already ruled that claim out; see the caveats below. In an
 orchestration layer, **the single source of truth is the combined evidence artifact at the end of
 the pipeline. Gate *is* that artifact.**
 
@@ -310,25 +312,48 @@ stages 3–5.
 
 ---
 
-## Open questions
+## It's Working If
 
-1. **The cataloged-versus-owned boundary.** For each stage: is this project's tool a thin wrapper
-   that *invokes* the best free tool (for example, `audit-test`, which orchestrates Stryker where
-   Stryker fits), or a genuine replacement in the E2E domain? The likely answer is *both, per
-   stage*.
-2. **The router — resolved.** `qa-compass` *is* the ecosystem's top-level router now
-   ([ADR-0025](adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
-   [ADR-0027](adr/0027-ask-sentinel-orchestrated-sequence-mode.md)). It is stack-aware, and it
-   routes to external tools and to these skills alike. It returns either one best tool (for a
-   standalone ask) or an ordered stage path (for a lifecycle ask). It routes across thirteen
-   skills, plus itself.
-3. **The gate-verdict ownership question — resolved** (from `sentinel-witness-split`). Stages
-   3–5 emit *credibility evidence*; Gate, stage 7, owns the *ship verdict*, earned through
-   calibration. `skills/qa-pass/SKILL.md` and `docs/qa-pass.md` now state plainly that
-   `/qa-pass` is a QA judgment read, not the release gate, and point to `/gate` for the actual
-   ship/canary/hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
-4. **Spin-out.** The user flagged this map as a candidate for its own project. Decide this when
-   the map stabilizes.
+- Every stage names a free tool *and* this project's tool — never a bare "use X" with no note on
+  where the free tool stops.
+- Every recommendation carries a **Confirmed**, **Likely**, or **Unexamined** label. An
+  **Unexamined** claim reads as a to-do, never as advice.
+- A result that states a fraction (executed tests, examined tests, certified scope) also states
+  what it was drawn from — never a number alone. See [Denominator honesty](#denominator-honesty).
+- `gate`'s decision is categorical — `ship`, `canary`, or `hold` — never a numeric confidence
+  score.
+- A tool cataloged as outside this project's lane (thermo-nuclear, TEA's governance gate) still
+  gets its due: the map states where it wins, not only where it loses.
+
+If a recommendation here ever asserts "use X over Y" with no provenance label, or a claim sits at
+**Unexamined** but reads like advice, that is a bug in this document — file it. See
+[Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: Is this project's tool a thin wrapper around the best free tool, or a genuine replacement?**
+A: Open, per stage. `audit-test`, for example, orchestrates Stryker where Stryker fits. Whether it
+is a genuine replacement instead, in the E2E domain, is not yet settled. The likely answer is
+*both, per stage*.
+
+**Q: Is there one router that points me at the right skill for my situation?**
+A: Yes. `qa-compass` *is* the ecosystem's top-level router
+([ADR-0025](adr/0025-ask-sentinel-stack-aware-router-reads-manifests.md),
+[ADR-0027](adr/0027-ask-sentinel-orchestrated-sequence-mode.md)). It is stack-aware, and it routes
+to external tools and to these skills alike. It returns either one best tool (for a standalone
+ask) or an ordered stage path (for a lifecycle ask). It routes across thirteen skills, plus
+itself.
+
+**Q: `qa-pass` or `gate` — which one owns the ship verdict?**
+A: `gate` does (resolved via `sentinel-witness-split`). Stages 3–5 emit *credibility evidence*;
+Gate, stage 7, owns the *ship verdict*, earned through calibration. `skills/qa-pass/SKILL.md` and
+`docs/qa-pass.md` state plainly that `/qa-pass` is a QA judgment read, not the release gate, and
+point to `/gate` for the actual ship/canary/hold decision
+([#99](https://github.com/TzolkinB/skills/issues/99)).
+
+**Q: Could this map become its own project someday?**
+A: Maybe. The user flagged this map as a candidate for its own project. Decide this once the map
+stabilizes.
 
 ## Next artifact — shipped
 The proposal below was to turn one stage into a fully executable skill, to prove the "combine
