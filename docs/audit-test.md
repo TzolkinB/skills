@@ -6,9 +6,9 @@
 
 ## What it does
 
-`audit-test` checks a _passing_ test and asks the sharpest question about it: **does it fail when the code it covers breaks?** If not, that is false confidence — the test looks like protection, but guards nothing.
+`audit-test` checks a _passing_ test and asks the clearest question about it: **does it fail when the code it covers breaks?** If not, that is false confidence — the test looks like protection, but guards nothing.
 
-AI reasoning about a test can go wrong in exactly the same way the test itself is wrong. So audit-test does not stop at reasoning: for a suspect test, it applies the mutation most likely to break the code, runs just that one test, and reports what happened. Every finding gets one of two labels — **🔴 Confirmed** (a mutation ran and the test stayed green) or **🟡 Likely** (reasoning only, because the code did not run). It never invents a score. Whether the mutation matters to real behavior stays a visible human call — audit-test is a **challenger, not an oracle**.
+AI reasoning about a test can go wrong in exactly the same way the test itself is wrong. So audit-test does not stop at reasoning: for a suspect test, it applies the mutation most likely to break the code, runs just that one test, and reports what happened. Every finding gets one of two labels — **🔴 Confirmed** (a mutation ran and the test stayed green) or **🟡 Likely** (reasoning only, because the code did not run). It never invents a score. Whether the mutation matters to real behavior stays a visible human call — audit-test raises evidence for a human to judge; it does not give a final answer.
 
 ### Baseline-lock: the failure a mutation alone can't show
 
@@ -16,7 +16,7 @@ A **baseline-lock** (⚠️) is a _live_ assertion edited to accept a regression
 
 audit-test raises this finding from the assertion diff (in `--changed` mode), or from an in-code source of truth that the code now contradicts — not from the mutation. A human then confirms the intended value ([ADR-0017](./adr/0017-audit-test-baseline-lock-suspected.md)).
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

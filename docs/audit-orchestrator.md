@@ -14,7 +14,7 @@ Where a free tool fits (unit or component JS-TS), audit-orchestrator points you 
 
 Every recommendation carries a **label** — Confirmed, Likely, or Unexamined, that shows how strong the evidence is. The evidence for the reachability wall is Confirmed. A routing claim never goes higher than the evidence behind it. That label is not uniform across frameworks. Proving a Playwright target is **Confirmed**. Proving a Cypress target is only **Likely**. The Cypress runner sometimes fails to launch at all on macOS 26. This is an Electron incompatibility. Reinstalling does not fix it. Docker works around this problem. This is an environment problem, not a routing failure.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

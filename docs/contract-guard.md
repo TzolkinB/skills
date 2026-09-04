@@ -28,7 +28,7 @@ Tier 2 handles the hard case: an untyped consumer facing an **empty-diff mismatc
 
 An unresolvable operation degrades the drift-coverage line to `no-spec` the same way ([ADR-0049](./adr/0049-contract-guard-test-boundary-validation-tier.md)).
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

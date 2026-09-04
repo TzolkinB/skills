@@ -14,7 +14,7 @@ Each impacted spec carries a **confidence** label: High, Medium, or Low. The tra
 
 If a changed file reaches no spec through any signal, it lands in an explicit **run-all / unmapped** bucket. The tool never drops it silently. A change to a global file — a root layout, a router table, a shared primitive — also goes to run-all. A false, narrow list is worse than an honest statement that the blast radius is the whole suite.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

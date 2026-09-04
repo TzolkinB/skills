@@ -10,7 +10,7 @@
 
 Testability is independent of code quality. Beautiful code is sometimes untestable. Ugly code is sometimes perfectly testable. This review catches a class of problem that a style or correctness review misses entirely. Untestable code signals that hidden dependencies and non-determinism sit baked into the code. The fix is usually the code, not the test.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |
