@@ -31,6 +31,18 @@ where to look. If a future TEA release closes one of these gaps, this note is wr
 
 ---
 
+## Which tool for X?
+
+| Your situation | Where to go |
+| --- | --- |
+| You need P0–P3 risk tiers and NFR planning before you write tests | **TEA** `test-design` |
+| You want a static test-quality score with violations and fixes | **TEA** `test-review` |
+| You need a requirement→test traceability matrix and a governance/compliance gate | **TEA** `trace` |
+| You need to scaffold a test framework, CI pipeline, or expand ATDD suites | **TEA** `framework` / `ci` / `atdd` / `automate` |
+| You need to know whether a passing test actually fails when the code breaks | **[`audit-test`](../audit-test.md)** — one targeted mutation, execution-grounded |
+| You want to know if a P0 requirement's "covered" test is actually hollow | **Gate's `--trace-json` join** — reads TEA's `trace` matrix, resolves each requirement against `audit-test` evidence |
+| You want one risk-weighted, calibrated ship/canary/hold call across both | **[`gate`](../gate.md)** — design today; the calibration layer waits on a labeled history |
+
 ## What TEA actually is (and why the question is fair)
 
 TEA is the **BMAD Test Architect module**
@@ -173,23 +185,6 @@ than inferred. Label the generalization honestly — **Confirmed** for TEA (sour
 Qase (docs only), **Unexamined** for closed tools. The transferable claim is about the category, and
 it is TEA's openness that lets this repo make that claim at all.
 
-## Where the overlap is real (so you do not over-trust this note)
-
-An honest note names the ground where this repo's own tools do not win:
-
-- **`coverage-review` versus TEA — SOFT overlap, with one hard exception.** TEA's `test-review` plus
-  `trace` already cover much of what `coverage-review` does, and `coverage-review`'s edge there stays
-  narrow: granularity and *real instrumentation* (it reads code-to-coverage data when present) against
-  TEA's requirement-to-test matrix. **Do not lead a "why not just TEA" pitch with additive coverage
-  gap-finding.** The exception is coverage ***traceability***: §3 shows `trace` counts a requirement as
-  covered on the strength of a test that does not fail when the code breaks, which is a
-  source-verified gap rather than a soft overlap. This exception is safe to lead with — but it routes
-  to `audit-test`, not to `coverage-review`.
-- **Static test quality — crowded.** `qa-review`, TEA's `test-review`, and third-party tools like
-  Exspec all audit static test quality. This ground overlaps heavily; no tool wins cleanly. The
-  uncontested ground is (1) mutation proof and (2) calibration — lead with those, not with static
-  review.
-
 ## How they fit together — orchestrate, do not replace
 
 The two gaps described above are **additive to TEA, not a replacement for it.** "Integration" here
@@ -222,18 +217,39 @@ history it does not own.**
 Run TEA for its governance gate, and add `audit-test` as the mutation check its `test-review`
 structurally lacks — today, without adopting anything else.
 
-## Caveats worth stating plainly
+## It's Working If
 
-- **The Gate half is a design, not confirmed** — restated because it is the easiest thing to
-  over-sell. Credible today: `audit-test`'s mutation proof. Not yet confirmed: Gate's calibrated
-  number.
-- **Integration means orchestration, not code.** TEA is an agent persona, not an API; route to TEA,
-  pass evidence, do not absorb its workflows.
-- **Licensing — confirmed.** MIT (Copyright (c) 2025 BMad Code, LLC, verified against the repo's
-  `LICENSE` file, 2026-07-31) — permissive, and this repo vendors none of TEA's code: Gate's
-  `--trace-json` join ([#199](https://github.com/TzolkinB/skills/issues/199)) reads its own,
-  independently-defined `gate-trace-matrix/v0` shape. This shape is informed by TEA's
-  publicly-documented output fields, but not copied from its source.
+- You run TEA for risk planning, static review, traceability, and its governance gate — never for
+  mutation-grounded proof, which it does not have.
+- `audit-test` only enters where TEA's own docs and source show no mutation step exists: proving a
+  passing test actually fails when the code breaks.
+- A Gate verdict fed by TEA evidence reads as advisory today, not as a confirmed calibrated number —
+  the calibration layer stays parked until a labeled override history exists.
+- The business-risk coverage join (`--trace-json`) reports alongside Gate's ship/canary/hold call. It
+  never enters the arithmetic.
+- Every "TEA cannot" claim in this note traces to TEA's own published docs or source, not to
+  inference — each has a "How to check" line.
+
+If this note ever claims Gate's calibration is live, or claims `audit-test` replaces TEA's planning
+and governance instead of adding the one mutation check TEA structurally lacks, that is a bug — file
+it. See [Contributing & Support](../../README.md#contributing--support).
+
+## FAQ
+
+**Q: Does `coverage-review` beat TEA's `test-review` plus `trace`?**
+A: Mostly no — soft overlap, with one hard exception. TEA's `test-review` plus `trace` already cover much of what `coverage-review` does; `coverage-review`'s edge stays narrow: granularity and real instrumentation (it reads code-to-coverage data when present) against TEA's requirement-to-test matrix. Do not lead a "why not just TEA" pitch with additive coverage gap-finding. The exception is coverage traceability: §3 shows `trace` counts a requirement as covered on the strength of a test that does not fail when the code breaks — a source-verified gap, not a soft overlap. Safe to lead with, but it routes to `audit-test`, not to `coverage-review`.
+
+**Q: Does `qa-review` beat TEA's `test-review` at static test quality?**
+A: No tool wins cleanly — this ground is crowded. `qa-review`, TEA's `test-review`, and third-party tools like Exspec all audit static test quality. The uncontested ground is (1) mutation proof and (2) calibration — lead with those, not with static review.
+
+**Q: Is Gate's calibrated release confidence live today?**
+A: No — restated because it is the easiest thing to over-sell. Credible today: `audit-test`'s mutation proof, a shipping skill you can run in ten minutes. Not yet confirmed: Gate's calibrated number, which needs a labeled history first — tests that pass and fail with no code change, each paired with its verdict — before the calibration loop can prove itself.
+
+**Q: Does this repo integrate with TEA by absorbing its code?**
+A: No. TEA is a prompt-persona agent, not an API. "Integration" means orchestration: route to TEA, pass evidence between the tools. Nothing here absorbs TEA's workflows.
+
+**Q: Does this repo vendor any of TEA's code, and what's the license?**
+A: No vendoring. TEA is MIT-licensed (Copyright (c) 2025 BMad Code, LLC, verified against the repo's `LICENSE` file, 2026-07-31) — permissive. Gate's `--trace-json` join ([#199](https://github.com/TzolkinB/skills/issues/199)) reads its own, independently-defined `gate-trace-matrix/v0` shape, informed by TEA's publicly-documented output fields but not copied from its source.
 
 ---
 
