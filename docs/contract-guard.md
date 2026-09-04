@@ -32,7 +32,7 @@ An unresolvable operation degrades the drift-coverage line to `no-spec` the same
 
 | Your situation | Where to go |
 | --- | --- |
-| A frontend E2E suite turns red with an empty diff, and the likely cause is a backend team you do not control | **`/contract-guard [endpoint or red spec] [spec path/URL]`** — this page |
+| A frontend E2E suite turns red with an empty diff, and the likely cause is a backend team you do not control | **`/contract-guard [endpoint or red spec] [published spec path/URL]`** — this page |
 | You want to know whether a backend contract change is deliberate (documented in its published spec) or an undocumented break, without waiting for the provider to run anything | **`/contract-guard`** |
 | The spec is already red and you have not classified why | [`debug-test --drift`](./debug-test.md) is the first stop — it recommends this skill for the harder empty-diff case, instead of duplicating the differ inline |
 | You want to know which specs a diff hits | [`e2e-impact`](./e2e-impact.md) |

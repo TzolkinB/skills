@@ -19,6 +19,7 @@
 | You want a safe, reviewable prune plan, with high-confidence removes and merges applied automatically on a clean tree | **`/prune-tests --apply`** |
 | You want the _missing_ tests, not the ones to cut | [`coverage-review`](./coverage-review.md) — `prune-tests` never adds tests |
 | A test looks like it never verifies its code | [`audit-test`](./audit-test.md), which proves it by mutation — `prune-tests` defers these rather than guessing |
+| You want it to delete things automatically | Not by default — it deletes nothing without `--apply` on a clean git tree, and even then only high-confidence removes and merges apply automatically |
 
 ## Prerequisites
 
