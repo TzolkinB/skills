@@ -14,16 +14,15 @@ Where a free tool fits (unit or component JS-TS), audit-orchestrator points you 
 
 Every recommendation carries a **label** — Confirmed, Likely, or Unexamined, that shows how strong the evidence is. The evidence for the reachability wall is Confirmed. A routing claim never goes higher than the evidence behind it. That label is not uniform across frameworks. Proving a Playwright target is **Confirmed**. Proving a Cypress target is only **Likely**. The Cypress runner sometimes fails to launch at all on macOS 26. This is an Electron incompatibility. Reinstalling does not fix it. Docker works around this problem. This is an environment problem, not a routing failure.
 
-## When to use it
+## When to reach for it
 
-- You have a suspicious passing test. You do not know which mutation tool actually reaches it, or you do not want to work that out.
-- A repo mixes unit and E2E suites, and you want the audit routed to the right tool per test, not a blanket guess.
-
-## When _not_ to use it
-
-- **You already know it is app-driven E2E.** Call [`audit-test`](./audit-test.md) directly — the router only adds a step.
-- **You want a codebase-wide mutation score.** Use StrykerJS itself. This skill points you at StrykerJS; it does not replace it.
-- **You want the actual proof, not a routing decision.** This skill hands off to `audit-test` or an external tool. It never runs the mutation itself.
+| Your situation | Where to go |
+| --- | --- |
+| You have a suspicious passing test, and you do not know which mutation tool actually reaches it, or you do not want to work that out | **`/audit-orchestrator [test/file or repo/dir]`** — this page |
+| A repo mixes unit and E2E suites, and you want the audit routed to the right tool per test, not a blanket guess | **`/audit-orchestrator`** |
+| You already know it is app-driven E2E | [`audit-test`](./audit-test.md) directly — the router only adds a step |
+| You want a codebase-wide mutation score | StrykerJS itself — this skill points you at StrykerJS, it does not replace it |
+| You want the actual proof, not a routing decision | Not this skill — it hands off to `audit-test` or an external tool and never runs the mutation itself |
 
 ## Prerequisites
 
@@ -36,6 +35,26 @@ audit-orchestrator needs a real repo to detect a runner against. It uses **warm 
 Pointed at an epic-stack Playwright spec, audit-orchestrator detects **Playwright app-driven** (signal: a `@playwright/test` import, plus `playwright.config.ts`). It routes to `audit-test` with Confirmed provenance. Stryker and Tautest have no reach into this target, so every mutation on it goes undetected. A run reports a false 🔴. Recommending them here is the wrong call.
 
 Pointed at a Vitest unit test, audit-orchestrator detects **Vitest unit**. It routes to Tautest for PR-scoped diff-mutation, then to `audit-test` on any survivor — a mutation the test failed to catch — for a concrete fix. This is also Confirmed provenance, since Tautest's Stryker-only, Vitest/Jest scope is directly verified.
+
+## It's Working If
+
+- The stack detected is the specific test's own stack, never the repo's overall default.
+- Stryker or Tautest are never recommended for app-driven Playwright or Cypress code — the reachability wall means every mutation there goes undetected.
+- The evidence label matches what's actually verified: Confirmed for Playwright, Likely for Cypress.
+- The routed verdict — 🔴/🟡/🟢/⚠️ — passes through untouched; `audit-orchestrator` never collapses it into its own PASS/FAIL.
+
+If `audit-orchestrator` ever recommends Stryker or Tautest for a target behind the reachability wall, or emits its own PASS/FAIL verdict, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: Why does a Cypress target only get a Likely label instead of Confirmed?**
+A: The Cypress runner sometimes fails to launch at all on macOS 26 — an Electron incompatibility that reinstalling does not fix. Docker works around it, but the label reflects an environment limitation, not a routing failure.
+
+**Q: Can Stryker or Tautest reach an app-driven Playwright or Cypress test if I point them at it directly?**
+A: No. No source path exists to mutate under a browser-driven spec, so mutations there go undetected and a run reports a false 🔴. That is why `audit-orchestrator` falls back to `audit-test` instead.
+
+**Q: Does audit-orchestrator run the mutation itself?**
+A: No — it orchestrates. It routes to `audit-test`, Tautest, or StrykerJS and hands off; it never reimplements a mutation engine.
 
 ## Where it fits
 
