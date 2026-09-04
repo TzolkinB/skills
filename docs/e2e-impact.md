@@ -14,16 +14,15 @@ Each impacted spec carries a **confidence** label: High, Medium, or Low. The tra
 
 If a changed file reaches no spec through any signal, it lands in an explicit **run-all / unmapped** bucket. The tool never drops it silently. A change to a global file — a root layout, a router table, a shared primitive — also goes to run-all. A false, narrow list is worse than an honest statement that the blast radius is the whole suite.
 
-## When to use it
+## When to reach for it
 
-- You want to run E2E on a PR, and want only the subset that plausibly matters — not the whole suite.
-- You want a defensible answer to "which specs does this change touch," for app-driven Playwright/Cypress tests. The module graph gives no answer here.
-
-## When _not_ to use it
-
-- **You want to run or diagnose a spec** → run the selected specs yourself, then hand any red one to [`debug-test`](./debug-test.md). This skill only selects. It does not run tests. `debug-test` diagnoses one spec at a time, it does not batch-execute this skill's output.
-- **You want to know if a _passing_ spec catches a real break** → [`audit-test`](./audit-test.md).
-- **A spec is already red with no clear cause** → [`debug-test --drift`](./debug-test.md) reads this skill's source-to-spec map, inverted. It checks whether any changed file plausibly reaches it ([ADR-0018](./adr/0018-debug-test-drift-triage.md)).
+| Your situation | Where to go |
+| --- | --- |
+| You want to run E2E on a PR, and want only the subset that plausibly matters — not the whole suite | **`/e2e-impact [base ref or diff]`** — this page |
+| You want a defensible answer to "which specs does this change touch," for app-driven Playwright/Cypress tests — the module graph gives no answer here | **`/e2e-impact`** |
+| You want to run or diagnose a spec | Run the selected specs yourself, then hand any red one to [`debug-test`](./debug-test.md) — this skill only selects, it does not run tests |
+| You want to know if a _passing_ spec catches a real break | [`audit-test`](./audit-test.md) |
+| A spec is already red with no clear cause | [`debug-test --drift`](./debug-test.md) — it reads this skill's source-to-spec map, inverted, and checks whether any changed file plausibly reaches it ([ADR-0018](./adr/0018-debug-test-drift-triage.md)) |
 
 ## Prerequisites
 
@@ -36,6 +35,26 @@ Just Claude Code, plus a git repo with `main...HEAD` history, and a Playwright a
 Editing `app/routes/users/index.tsx` in epic-stack (Playwright) surfaces `tests/e2e/search.test.ts` at 🟢 **High** confidence. Two signals converge. The spec reaches the route by interaction and asserts `page.waitForURL('/users?search=…')` instead of calling `goto`. The spec also asserts `getByText('Epic Notes Users')` — a literal text string rendered in the same changed file.
 
 In cypress-realworld-app, editing `SkeletonList.tsx` — which renders `data-test="list-skeleton"` — surfaces every spec that uses `getBySel('list-skeleton')`, at High confidence. The fixture also proves the substring case. A spec token like `accountNumber-input` matches the source's `data-test="bankaccount-accountNumber-input"`. This match happens because the trace reads `getBySelLike`/`[data-test*=…]` as a partial match, not an exact one.
+
+## It's Working If
+
+- Every impacted spec carries an honest High/Medium/Low confidence label — never a false, precise answer.
+- A changed file that reaches no spec through any signal lands in the run-all/unmapped bucket — it is never dropped silently.
+- A change to a global file — a root layout, a router table, a shared primitive — goes to run-all, not a guessed narrow list.
+- `e2e-impact` never runs a spec itself — selection stops at the list.
+
+If `e2e-impact` ever silently omits an untraceable change, or asserts a narrow spec list on a global-file change, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: What does a Low-confidence match actually mean?**
+A: A lead worth including defensively — generic text, or a coincidental literal — not proof that the spec is affected. Treat it as a hint, not a guarantee.
+
+**Q: Why does a root layout or shared primitive change select the whole suite instead of a narrow list?**
+A: Because a false, narrow list is worse than an honest statement that the blast radius is the whole suite. Global files go to run-all by design.
+
+**Q: Does e2e-impact run the specs it selects?**
+A: No — selection stops here. Running them, and diagnosing any that come back red, is [`debug-test`](./debug-test.md)'s job.
 
 ## Where it fits
 

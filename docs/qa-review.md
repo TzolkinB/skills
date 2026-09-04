@@ -10,16 +10,15 @@
 
 Testability is independent of code quality. Beautiful code is sometimes untestable. Ugly code is sometimes perfectly testable. This review catches a class of problem that a style or correctness review misses entirely. Untestable code signals that hidden dependencies and non-determinism sit baked into the code. The fix is usually the code, not the test.
 
-## When to use it
+## When to reach for it
 
-- During code review, before anyone writes tests, to catch untestable code while it is still cheap to change.
-- You suspect a module is flaky, or has no way to mock, and want that risk named before it ships.
-
-## When _not_ to use it
-
-- **You want the consequence of wrong code in production.** Use [`threat-model`](./threat-model.md) instead. `qa-review` does not rank blast radius — how much breaks if the code fails.
-- **Tests already exist and you want the coverage gaps.** Use [`coverage-review`](./coverage-review.md) instead.
-- **You want a general code-quality or style review.** That is a different tool. `qa-review` only judges testability.
+| Your situation | Where to go |
+| --- | --- |
+| During code review, before anyone writes tests, and you want untestable code caught while it's still cheap to change | **`/qa-review path/to/file.ts`** — this page |
+| You suspect a module is flaky, or has no way to mock, and want that risk named before it ships | **`/qa-review`** |
+| You want the consequence of wrong code in production | [`threat-model`](./threat-model.md) instead — `qa-review` does not rank blast radius (how much breaks if the code fails) |
+| Tests already exist and you want the coverage gaps | [`coverage-review`](./coverage-review.md) instead |
+| You want a general code-quality or style review | A different tool — `qa-review` only judges testability |
 
 ## Prerequisites
 
@@ -45,6 +44,22 @@ Fixture: [`fixtures/qa-review/`](../fixtures/qa-review/) ([expected findings](..
 - **Coupling** — the function bundles the clock, the random-number generator, the network, and the timer together. It only runs with everything live, so no one unit-tests it in isolation.
 
 A correct run does not rank the production impact of a wrong price. That consequence view belongs to [`threat-model`](./threat-model.md).
+
+## It's Working If
+
+- A finding never conflates code quality with testability — beautiful code can still get flagged, ugly code can still pass clean.
+- Findings group by category (testability, brittleness, coupling) rather than a flat list.
+- The review never ranks production impact or blast radius — that stays [`threat-model`](./threat-model.md)'s question.
+
+If `qa-review` ever rates code quality or style, or ranks the production consequence of a finding, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: Is testable code the same as good code?**
+A: No — they're independent. Beautiful code is sometimes untestable, and ugly code is sometimes perfectly testable. `qa-review` catches a class of problem a style or correctness review misses entirely.
+
+**Q: Does qa-review tell me how bad it would be if this code shipped broken?**
+A: No — that's [`threat-model`](./threat-model.md)'s question. `qa-review` only judges whether the code is testable, not the consequence of it being wrong.
 
 ## Where it fits
 

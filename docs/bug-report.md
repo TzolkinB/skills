@@ -12,15 +12,14 @@ The skill derives a specific title, a severity, and minimal numbered repro steps
 
 A vague "it's broken" report is the top reason bugs bounce back unresolved. This skill turns an observation into a report. A stranger reproduces the bug from the report. A teammate acts on it. Paste the report into Jira, Linear, or GitHub Issues.
 
-## When to use it
+## When to reach for it
 
-- Something breaks and you need to hand it off cleanly to the team.
-- You have a rough idea of the steps that trigger the bug. You want it turned into a report that another person follows without help.
-
-## When _not_ to use it
-
-- **A Playwright test is red and you want the root cause** → [`debug-test`](./debug-test.md) runs and diagnoses it.
-- **You want the ship/no-ship verdict on a branch** → [`qa-pass`](./qa-pass.md). Like [`threat-model`](./threat-model.md), bug-report sits outside the `/qa-pass` chain.
+| Your situation | Where to go |
+| --- | --- |
+| Something breaks and you need to hand it off cleanly to the team | **`/bug-report "what went wrong"`** — this page |
+| You have a rough idea of the steps that trigger the bug, and want it turned into a report another person follows without help | **`/bug-report`** |
+| A Playwright test is red and you want the root cause | [`debug-test`](./debug-test.md) instead — it runs and diagnoses it |
+| You want the ship/no-ship verdict on a branch | [`qa-pass`](./qa-pass.md) instead — like [`threat-model`](./threat-model.md), `bug-report` sits outside the `/qa-pass` chain |
 
 ## Prerequisites
 
@@ -42,6 +41,23 @@ a good report replaces "broken" with something reproducible:
 - **Expected vs Actual:** results update to that date forward _vs_ page reloads, filters clear, console shows `TypeError: dateRange.start is undefined`
 - **Affected scope:** date filtering; `BookList` / `DateFilter` / `useBooks`; blocks reporting, which depends on filters
 - **Root-cause hypothesis** (included only because it is plausible here): something clears the `dateRange` state before the filter effect runs.
+
+## It's Working If
+
+- Every report replaces "broken" with a reproducible claim — a specific title, not a vague symptom.
+- A stranger who has never seen the bug reproduces it from the steps alone.
+- A root-cause hypothesis appears only when it's actually plausible — left blank otherwise, never guessed.
+- Frequency is stated as an observed rate, not collapsed into a vague "sometimes."
+
+If `bug-report` ever guesses a root cause or drops the frequency, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: Does bug-report always include a root-cause hypothesis?**
+A: No — only when one is actually plausible from the description given. Otherwise it's left blank rather than guessed.
+
+**Q: Can I paste the output straight into Jira, Linear, or GitHub Issues?**
+A: Yes — that's the intended handoff. The report is structured so the person who picks it up doesn't need to ask a follow-up question.
 
 ## Where it fits
 

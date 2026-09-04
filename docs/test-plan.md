@@ -10,19 +10,16 @@
 
 Its value is that it forces a definition of _done and correct_ up front, when disagreement is cheap. The alternative is reverse-engineering that definition from whatever tests the code happens to make green. `test-plan` sits at the front of the QA flow. The other skills judge tests that already exist. This skill decides what those tests need to be.
 
-## When to use it
+## When to reach for it
 
-- You are about to build a feature, and want the cases and their layers before writing a line of code.
-- You want the edge and unhappy paths named explicitly, not just the happy one.
-- You add these skills to an existing repository, and want upcoming work planned with layer recommendations (see the README's _Existing Project Bootstrap_ section).
-
-## When _not_ to use it
-
-- **Tests already exist and you want the gaps** → [`coverage-review`](./coverage-review.md).
-- **You want to know whether a passing test protects anything** → [`audit-test`](./audit-test.md).
-- **You want the production-risk view of a change** → [`threat-model`](./threat-model.md).
-
-`test-plan` reads a _description_, not code. Once the code and tests exist, it is the wrong tool.
+| Your situation | Where to go |
+| --- | --- |
+| You are about to build a feature, and want the cases and their layers before writing a line of code | **`/test-plan "feature description"`** — this page |
+| You want the edge and unhappy paths named explicitly, not just the happy one | **`/test-plan`** |
+| You add these skills to an existing repository, and want upcoming work planned with layer recommendations | **`/test-plan`** — see the README's _Existing Project Bootstrap_ section |
+| Tests already exist and you want the gaps | [`coverage-review`](./coverage-review.md) instead |
+| You want to know whether a passing test protects anything | [`audit-test`](./audit-test.md) instead |
+| You want the production-risk view of a change | [`threat-model`](./threat-model.md) instead |
 
 ## Prerequisites
 
@@ -44,6 +41,19 @@ a good plan names the acceptance criteria first, then spreads cases across layer
 - **Preconditions** — user logged in, seed data present.
 
 The tell of a good plan is that the boundary and rejection cases appear _before_ anyone writes code to handle them.
+
+## It's Working If
+
+- Boundary and rejection cases appear in the plan before anyone writes code to handle them.
+- Every case is assigned the cheapest layer that still proves it — not everything inflated to `e2e`.
+- The plan states acceptance criteria as a contract, not a description of code that already exists.
+
+If `test-plan` ever writes to rationalize tests that already pass, or inflates every case to `e2e`, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: Does test-plan work once the code and tests already exist?**
+A: No — it reads a feature _description_, not code. Once code and tests exist, it's the wrong tool: use [`coverage-review`](./coverage-review.md) for gaps, or [`audit-test`](./audit-test.md) for whether existing tests protect anything.
 
 ## Where it fits
 

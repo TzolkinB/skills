@@ -28,17 +28,16 @@ Tier 2 handles the hard case: an untyped consumer facing an **empty-diff mismatc
 
 An unresolvable operation degrades the drift-coverage line to `no-spec` the same way ([ADR-0049](./adr/0049-contract-guard-test-boundary-validation-tier.md)).
 
-## When to use it
+## When to reach for it
 
-- A frontend E2E suite turns red with an empty diff, and the likely cause is a backend team you do not control.
-- You want to know whether a backend contract change is deliberate — documented in its published spec — or an undocumented break. You want the answer without waiting for the provider to run anything.
-
-## When _not_ to use it
-
-- **The spec is already red and you have not classified why** → [`debug-test --drift`](./debug-test.md) is the first stop. It recommends this skill for the harder empty-diff case, instead of duplicating the differ inline.
-- **You want to know which specs a diff hits** → [`e2e-impact`](./e2e-impact.md).
-- **You want to prove that a passing spec catches a real break** → [`audit-test`](./audit-test.md).
-- **Structuring the cross-team escalation itself** → this skill routes a `suspected-break` to [`bug-report`](./bug-report.md) rather than writing the report itself.
+| Your situation | Where to go |
+| --- | --- |
+| A frontend E2E suite turns red with an empty diff, and the likely cause is a backend team you do not control | **`/contract-guard [endpoint or red spec] [spec path/URL]`** — this page |
+| You want to know whether a backend contract change is deliberate (documented in its published spec) or an undocumented break, without waiting for the provider to run anything | **`/contract-guard`** |
+| The spec is already red and you have not classified why | [`debug-test --drift`](./debug-test.md) is the first stop — it recommends this skill for the harder empty-diff case, instead of duplicating the differ inline |
+| You want to know which specs a diff hits | [`e2e-impact`](./e2e-impact.md) |
+| You want to prove that a passing spec catches a real break | [`audit-test`](./audit-test.md) |
+| You want to structure the cross-team escalation itself | Not this skill — it routes a `suspected-break` to [`bug-report`](./bug-report.md) rather than writing the report |
 
 ## Prerequisites
 
@@ -53,6 +52,30 @@ Against `mosaic-room-booking`, the consumer runs `z.array(RoomSchema).safeParse(
 Against `epic-stack/.drift-fixture`, the consumer reads `room.label` straight off `r.json()`, with no validation. The "backend team" renames the field out-of-band. This leaves an **empty diff** in the consumer repo, while the spec goes red. If you supply the published OpenAPI document, which now lists `name` instead of `label`, the verdict is **`stale-consumer`**: the spec sanctions the rename. `contract-guard` offers `room.label → room.name` as a deliberate-evolution fix, instead of green-locking the mismatch silently. If the published spec still said `label`, the same red test gets the verdict **`suspected-break`**, and `contract-guard` routes it to `bug-report` instead.
 
 Run `contract-guard` against the same untyped `.drift-fixture` consumer, with a spec supplied but no empty-diff mismatch yet. Tier 1b also fires here. It proposes `playwright-schema-validator`, because the suite is Playwright. It reads the operation's `required: [id, label]` and states the coverage plainly: the check catches a retype, drop, or rename of `label`. It does not catch a drop or rename of an unrequired field like `capacity`. `contract-guard` flags that gap separately, as a latent optional/nullable break.
+
+## It's Working If
+
+- Tier 0 recommends nothing new when the consumer already validates responses against a schema — a backend change there is already self-revealing.
+- Every Tier 1b recommendation states plainly which of rename, drop, or retype it actually catches on this endpoint, read off the operation's `required` fields — never a percentage.
+- A `stale-consumer` verdict only fires when the published spec confirms the change is deliberate; anything that still mismatches the spec is `suspected-break`, not waved through.
+- An unresolvable operation degrades honestly to `no-spec` — `contract-guard` never fabricates a match.
+- `contract-guard` never runs the suite, drives a browser, or snapshots a live response.
+
+If `contract-guard` ever green-locks a `suspected-break`, or guesses a verdict with no published spec, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: My consumer already validates responses with Zod, io-ts, or yup — does contract-guard still recommend adding schema validation?**
+A: No. Tier 0 checks for this first. If it's already there, a backend change is already self-revealing, and `contract-guard` recommends nothing new.
+
+**Q: Does the Tier 1b drift-coverage line give a percentage?**
+A: No — it names exactly which of rename, drop, or retype the check catches on this endpoint, read off the operation's `required` fields, and names the uncovered fields plainly ([ADR-0013](./adr/0013-evidence-provenance-sentinel-labels-not-gates.md)).
+
+**Q: What happens when there is no published spec to compare against?**
+A: The verdict degrades honestly to `no-spec` — `contract-guard` never fabricates a match to force a `stale-consumer` or `suspected-break` call.
+
+**Q: Does contract-guard apply the fix itself?**
+A: No. The Tier 1 schema and the Tier 2 aligning update are proposed diffs. A human — and, for Tier 1, another team's sign-off — applies them.
 
 ## Where it fits
 

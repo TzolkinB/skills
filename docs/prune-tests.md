@@ -10,17 +10,15 @@
 
 `prune-tests` is the **subtractive** counterpart to [`coverage-review`](./coverage-review.md). It is deliberately **conservative**. It proposes a categorized plan, and it deletes nothing by default. When a case is uncertain, it keeps the test — matching setup is not matching meaning. It does not re-derive whether a test protects its behavior. That is [`audit-test`](./audit-test.md)'s job. `prune-tests` hands off anything that looks like false confidence, instead of judging it here.
 
-## When to use it
+## When to reach for it
 
-- The suite feels slow or noisy, and you suspect tests that add cost without adding confidence.
-- AI generated a pile of tests, and you want the redundant, over-mocked, and stale ones surfaced.
-- You want a safe, reviewable prune plan. With `--apply` on a clean tree, it applies the conservative removals automatically.
-
-## When _not_ to use it
-
-- **You want the _missing_ tests** → [`coverage-review`](./coverage-review.md). `prune-tests` never adds tests.
-- **A test looks like it never verifies its code** → [`audit-test`](./audit-test.md), which proves it by mutation. `prune-tests` defers these rather than guessing.
-- **You want it to delete things automatically.** It deletes nothing without `--apply` on a clean git tree. Even then, only high-confidence removes and merges apply automatically.
+| Your situation | Where to go |
+| --- | --- |
+| The suite feels slow or noisy, and you suspect tests that add cost without adding confidence | **`/prune-tests tests/`** — this page |
+| AI generated a pile of tests, and you want the redundant, over-mocked, and stale ones surfaced | **`/prune-tests`** |
+| You want a safe, reviewable prune plan, with high-confidence removes and merges applied automatically on a clean tree | **`/prune-tests --apply`** |
+| You want the _missing_ tests, not the ones to cut | [`coverage-review`](./coverage-review.md) — `prune-tests` never adds tests |
+| A test looks like it never verifies its code | [`audit-test`](./audit-test.md), which proves it by mutation — `prune-tests` defers these rather than guessing |
 
 ## Prerequisites
 
@@ -48,6 +46,26 @@ What the run does _not_ do: it does not claim that any test is confirmed false-c
 A `Deferred to audit-test` entry used to require manual follow-through: run `/audit-test`, read its verdict, then come back and re-classify the entry yourself. `--audit-evidence=<path>` reads a prior `/audit-test --emit-json=<path>` run and does that re-classification automatically.
 
 Take a test the evidence names `confirmedHollow` — execution-confirmed: a mutation ran, and the test stayed green. `--audit-evidence` promotes that entry from `Deferred` to a new **Confirmed Prune (mutation-backed)** category — the highest confidence tier this skill carries. (`--digest` reports it **Confirmed**, not the usual `Likely`.) The promotion only happens by test identity named in the evidence, never by count alone. A `likelyHollow` or `baselineLock` verdict never promotes. A missing evidence file changes nothing. A schema mismatch is ignored, never guessed at. The result stays proposal-only, still gated behind `--apply`.
+
+## It's Working If
+
+- A test is never removed just because it looks redundant — when scenario equivalence is uncertain, the test stays.
+- `--apply` runs only on a clean git tree, and even then only the high-confidence removes and merges apply automatically.
+- Anything that looks like false confidence is handed to `audit-test` as Deferred, never pruned on a guess.
+- A `confirmedHollow` entry from `--audit-evidence` promotes to Confirmed Prune only by test identity named in the evidence — never by count alone.
+
+If `prune-tests` ever deletes a test without `--apply`, or promotes a Deferred entry to Confirmed without matching evidence identity, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: Does `--apply` delete every test in the plan?**
+A: No. Even with `--apply` on a clean tree, only high-confidence removes and merges apply automatically. Medium-confidence rewrites and anything deferred to `audit-test` still need a human call.
+
+**Q: What does `--audit-evidence=<path>` actually change?**
+A: It reads a prior `/audit-test --emit-json=<path>` run and re-classifies any `Deferred` entry the evidence confirms as hollow (`confirmedHollow`) into a new Confirmed Prune (mutation-backed) category — by test identity, never by count. A `likelyHollow` or `baselineLock` verdict never promotes, and a missing or mismatched evidence file changes nothing.
+
+**Q: Can prune-tests tell me a test is confirmed false-confidence?**
+A: No — that needs a mutation. `prune-tests` hands that judgment to [`audit-test`](./audit-test.md) and lists the test as deferred instead.
 
 ## Where it fits
 

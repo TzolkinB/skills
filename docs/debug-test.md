@@ -26,18 +26,17 @@ Its **flake mode** (`--flake`) handles the special case most teams get wrong. Mo
 
 Its **drift mode** (`--drift`) handles a different special case: a _deterministic_ red on a test that was long green, where nothing in the local diff explains the failure. This is the sign of an external service that changed its contract, with no local code change to explain the red. Drift mode does not assume a local regression, and it does not silently blame the provider. It classifies the failure from static signals, in this order: diff relevance, then timing, then the published contract. It quarantines the test, non-blocking. It surfaces the mismatch for a human to decide on. Drift mode never heals the test to green.
 
-## When to use it
+## When to reach for it
 
-- A `*.spec.ts` test is red, and you want it diagnosed and routed without writing up the problem first.
-- A self-healer turned a red spec green, and you want to know _what it changed to get there_ before you trust the green result.
-- A test fails intermittently, and you want it quarantined with its signal preserved, instead of skipped and forgotten (`--flake`).
-- A long-green test suddenly turned red, and the local diff does not touch anything the test exercises. You want to know if an external contract changed, before you assume a local bug (`--drift`).
-
-## When _not_ to use it
-
-- **The failure is not Playwright** (Jest/Vitest/pytest) → invoke [`diagnosing-bugs`](https://github.com/mattpocock/skills) directly. `debug-test` is scoped to Playwright. Flake mode also handles Cypress.
-- **You want to file the failure for the team, not diagnose it** → [`bug-report`](./bug-report.md).
-- **You want a teaching walkthrough** — `debug-test` is procedural. It does not support `--explain`.
+| Your situation | Where to go |
+| --- | --- |
+| A `*.spec.ts` test is red, and you want it diagnosed and routed without writing up the problem first | **`/debug-test tests/my.spec.ts`** — this page |
+| A self-healer turned a red spec green, and you want to know _what it changed to get there_ before you trust the result | **`/debug-test`** — Step 4.5 classifies the heal from the diff |
+| A test fails intermittently, and you want it quarantined with its signal preserved, instead of skipped and forgotten | **`/debug-test --flake`** |
+| A long-green test suddenly turned red, and the local diff does not touch anything the test exercises | **`/debug-test --drift`** — checks for an external contract change before you assume a local bug |
+| The failure is not Playwright (Jest/Vitest/pytest) | [`diagnosing-bugs`](https://github.com/mattpocock/skills) directly — `debug-test` is scoped to Playwright (flake mode also handles Cypress) |
+| You want to file the failure for the team, not diagnose it | [`bug-report`](./bug-report.md) |
+| You want a teaching walkthrough | Not `debug-test` — it is procedural and does not support `--explain` |
 
 ## Prerequisites
 
@@ -64,6 +63,30 @@ expect(banner).toBeVisible(); // BUG: missing await
 ```
 
 Playwright's web-first assertions are async, and they retry automatically. Without `await`, this line returns a floating promise that never settles. This makes the assertion one that never fails. `debug-test` catches it with its quick QA heuristics alone: a 🟢 High-confidence root cause, plus the one-line fix, `await expect(banner).toBeVisible()`. It does _not_ route to the healer or to `diagnosing-bugs`, because the failure is neither a locator or timeout error, nor a value mismatch.
+
+## It's Working If
+
+- A locator or timing heal clears on the diff alone without spending a mutation, but a rewritten expected value always routes to `audit-test`'s baseline-lock check before `debug-test` reports "done."
+- The repeat-heal count reads fresh from git every time — nothing is stored — and a truncated or shallow clone is flagged out loud, not silently undercounted.
+- Flake mode never deletes or silently skips a test — it quarantines, non-blocking, and routes the suspected cause onward.
+- Drift mode never heals a test to green on its own — it classifies the failure and surfaces the mismatch for a human to decide.
+- Commit-trailer blocks are proposed, never written — `debug-test` does not own the commit.
+
+If `debug-test` ever marks a healer's pass as "done" without checking the diff, or heals a drift failure to green on its own, that is a bug — file it. See [Contributing & Support](../README.md#contributing--support).
+
+## FAQ
+
+**Q: Does a healer's green result mean the test is trustworthy again?**
+A: No — a pass is a _change_, not a result. Step 4.5 reads the diff: a selector or wait touch-up clears on the diff alone, but a changed expected value always routes to `audit-test`'s baseline-lock check first.
+
+**Q: What happens if the repo hasn't carried the `Heal-bucket` trailer into its commits, or the read hits a shallow clone?**
+A: `debug-test` falls back to a weaker signal — a plain file-churn count, or an explicit "history may be truncated" flag — and states the degraded signal out loud instead of quietly reporting "no repeats."
+
+**Q: Does flake mode delete or skip the flaky test?**
+A: No. It quarantines the test, non-blocking and never deleted, and routes the suspected cause to the skill that confirms it.
+
+**Q: Does drift mode ever conclude that the external provider is at fault?**
+A: No. It classifies the failure from static signals and surfaces the mismatch. A human decides whether to update the stale test or escalate a suspected break.
 
 ## Where it fits
 
