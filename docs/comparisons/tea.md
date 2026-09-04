@@ -61,6 +61,16 @@ TEA states its enemy plainly: _"AI tests that rot."_ TEA is a **credibility-side
 that pushes for green results. For risk-ranked planning, static review, traceability,
 and a governance gate with an NFR/compliance audit trail, use TEA. This note is not an argument against TEA. It states where TEA's role ends and this repo's tools begin.
 
+TEA's governance surface got materially stronger between the 2026-07-17 baseline and the 2026-09-04
+recheck, and this note says so plainly rather than leaving it stale: `test-review` now ships a headless
+`tea-test-review` CLI (JSON verdict, CI exit codes, a `--min-score` floor, waivers with mandatory
+expiry) that makes it a real required-status-check gate, not only an interactive skill; and `framework`
+now scaffolds a write-time enforcement hook (`tea-enforce.cjs`) that blocks a `.only`, a
+`waitForTimeout`, or a `Thread.sleep` at the moment it is written, ahead of review. Both are still
+**pattern-based and static** — the hook matches source text against fixed rules, and the CLI runs the
+same presence/deduction scoring `criteria-registry.md` always ran. Neither runs the code. The three
+gaps below are unmoved by either addition.
+
 ## The three things TEA's own docs and source show it cannot do
 
 ### 1. Run a mutation to check a passing test — the strongest, uncontested differentiator
@@ -112,7 +122,10 @@ releases — calibrating against an override history it _reads_, never one it st
 This repo verified this claim against the workflow **source** (not the docs) on 2026-07-29 —
 `bmad-testarch-trace`, v1.19.1. This repo **re-verified the claim unchanged at v1.21.4 on 2026-08-04**
 while building the `trace`-to-Gate conversion ([#220](https://github.com/TzolkinB/skills/issues/220)).
-That re-read turned up two corrections, noted below.
+That re-read turned up two corrections, noted below. **Re-verified unchanged again at v1.24.0 on
+2026-09-04** (a routine recheck, not tied to a build) — that pass found one new overlay in Step 5's
+arithmetic and one new knowledge fragment that names hollow tests directly, both noted below as a
+third correction. Neither is a mutation or credibility input to the gate.
 
 - **`steps-c/step-03-map-criteria.md`** marks each oracle item **FULL / PARTIAL / NONE** by mapping it
   to a _matching test_. Every validation rule in this step is a presence check: endpoint, auth,
@@ -125,14 +138,35 @@ That re-read turned up two corrections, noted below.
 - **`steps-c/step-05-gate-decision.md`** is deterministic JS code that runs over the resulting
   percentages: `if (p0Coverage < 100) → FAIL`; `P1 >= 90 && overall >= 80 && P0 === 100 → PASS`.
   `p0Coverage` is `covered/total`, taken straight from Step 3's mapping.
+  **Correction (v1.24.0, added in v1.22.1):** a `live` coverage **level** now exists alongside the
+  five coverage **statuses** above — a requirement can be verified by a recorded runtime observation
+  (`{test_artifacts}/live-verification-results.json`) instead of a matching test file. A requirement
+  covered *only* by live evidence caps the gate at CONCERNS, the same treatment a synthetic (inferred)
+  oracle already got — sound enough to count as coverage, never enough for an unconditional PASS. This
+  is a genuinely new overlay in Step 5's arithmetic, but it is **not** a hollowness check: it fires on
+  whether the evidence is a re-runnable artifact, not on whether the covering test would fail if the
+  code broke. A requirement covered by an ordinary automated test — however hollow — is not `live`, so
+  it never triggers this cap and still scores plain presence, unmodified. Confirmed by reading
+  `step-05-gate-decision.md`'s live-evidence overlay directly: it reads only a disposition count and a
+  freshness/SHA check, never a test's assertions.
 - **Zero occurrences** of `mutation` / `hollow` / `would fail` / `kill score` anywhere in the trace
-  source: `SKILL.md`, `instructions.md`, the 671-line `checklist.md`, and all four step files
-  (including the 628-line gap analysis and the 681-line gate decision).
-- Test quality appears **once**, in step-04, as a printed recommendation:
-  `action: 'Run /bmad:tea:test-review to assess test quality'`. That is advice in the gaps report. It
-  is **not an input to the gate arithmetic**. (The published docs describe "optional test quality
-  scores from test-review" feeding Phase 2. That description does not appear in the gate-decision
-  source.)
+  **decision-path** source: `SKILL.md`, `instructions.md`, the checklist, and every step file under
+  `steps-c/`, `steps-e/`, and `steps-v/` (re-grepped in full at v1.24.0). **Correction (v1.24.0):** the
+  word `hollow` now appears in the trace workflow's bundled **knowledge fragments** —
+  `resources/knowledge/evidence-integrity.md`, a fragment about "hollow green" checks (an assertion
+  that is already true before the action it claims to verify) and falsifiability, shared across
+  several TEA workflows. It teaches authors and reviewers to recognize a hollow check by eye. It is
+  **not** wired into anything that decides a coverage status or a gate outcome: it is absent from
+  `step-03-map-criteria.md`, `step-05-gate-decision.md`, and — checked separately — from
+  `test-review`'s own scoring rubric (`bmad-testarch-test-review/steps-c/criteria-registry.md`, the
+  35-row deduction ledger `tea-test-review` runs in CI). A test can still score cleanly on presence and
+  on the ledger while being exactly the hollow shape the fragment describes. Advisory knowledge, not an
+  arithmetic input — the same shape as the recommendation string below.
+- Test quality appears **once** in the gate decision path, in step-04, as a printed recommendation:
+  `action: 'Run /bmad-testarch-test-review to assess test quality'` (command syntax corrected in
+  v1.22.1; same advisory string). That is advice in the gaps report. It is **not an input to the gate
+  arithmetic**. (The published docs describe "optional test quality scores from test-review" feeding
+  Phase 2. That description does not appear in the gate-decision source.)
 
 **Consequence:** a P0 requirement whose only test does not fail when the code breaks still counts as
 covered, so `trace` returns **PASS**. This repo's own
@@ -151,9 +185,15 @@ _rejection_ test, it also satisfies Step 3's error-path-present and not-happy-pa
 
 > **How to check:** Read
 > `src/workflows/testarch/bmad-testarch-trace/steps-c/step-03-map-criteria.md` and
-> `step-05-gate-decision.md`, then grep the workflow tree for `mutation`. (Verified 2026-07-29 against
-> `main`, v1.19.1. Re-verified 2026-08-04 against `main`, v1.21.4: unchanged.)
-> **Falsifier:** a TEA release that adds a credibility input to Step 5's arithmetic.
+> `step-05-gate-decision.md`, then grep the workflow tree for `mutation`. Also grep
+> `bmad-testarch-test-review/steps-c/criteria-registry.md` for `hollow` — that is where a credibility
+> input would have to land to change what a test scores, not just what a fragment teaches. (Verified
+> 2026-07-29 against `main`, v1.19.1. Re-verified 2026-08-04 against `main`, v1.21.4: unchanged.
+> Re-verified 2026-09-04 against `main`, v1.24.0: unchanged — the live-evidence overlay and the
+> `evidence-integrity.md` fragment are both new since the last check and both described above; neither
+> is a mutation or credibility input to the gate arithmetic or to `test-review`'s scoring.)
+> **Falsifier:** a TEA release that adds a credibility input to Step 5's arithmetic, or wires
+> `evidence-integrity.md` (or an equivalent) into `criteria-registry.md`'s scored rows.
 
 #### What `trace` actually writes (the machine-readable side)
 
@@ -172,6 +212,11 @@ artifact — the Phase-1 JSON is real, machine-readable, and is what TEA's own s
 is also a **temp** file, which is the one real fragility in consuming it. That is what
 [`tea-to-trace-matrix.mjs`](../../skills/gate/tea-to-trace-matrix.mjs) converts, and why it never
 parses the Markdown ([ADR-0050](../adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
+`e2e-trace-summary.json`'s `schema_version` moved to `0.2.0` at v1.22.1, adding a `live_evidence` block
+and a `coverage.by_level.live` bucket — both additive, and both live only in the aggregate file the
+converter never reads. The Phase-1 shape the converter actually consumes (`id`/`priority`/`coverage`/
+`tests[]`) is unchanged, so this did not require a code change; re-confirmed by reading
+`tea-to-trace-matrix.mjs` against the v1.24.0 source on 2026-09-04.
 
 **This is not a flaw specific to TEA, and this note does not pitch it as one.** Presence-based
 coverage is the category default: Qase's requirements-traceability report links test cases to issues,
@@ -253,4 +298,5 @@ _Evidence base and the two-seam design detail: issue #96. Map context:
 [`../orchestration-map.md`](../orchestration-map.md) (TEA sits at stages 1 and 7; the evidence-ledger
 row records the verified absences). This repo verified all TEA capability and absence claims against
 [TEA's published docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/)
-on 2026-07-17._
+on 2026-07-17, and re-verified §3 against the workflow source at v1.21.4 (2026-08-04) and again at
+v1.24.0 (2026-09-04). License re-checked 2026-07-31, unchanged._

@@ -20,7 +20,7 @@ raw-content are not scoped and work for any public repo. See the Notes section.
 | StrykerJS | npm `@stryker-mutator/core` dist-tags.latest | 10.0.0 (114 versions, modified 2026-08-14) | 2026-08-31 |
 | Tautest | npm `tautest` dist-tags.latest | 1.10.1 (10 versions, modified 2026-06-04) | 2026-08-31 |
 | Exspec | npm `@mnapoli/exspec` dist-tags.latest | 0.1.7 (11 versions) | 2026-08-31 |
-| TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.23.4 | 2026-08-31 |
+| TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.24.0 | 2026-09-04 |
 | Playwright test agents | raw `microsoft/playwright` `main/docs/src/release-notes-js.md`, top `## Version` block + grep it for `planner`/`generator`/`healer`/`agent`; npm `@playwright/test` dist-tags.latest for the version number | v1.62.1 (agents feature landed 1.56; top block has no agent-keyword hit) | 2026-08-31 |
 | Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 16.0.0 at top of changelog (major release: native HTTP/2/HTTP/3 network interception, Node.js 22+ required, `cy.exec()`/`cy.end()` removed, CoffeeScript support removed; no new AI/prompt feature in this block) — keyword hit persists within the top 3 blocks, two down in 15.21.0: new `cypress tap` command gives an "AI agent" direct access to inspect/drive an open-mode Cypress session (list/start/rerun specs, read results, inspect DOM/a11y tree) | 2026-08-31 |
 | Schema validators (sclavijosuero) — **recommended, not competitor** | npm `cypress-schema-validator`, `playwright-schema-validator`, `core-ajv-schema-validator` dist-tags.latest | cypress-schema-validator 2.0.0 (2026-06-07); playwright-schema-validator 1.0.0 (2025-08-03); core-ajv-schema-validator 1.0.0 (2025-04-06) | 2026-07-31 |
@@ -58,7 +58,18 @@ Notes:
   normally be the trigger to re-read §3 of [`comparisons/tea.md`](comparisons/tea.md) — that re-read
   already happened and is recorded there: the presence-gap claim is **unchanged**, with two
   corrections (the coverage vocabulary is five-valued, and a per-requirement JSON artifact exists that
-  the earlier reading missed). Job 1 should see no delta on its next run.
+  the earlier reading missed).
+- The TEA row was bumped **manually** again on 2026-09-04 (v1.23.4 → v1.24.0), a routine recheck (not
+  tied to a build) reading the same source files plus a full CHANGELOG.md pass covering every release
+  since the last check. Two additions since v1.21.4, both confirmed not load-bearing on §3's claim: a
+  `live` coverage level (v1.22.1) that caps the gate at CONCERNS when a requirement's only evidence is
+  a one-time runtime observation (evidence-permanence, not hollowness — never fires on an ordinary
+  automated test), and a new `evidence-integrity.md` knowledge fragment that names "hollow green"
+  checks directly but is wired into neither `step-05-gate-decision.md` nor `test-review`'s
+  `criteria-registry.md` scoring. Two capability additions also worth tracking even though they don't
+  touch the mutation gap: a headless `tea-test-review` CI-gate CLI (JSON verdict, exit codes, waivers)
+  and a write-time pattern-enforcement hook (`tea-enforce.cjs`) scaffolded by `framework`. Full detail
+  in `comparisons/tea.md` §3 and its preamble. Job 1 should see no delta on its next run.
 - A WebSearch sanity pass during setup (2026-07-22) claimed Cypress was at v16.0.0. The raw
   changelog said 15.19.1. The raw source wins — this is why Job 1 is curl-only, no LLM-search
   step, for every known-tool check.
