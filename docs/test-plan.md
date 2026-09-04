@@ -10,7 +10,7 @@
 
 Its value is that it forces a definition of _done and correct_ up front, when disagreement is cheap. The alternative is reverse-engineering that definition from whatever tests the code happens to make green. `test-plan` sits at the front of the QA flow. The other skills judge tests that already exist. This skill decides what those tests need to be.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

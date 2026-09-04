@@ -14,7 +14,7 @@ There are two ways to ask. A single question, for example "this test smells wron
 
 `qa-compass` is not one of the skills it routes to, and it never joins the `/qa-pass` chain — it is the map, not a stop on the route. One rule matters most: [`qa-pass`](./qa-pass.md) is the orchestrator, not a peer skill. Each of the other individual skills answers exactly one question.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |
