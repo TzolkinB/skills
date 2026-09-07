@@ -57,7 +57,7 @@ Code that has a test naming it, but a person changes the code in any way, even d
 A test that asserts *how* the code works, for example an internal call sequence or a private data shape, rather than *what* the code guarantees. This test breaks on a harmless refactor, which is a false alarm. It also passes while the real guarantee is broken, which is false confidence. It combines the worst of both problems.
 
 ### Characterization Test
-A test that pins down the *current* behavior of code, including quirky or undocumented behavior. This stops a later refactor from silently changing that behavior. This is not false confidence: it is a deliberate safety net. `audit-test` labels it as a safety net, instead of flagging it as a problem.
+A test that pins down the *current* behavior of code, including quirky or undocumented behavior. This stops a later refactor from silently changing that behavior. This is not false confidence: it is deliberate. `audit-test` labels it as a deliberate protection, instead of flagging it as a problem.
 
 ### Test Debt
 The accumulated drag from tests that cost more than they protect: redundant tests, over-mocked tests, or stale tests that pile up. This piles up especially fast under AI-assisted development. Like technical debt, test debt is not one broken thing. It makes the suite slower, noisier, and less trustworthy, without adding real safety. `prune-tests` looks across the whole suite and proposes cuts to pay down this debt.

@@ -10,7 +10,7 @@
 
 When the project already produces coverage instrumentation (lcov, istanbul/c8, JaCoCo), coverage-review reads that as ground truth for _which lines ran_. Otherwise it infers coverage statically. Either way, the judgment layer stays the same. It is the part a coverage number never gives you: **a line that ran is not a line that someone checked.** A line at 100% coverage guarded by `toBeDefined()` is still a gap. coverage-review never _requires_ instrumentation — most AI-generated repos have none, and a hard setup barrier defeats the point.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

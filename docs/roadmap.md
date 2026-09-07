@@ -7,7 +7,7 @@ items stay listed below, in one or two lines each, only for the sequencing conte
 items still open. Read the linked ADR or issue for the actual decision; do not re-derive the
 reasoning here. Current Gate behavior lives in [`gate.md`](gate.md), not in this history.
 
-**One closed decision stays load-bearing for everything below:**
+**One closed decision stays critical for everything below:**
 [#99](https://github.com/TzolkinB/skills/issues/99) (closed) decided that Gate stays a stage
 *inside* this plugin, not a second plugin, until item 4 (calibration) lands. See
 [gate/SKILL.md](../skills/gate/SKILL.md), "Housing & extraction."

@@ -1,6 +1,6 @@
 # Why use these skills and not just TEA?
 
-**TL;DR** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
+**Summary** — Use [TEA](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise) for
 what it does well: risk planning, static test review, requirement-to-test mapping, scaffolding, and a
 governance gate with a compliance audit trail. Turn to `audit-test` and Gate for what TEA's docs
 and source show it **cannot** do.
@@ -11,14 +11,14 @@ The second gap: combining that evidence with live execution into a **risk-weight
 release confidence that **learns from your gate overrides.** Gate aims to close this gap. Treat this
 as a **design, not a live feature**: Gate ships today as a categorical, advisory ship/canary/hold
 gate. The calibrated, learning layer waits until a labeled history exists to calibrate against (see
-the load-bearing caveat below).
+the critical caveat below).
 
 The third gap follows from the first. `trace`'s gate runs on arithmetic over **coverage presence**,
 with no credibility input. So a P0 requirement whose only test does not fail when the code breaks
 still reads as covered, and the gate returns **PASS** (§3, verified at source).
 
-TEA plans and governs. It does not run a mutation to check a test. These three gaps slot _into_ TEA's
-gate. They do not replace it.
+TEA plans and governs. It does not run a mutation to check a test. These three gaps become part of
+TEA's gate. They do not replace it.
 
 This note answers "why ours, not just theirs?" It follows the same evidence bar as the rest of this
 repository: **every claim here names a verified TEA absence.** This repo confirmed every "TEA cannot"
@@ -57,7 +57,7 @@ nine workflows:
 | `nfr-assess`                             | NFR evidence audit                                                     | 7 · Gate (governance)       |
 | `framework` / `ci` / `atdd` / `automate` | Scaffold, pipelines, ATDD, expand suites                               | Setup / authoring           |
 
-TEA states its enemy plainly: _"AI tests that rot."_ TEA is a **credibility-side ally**, not a tool
+TEA states plainly what it targets: _"AI tests that rot."_ TEA is a **credibility-side ally**, not a tool
 that pushes for green results. For risk-ranked planning, static review, traceability,
 and a governance gate with an NFR/compliance audit trail, use TEA. This note is not an argument against TEA. It states where TEA's role ends and this repo's tools begin.
 
@@ -73,7 +73,7 @@ gaps below are unmoved by either addition.
 
 ## The three things TEA's own docs and source show it cannot do
 
-### 1. Run a mutation to check a passing test — the strongest, uncontested differentiator
+### 1. Run a mutation to check a passing test — the strongest, clearest difference
 
 A test sometimes scores **100/100** on TEA's static `test-review` and still does not fail when the
 code breaks: a pinned assertion, an unreached branch, an expected value quietly edited to match a
@@ -84,8 +84,8 @@ It cannot tell you whether the test fails when the code breaks, because it never
 that one targeted mutation. It checks whether the test goes red — **execution-grounded, not
 reasoning.** A survived mutation is a counterexample: it proves the test does not fail when the code
 breaks. A killed mutation confirms the test works _against that one mutation_ — not a blanket
-guarantee the test is fine. TEA has no mutation step of any kind. This is the cleanest, least-contested
-ground in the whole comparison: mutation-grounded evidence is a capability TEA's docs simply do not
+guarantee the test is fine. TEA has no mutation step of any kind. This is the clearest, most settled
+point in the whole comparison: mutation-grounded evidence is a capability TEA's docs simply do not
 contain.
 
 > **How to check:** Search TEA's workflow docs for "mutation," "would this test fail," or "kill
@@ -96,7 +96,7 @@ contain.
 
 TEA's `trace` gate is **categorical**: PASS, CONCERNS, FAIL, or WAIVED. Its P0–P3 risk tiers inform
 planning, but the ranking never becomes a _weight_ on the final gate. The gate algorithm is not
-transparent. And here is the load-bearing gap: **TEA is stateless.** TEA logs a WAIVED decision as a
+transparent. And here is the critical gap: **TEA is stateless.** TEA logs a WAIVED decision as a
 governance artifact. It does not track whether that override was later shown to be right. It does not
 measure its own agreement with human calls. It does not learn. Nothing in TEA improves from the last
 hundred gate decisions.
@@ -107,14 +107,14 @@ time. TEA governs each release in isolation. Gate is meant to be the layer that 
 releases — calibrating against an override history it _reads_, never one it stores itself
 ([ADR-0047](../adr/0047-statelessness-is-a-write-boundary-git-is-the-ledger.md)).
 
-> **Honest caveat, load-bearing:** The _audit-test_ half of this pitch is credible **today.** It is a
+> **Honest caveat, critical:** The _audit-test_ half of this pitch is credible **today.** It is a
 > shipping skill. Run it on your own tests in ten minutes. The _Gate_ half is a **design, not a
 > confirmed capability.** The calibrated number is only as good as the calibration loop, and that loop
 > has not yet proven itself on a real corpus. It needs a labeled history first: tests that pass and
 > fail with no code change, each paired with its verdict. **Do not read "calibrated release
 > confidence" as a live feature.** Gate ships today as an advisory evidence-bundle → ship/canary/hold
-> gate; the calibration that earns it the higher verdict is parked until data exists to calibrate
-> against. This note over-claims nothing on the Gate side. If the reviewer pitch ever does, that is a
+> gate; the calibration that qualifies it for the higher verdict is parked until data exists to
+> calibrate against. This note over-claims nothing on the Gate side. If the reviewer pitch ever does, that is a
 > bug in the pitch.
 
 ### 3. `trace` gates on coverage _presence_, so a test that never fails still reads as covered
@@ -281,7 +281,7 @@ it. See [Contributing & Support](../../README.md#contributing--support).
 A: Mostly no — soft overlap, with one hard exception. TEA's `test-review` plus `trace` already cover much of what `coverage-review` does; `coverage-review`'s edge stays narrow: granularity and real instrumentation (it reads code-to-coverage data when present) against TEA's requirement-to-test matrix. Do not lead a "why not just TEA" pitch with additive coverage gap-finding. The exception is coverage traceability: §3 shows `trace` counts a requirement as covered on the strength of a test that does not fail when the code breaks — a source-verified gap, not a soft overlap. Safe to lead with, but it routes to `audit-test`, not to `coverage-review`.
 
 **Q: Does `qa-review` beat TEA's `test-review` at static test quality?**
-A: No tool wins cleanly — this ground is crowded. `qa-review`, TEA's `test-review`, and third-party tools like Exspec all audit static test quality. The uncontested ground is (1) mutation proof and (2) calibration — lead with those, not with static review.
+A: No tool is clearly better — many tools compete here. `qa-review`, TEA's `test-review`, and third-party tools like Exspec all audit static test quality. The clear differences are (1) mutation proof and (2) calibration — state those first, not static review.
 
 **Q: Is Gate's calibrated release confidence live today?**
 A: No — restated because it is the easiest thing to over-sell. Credible today: `audit-test`'s mutation proof, a shipping skill you can run in ten minutes. Not yet confirmed: Gate's calibrated number, which needs a labeled history first — tests that pass and fail with no code change, each paired with its verdict — before the calibration loop can prove itself.

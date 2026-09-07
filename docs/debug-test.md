@@ -8,7 +8,7 @@
 
 If a Playwright test fails, `debug-test` reads and runs it, instead of asking you to describe it. It applies fast QA heuristics across three angles: setup, assertion, and code logic. It routes what it does not resolve on its own. A locator or timing failure goes to the Playwright healer. This is a tool that automatically rewrites a broken locator or wait condition, so the test passes again. A logic failure goes to Matt Pocock's `diagnosing-bugs` skill.
 
-`debug-test` catches the quick wins itself: a missing `await`, a loose assertion, or a fixture that never fires. For each, it reports a root cause and a one-line fix.
+`debug-test` catches the easy fixes itself: a missing `await`, a loose assertion, or a fixture that never fires. For each, it reports a root cause and a one-line fix.
 
 When `debug-test` hands a locator or timing failure to the healer, it does not take the healer's green result at face value. **Step 4.5 classifies the heal** from `git diff`:
 
@@ -26,7 +26,7 @@ Its **flake mode** (`--flake`) handles the special case most teams get wrong. Mo
 
 Its **drift mode** (`--drift`) handles a different special case: a _deterministic_ red on a test that was long green, where nothing in the local diff explains the failure. This is the sign of an external service that changed its contract, with no local code change to explain the red. Drift mode does not assume a local regression, and it does not silently blame the provider. It classifies the failure from static signals, in this order: diff relevance, then timing, then the published contract. It quarantines the test, non-blocking. It surfaces the mismatch for a human to decide on. Drift mode never heals the test to green.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

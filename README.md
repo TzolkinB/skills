@@ -38,7 +38,7 @@ A passing test suite hides a gap: some passing tests catch a regression, others 
 
 Mutation tools like StrykerJS and Tautest run the same "break it on purpose" check, but only for unit tests. They change your source code and rerun it under Vitest or Jest. A Playwright or Cypress test that drives a real browser is out of their reach.
 
-Browser-test _repair_ agents go the other direction: they rewrite a test until it passes. If the repair agent decides the code is broken, it marks the test as skipped instead. It does not repair the test.
+Browser-test _repair_ agents take the opposite approach: they rewrite a test until it passes. If the repair agent decides the code is broken, it marks the test as skipped instead. It does not repair the test.
 
 |                                                   | Layer                          | What a pass proves                                                            |
 | ------------------------------------------------- | ------------------------------ | ----------------------------------------------------------------------------- |
@@ -117,13 +117,13 @@ Gate is the release-decision layer. It never runs a test suite. It **reads the e
 
 ## Where These Skills Fit in the Ecosystem
 
-These skills do not replace mature test tools that already exist. They **combine** with those tools and fill the one gap that they leave. One document is the single source of truth for which tool to use, for which job, and in what order. This document is the orchestration map:
+These skills do not replace mature test tools that already exist. They **combine** with those tools and fill the one gap that they leave. One document is the one authoritative reference for which tool to use, for which job, and in what order. This document is the orchestration map:
 
 - **[The AI-Test Tooling Orchestration Map](./docs/orchestration-map.md)** — This map shows a seven-stage QA workflow: Plan, Author, Audit, Coverage, Flake, Triage, Gate. For each stage, it names the **best free tool**, **the point where that tool stops**, and **where one of these skills fills the gap**. Every recommendation carries a provenance label: Confirmed, Likely, or Unexamined. The map never presents an unproven claim as advice.
 
-**Choose between a tool and a skill:** these head-to-head notes state the boundary plainly. Where the other tool wins, the notes say so:
+**Choose between a tool and a skill:** these direct-comparison notes state the boundary plainly. Where the other tool is the better choice, the notes say so:
 
-- **[vs. mutation tools (Stryker / Tautest / Exspec / Pitest·Arcmutate)](./docs/comparisons/mutation-tools.md)** — At the **unit** layer, run the mutation tool; it wins there on false confidence. Use `audit-test` at the **app-driven E2E** layer, where those tools cannot enter, by their structure. Gate combines the evidence; it does not verify it.
+- **[vs. mutation tools (Stryker / Tautest / Exspec / Pitest·Arcmutate)](./docs/comparisons/mutation-tools.md)** — At the **unit** layer, run the mutation tool; it is the better choice there on false confidence. Use `audit-test` at the **app-driven E2E** layer, where those tools cannot enter, by their structure. Gate combines the evidence; it does not verify it.
 - **[vs. TEA (BMAD Test Architect)](./docs/comparisons/tea.md)** — Use TEA for risk planning and for its governance gate. Use these skills for the mutation check that TEA's own documents show it does not do. TEA's **requirements traceability** marks a requirement as covered when a matching test exists; it does not check if that test fails on a real bug. Presence is not proof. `audit-test` fills that gap.
 
 ## Dependencies
@@ -236,7 +236,7 @@ The team shipped `/gate` and `/audit-test` narrower than the full design, by cho
 # AI just wrote 500 lines of test code. Before you merge:
 /coverage-review UserService.test.js UserService.ts
 
-# Red flags:
+# Problems found:
 # - The tests pass, but they do not assert the structure.
 # - The database error path has no test.
 # - The date boundary has no coverage.
@@ -260,7 +260,7 @@ The team shipped `/gate` and `/audit-test` narrower than the full design, by cho
 
 ## Philosophy
 
-Testing is not about green lights. Testing is about confidence. A test suite that passes, but does not catch real bugs, is worse than no tests at all. Such a suite gives you false confidence, while your code degrades underneath it. Three ideas support this:
+Testing is not about a passing status. Testing is about confidence. A test suite that passes, but does not catch real bugs, is worse than no tests at all. Such a suite gives you false confidence, while your code degrades underneath it. Three ideas support this:
 
 1. **Tests verify behavior.** An assertion states: "If this fails, something is truly broken." An assertion does not state: "I made the test pass."
 2. **Quality is testable.** Code that is hard to test gives you a signal. This signal often means hidden dependencies, unpredictable behavior, or weak assumptions. Fix the code, not the test.

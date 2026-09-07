@@ -10,7 +10,7 @@
 
 `prune-tests` is the **subtractive** counterpart to [`coverage-review`](./coverage-review.md). It is deliberately **conservative**. It proposes a categorized plan, and it deletes nothing by default. When a case is uncertain, it keeps the test — matching setup is not matching meaning. It does not re-derive whether a test protects its behavior. That is [`audit-test`](./audit-test.md)'s job. `prune-tests` hands off anything that looks like false confidence, instead of judging it here.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |
@@ -42,7 +42,7 @@ Fixture: [`fixtures/prune-tests/`](../fixtures/prune-tests/) ([expected findings
 
 What the run does _not_ do: it does not claim that any test is confirmed false-confidence. That needs a mutation, so it hands off to [`audit-test`](./audit-test.md) instead. It also does not propose new tests for missing paths.
 
-### Closing the loop: `--audit-evidence=<path>`
+### Completing the follow-through: `--audit-evidence=<path>`
 
 A `Deferred to audit-test` entry used to require manual follow-through: run `/audit-test`, read its verdict, then come back and re-classify the entry yourself. `--audit-evidence=<path>` reads a prior `/audit-test --emit-json=<path>` run and does that re-classification automatically.
 

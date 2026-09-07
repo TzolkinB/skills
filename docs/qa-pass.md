@@ -6,11 +6,11 @@
 
 ## What it does
 
-`qa-pass` is the **orchestrator**. It runs no original analysis of its own. It combines the QA skills across a branch — [`test-plan`](./test-plan.md), [`coverage-review`](./coverage-review.md), [`qa-review`](./qa-review.md), [`debug-test`](./debug-test.md) on any failing tests, and [`audit-test`](./audit-test.md) in batch over the changed tests. It reduces their output to a single verdict: 🟢 **PASS** / 🟡 **CAUTION** / 🔴 **FAIL**. Every part serves the same question: do the tests _verify behavior_, or only show green lights? **This is a QA judgment read, not the release gate** — pair it with [`gate`](./gate.md) for the actual ship, canary, or hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
+`qa-pass` is the **orchestrator**. It runs no original analysis of its own. It combines the QA skills across a branch — [`test-plan`](./test-plan.md), [`coverage-review`](./coverage-review.md), [`qa-review`](./qa-review.md), [`debug-test`](./debug-test.md) on any failing tests, and [`audit-test`](./audit-test.md) in batch over the changed tests. It reduces their output to a single verdict: 🟢 **PASS** / 🟡 **CAUTION** / 🔴 **FAIL**. Every part serves the same question: do the tests _verify behavior_, or only show a passing status? **This is a QA judgment read, not the release gate** — pair it with [`gate`](./gate.md) for the actual ship, canary, or hold decision ([#99](https://github.com/TzolkinB/skills/issues/99)).
 
 The verdict is a categorical judgment, never a numeric score. A confirmed false-confidence finding never earns a PASS verdict. For the paths that matter most — the ones where a hidden gap is not acceptable — you designate `--sacred` globs. These mark the **sacred paths** for this run. A single confirmed finding on a non-sacred path earns a CAUTION verdict, not FAIL. On a sacred path, two things force an **un-overridable FAIL**: a confirmed-hollow test, or an unhandled boundary in that logic. A confirmed-hollow test is one proven, by mutation, to stay green even when the code breaks. Nothing softens this FAIL, even on an otherwise solid branch. The override only fires on confirmed evidence; a reasoned-only (Likely) finding never fires it. `qa-pass` sits above the individual skills. It is not a peer of them.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

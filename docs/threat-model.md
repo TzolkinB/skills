@@ -10,7 +10,7 @@
 
 For everything a change touches — data writes, external systems, downstream dependents — the skill works four axes: failure mode, blast radius, detectability, and reversibility. It ranks each risk by impact, weighted by how long a failure stays unnoticed. A silent failure outranks a loud one at the same impact. A loud failure gets fixed fast. A silent one runs in production, unfixed. This is reasoning, not verification. The skill does not confirm that a risk is real. It flags reversibility as an open question, instead of inventing a rollback plan it has no way to see.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

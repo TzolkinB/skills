@@ -12,7 +12,7 @@ Gate reads a PR's existing test evidence — a Playwright JSON report, a Cypress
 
 The bar for `ship` is deliberately hard to clear — see [How Gate decides](#how-gate-decides) below.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

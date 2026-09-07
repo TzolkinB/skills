@@ -10,9 +10,9 @@
 
 The skill derives a specific title, a severity, and minimal numbered repro steps. It derives expected-vs-actual behavior, environment, frequency, and affected scope. It adds a root-cause hypothesis and a suggested fix only when these are obvious.
 
-A vague "it's broken" report is the top reason bugs bounce back unresolved. This skill turns an observation into a report. A stranger reproduces the bug from the report. A teammate acts on it. Paste the report into Jira, Linear, or GitHub Issues.
+A vague "it's broken" report is the top reason a report gets sent back unresolved. This skill turns an observation into a report. A stranger reproduces the bug from the report. A teammate acts on it. Paste the report into Jira, Linear, or GitHub Issues.
 
-## When to reach for it
+## When to use it
 
 | Your situation | Where to go |
 | --- | --- |

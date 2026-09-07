@@ -25,7 +25,7 @@ Each skill answers exactly one question. There are thirteen skills, plus the `/q
 
 `threat-model` and `bug-report` are real skills, core to this plugin, but independent of it. Neither sits in the `/qa-pass` chain, on purpose. Each answers a question separate from shippability: what breaks in production, or how to hand off a bug. `e2e-impact`, `audit-orchestrator`, and `contract-guard` are likewise standalone, and outside the chain — the newer, app-driven, E2E-focused additions. `qa-compass` is a router, not a chain member. It points at whichever tool fits a situation, one of this plugin's own skills or an external tool. `gate` sits downstream of the whole chain (see below).
 
-One large prompt blurs these questions together. It produces one wall of text, instead of a set of separate commands. Run `/qa-review` in the middle of a code review. Run `/debug-test` when a Playwright test fails right now. Splitting the skills apart keeps each one sharp for its one job. The skills also compose, instead of overlapping. This is the same reason good code keeps one function from validating, saving, and sending email all at once: single responsibility applies to prompts, too.
+One large prompt blurs these questions together. It produces one wall of text, instead of a set of separate commands. Run `/qa-review` in the middle of a code review. Run `/debug-test` when a Playwright test fails right now. Splitting the skills apart keeps each one focused on its one job. The skills also compose, instead of overlapping. This is the same reason good code keeps one function from validating, saving, and sending email all at once: single responsibility applies to prompts, too.
 
 ## Why `debug-test` Orchestrates, Instead of Just Analyzing
 
@@ -39,7 +39,7 @@ Several independent skills solve independent problems. But shipping a branch req
 
 `audit-test` joined the chain on purpose. Without `audit-test`, a branch sometimes passes `/qa-pass` while its "passing" tests prove nothing — the exact false confidence the suite exists to expose. `audit-test` runs as a batch False-Confidence Audit over the changed tests. Its 🔴 *confirmed* findings move the verdict (see the sacred-path override, below).
 
-The alternative is teaching every skill to also produce a verdict. That approach produces several different opinions about whether to ship, with no single source of truth. Centralizing that judgment in one place is worth the extra layer of indirection.
+The alternative is teaching every skill to also produce a verdict. That approach produces several different opinions about whether to ship, with no one authoritative answer. Centralizing that judgment in one place is worth the extra layer of indirection.
 
 The verdict from `/qa-pass` is QA *judgment*, not release evidence ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)). `/qa-pass` never runs your E2E suite, and never claims to. That job belongs to `gate`, a separate skill downstream of `/qa-pass`, never inside its chain. `gate` ingests a PR's actual Playwright or Cypress results, plus `audit-test`'s evidence, and derives an advisory ship, canary, or hold decision. Gate owns the ship verdict; `/qa-pass` does not.
 
@@ -47,7 +47,7 @@ The verdict from `/qa-pass` is QA *judgment*, not release evidence ([ADR-0002](d
 
 A binary pass/fail either ships something that is not ready, or blocks a change over a `LOW`-severity nit. Real QA judgment is not binary. Most branches are "shippable with known gaps" — a real, distinct state, different from "solid" and from "broken." CAUTION exists so the report stays honest about risk, without becoming a blocker for every minor gap. This mirrors the actual conversation a PR review has, not a CI gate.
 
-The one deliberate exception is the **sacred-path override** ([ADR-0007](docs/adr/0007-sentinel-sacred-path-fail-override.md)). On a path the user marks as sacred (`--sacred=<glob>`), "shippable with notes" is the wrong answer to a test *confirmed* to guard nothing. There, and only there, `/qa-pass` drops the gradient and issues an un-overridable FAIL. This borrows J-Rig's binary rigor, for the paths that earn it, while keeping CAUTION everywhere else. It does not reintroduce a numeric score: the override changes *which* categorical state the verdict reaches, not how the verdict is expressed ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)).
+The one deliberate exception is the **sacred-path override** ([ADR-0007](docs/adr/0007-sentinel-sacred-path-fail-override.md)). On a path the user marks as sacred (`--sacred=<glob>`), "shippable with notes" is the wrong answer to a test *confirmed* to guard nothing. There, and only there, `/qa-pass` drops the gradient and issues an un-overridable FAIL. This adopts J-Rig's binary rigor, for paths where it applies, while keeping CAUTION everywhere else. It does not reintroduce a numeric score: the override changes *which* categorical state the verdict reaches, not how the verdict is expressed ([ADR-0002](docs/adr/0002-sentinel-is-judgment-not-release-evidence.md)).
 
 ## Why `coverage-review` Flags Checks That Never Meaningfully Fail, Not Just Missing Ones
 

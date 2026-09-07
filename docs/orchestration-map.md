@@ -52,7 +52,7 @@ that author or auto-repair tests" (first-party tools already own that) — it is
 credibility counterweight** to a green-pushing ecosystem: **Audit** (prove the green result is
 real), **honest flake handling** (find instability, set the test aside, and route the cause,
 never auto-repair to hide the problem), and **Gate** (combine the evidence, and, in future,
-calibrate it). That is the sharpest, most defensible statement of the gap.
+calibrate it). That is the clearest, most defensible statement of the gap.
 
 ## Two ways to use this: standalone, or in sequence
 
@@ -66,7 +66,7 @@ requirement.**
   end. That order is also what lets each stage's output flow into a single evidence artifact (see
   Gate).
 
-`qa-compass` already works this way. It routes you *to* individual skills; it does not drag you
+`qa-compass` already works this way. It routes you *to* individual skills; it does not force you
 through all of them as one pipeline. The map below documents both the standalone value of each
 item and the order that connects them.
 
@@ -94,18 +94,18 @@ neither does not earn a spot.** See the Evidence Ledger below.
 
 ---
 
-## Head-to-head comparisons with other tools
+## Direct comparisons with other tools
 
 These are per-competitor notes. Each one holds to the no-unverified-claim bar, and each states
-where the other tool wins. Read these when you decide between a specific external tool and one of
-these skills:
+where the other tool is the better choice. Read these when you decide between a specific external
+tool and one of these skills:
 
 - **[`comparisons/mutation-tools.md`](comparisons/mutation-tools.md)** — Stryker, Tautest,
   Exspec, and Pitest·Arcmutate. The layered answer to false confidence: run the mutation tool at
-  the unit layer — it wins there. Reach for `audit-test` at the app-driven E2E layer, where those
+  the unit layer — it is the better choice there. Use `audit-test` at the app-driven E2E layer, where those
   tools structurally cannot enter. Gate combines the evidence; it does not verify it.
 - **[`comparisons/tea.md`](comparisons/tea.md)** — BMAD TEA. Use TEA for risk planning and its
-  governance gate. Reach for these skills for the mutation check and the calibration work that
+  governance gate. Use these skills for the mutation check and the calibration work that
   TEA's own docs show it does not do.
 
 ---
@@ -242,8 +242,8 @@ claim is not deleted — the table labels it, and gives it a path toward proof.
 | ~~`debug-test` flake mode beats "Playwright flag + read the trace" on the ambiguous subset~~ → **REFRAMED**: flake mode's value is **disposition and routing**, not detection | **Likely (by inspection, 2026-07-11)** | The team checked the SKILL file and ADR-0012 directly: detection *is* the framework's own signal (`--repeat-each`/`status:"flaky"`) — that is the baseline, **by design** — it claims no detection edge over that baseline. Its value is quarantine instead of skip, plus routing the cause to a skill that *confirms* it (`audit-test`). It is honest by design: unlike Gate, it explicitly **refuses to judge the cause**. But this is a workflow prescription, and its technical proof is **borrowed from `audit-test`** (already Confirmed) — it has no independent proof of its own. A heavy injected-test-corpus A/B test proves a claim this tool does not make (resolving the ambiguous subset), so **it is not worth running.** |
 | cypress-flaky-test-audit traces, per command, the queue order versus execution order, timing, a retry comparison, and commands that never ran, for Cypress (as HTML, console, or terminal output); diagnosis only; it does not auto-repair the test to force a pass | **Confirmed (README at the source, 2026-07-12)** | The team fetched the GitHub README directly; the features match. To upgrade this: run the tool on a real unstable Cypress spec and confirm the reported command graph. |
 | cypress-flaky-test-audit is the Cypress-side stage-6 root-cause evidence source that `debug-test` flake mode routes to (symmetric to the Playwright trace viewer); point to it, do not absorb it | **Likely (reasoned, 2026-07-12)** | This follows from the map's own thesis of pointing to a tool instead of rebuilding it, plus the tool being diagnosis only (aligned with the honest-flake approach). Not yet demonstrated: no live handoff has run yet. To upgrade this: flake mode flags a Cypress spec, hands it to this tool, and the team confirms the root cause reads clearly end to end. |
-| **TEA** (BMAD Test Architect, free) produces P0–P3 risk tables (Plan), plus a categorical PASS/CONCERNS/FAIL/WAIVED governance gate with NFR and compliance evidence (Gate) | **Confirmed (docs at the source, 2026-07-17)** | [BMAD TEA docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/): `test-design` risk tables, the `trace` categorical gate, `nfr-assess`. TEA is a **credibility and governance-side ally**, not a tool that pushes toward green (its stated enemy is "AI tests that rot"). The team verified what TEA *lacks* — the audit and Gate gap: **no mutation check, no live-execution ingest, no calibration** (see #96; the reviewer-facing writeup is [`comparisons/tea.md`](comparisons/tea.md)). |
-| **TEA's `trace` gate checks only whether coverage exists, not whether it works** — Step 3 maps each requirement to a matching test (FULL/PARTIAL/NONE/UNIT-ONLY/INTEGRATION-ONLY), and Step 5 is deterministic arithmetic over those percentages (`P0 < 100 → FAIL`; `P0 = 100 ∧ P1 ≥ 90 ∧ overall ≥ 80 → PASS`), with **no** mutation or credibility input → a P0 requirement covered only by a test that checks nothing real still gates **PASS** | **Confirmed (workflow source, `main` @ v1.19.1, 2026-07-29; re-verified unchanged @ v1.21.4, 2026-08-04; re-verified unchanged @ v1.24.0, 2026-09-04)** | The team read `bmad-testarch-trace/steps-c/step-03-map-criteria.md` and `step-05-gate-decision.md`; **zero** hits for mutation/hollow/would-fail/kill-score in the decision-path source (SKILL file, instructions, checklist, every `steps-c/e/v` file). Two additions since the last check, both confirmed **not** load-bearing on the gate: a `live` coverage level (v1.22.1) caps PASS at CONCERNS when a requirement's only evidence is a one-time runtime observation — an evidence-permanence check, not a hollowness check, and it never fires on an ordinary (non-`live`) automated test, however hollow; and a new `evidence-integrity.md` knowledge fragment names "hollow green" checks by name, but is absent from both `step-05-gate-decision.md` and `test-review`'s own scoring rubric (`criteria-registry.md`) — advisory knowledge, not an arithmetic input. **Limits:** a *synthetic* oracle downgrades PASS to CONCERNS, so a clean PASS needs formally written requirements; adding `test-review` does not close the gap either — a static review is not mutation proof. **This is not specific to TEA** — presence-based coverage is the default across this category of tool; TEA is simply the one whose source the team read directly (Qase **Likely**, docs only; closed tools **Unexamined**). Falsifier: a TEA release that adds a credibility input to Step 5, or wires `evidence-integrity.md` into `criteria-registry.md`'s scored rows. Detail: [`comparisons/tea.md`](comparisons/tea.md) §3 |
+| **TEA** (BMAD Test Architect, free) produces P0–P3 risk tables (Plan), plus a categorical PASS/CONCERNS/FAIL/WAIVED governance gate with NFR and compliance evidence (Gate) | **Confirmed (docs at the source, 2026-07-17)** | [BMAD TEA docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/): `test-design` risk tables, the `trace` categorical gate, `nfr-assess`. TEA is a **credibility and governance-side ally**, not a tool that pushes toward green (it states its target as "AI tests that rot"). The team verified what TEA *lacks* — the audit and Gate gap: **no mutation check, no live-execution ingest, no calibration** (see #96; the reviewer-facing writeup is [`comparisons/tea.md`](comparisons/tea.md)). |
+| **TEA's `trace` gate checks only whether coverage exists, not whether it works** — Step 3 maps each requirement to a matching test (FULL/PARTIAL/NONE/UNIT-ONLY/INTEGRATION-ONLY), and Step 5 is deterministic arithmetic over those percentages (`P0 < 100 → FAIL`; `P0 = 100 ∧ P1 ≥ 90 ∧ overall ≥ 80 → PASS`), with **no** mutation or credibility input → a P0 requirement covered only by a test that checks nothing real still gates **PASS** | **Confirmed (workflow source, `main` @ v1.19.1, 2026-07-29; re-verified unchanged @ v1.21.4, 2026-08-04; re-verified unchanged @ v1.24.0, 2026-09-04)** | The team read `bmad-testarch-trace/steps-c/step-03-map-criteria.md` and `step-05-gate-decision.md`; **zero** hits for mutation/hollow/would-fail/kill-score in the decision-path source (SKILL file, instructions, checklist, every `steps-c/e/v` file). Two additions since the last check, both confirmed **not** critical to the gate: a `live` coverage level (v1.22.1) caps PASS at CONCERNS when a requirement's only evidence is a one-time runtime observation — an evidence-permanence check, not a hollowness check, and it never fires on an ordinary (non-`live`) automated test, however hollow; and a new `evidence-integrity.md` knowledge fragment names "hollow green" checks by name, but is absent from both `step-05-gate-decision.md` and `test-review`'s own scoring rubric (`criteria-registry.md`) — advisory knowledge, not an arithmetic input. **Limits:** a *synthetic* oracle downgrades PASS to CONCERNS, so a clean PASS needs formally written requirements; adding `test-review` does not close the gap either — a static review is not mutation proof. **This is not specific to TEA** — presence-based coverage is the default across this category of tool; TEA is simply the one whose source the team read directly (Qase **Likely**, docs only; closed tools **Unexamined**). Falsifier: a TEA release that adds a credibility input to Step 5, or wires `evidence-integrity.md` into `criteria-registry.md`'s scored rows. Detail: [`comparisons/tea.md`](comparisons/tea.md) §3 |
 | **Playwright Planner agent** explores the running app and produces a human-readable Markdown test plan (first-party) | **Confirmed (docs at the source, 2026-07-17)** | [playwright.dev/docs/test-agents](https://playwright.dev/docs/test-agents). It pushes toward green (it sits at the front of the authoring pipeline) and does not rank tasks by *this diff's* blast radius → it yields to `test-plan`/`threat-model` for that. |
 | **Playwright Generator agent** turns the plan into executable tests, and verifies selectors and assertions live | **Confirmed (docs at the source, 2026-07-17)** | Same docs. It pushes toward green — it authors for live *correctness*, not for credibility proof (does the test fail when the code breaks?) → `qa-review`/`audit-test` handle that downstream. |
 | **Cypress AI** (`cy.prompt()` turns natural language into tests, plus self-heal; Studio AI auto-asserts; first-party `cypress-author` skill) | **Confirmed (docs at the source, 2026-07-17)** | [cy.prompt](https://docs.cypress.io/api/commands/prompt) / [Studio AI](https://docs.cypress.io/app/guides/cypress-studio) docs + [ai-toolkit](https://github.com/cypress-io/ai-toolkit). It pushes toward green; `cy.prompt()` self-heals → **state this alongside the auto-repair-to-green hazard caveat** (ADR-0025). |
@@ -272,22 +272,22 @@ entry. A calibration loop is planned.
 
 **Gate's role, in this framing, is bigger and more defensible than "a smarter classifier of test
 instability"** — experiments already ruled that claim out; see the caveats below. In an
-orchestration layer, **the single source of truth is the combined evidence artifact at the end of
+orchestration layer, **all evidence combines into one artifact at the end of
 the pipeline. Gate *is* that artifact.**
 
-> **Gate is the point where everything meets.** It is the layer that ingests the *outputs of
+> **Gate is where all the evidence comes together.** It is the layer that ingests the *outputs of
 > every other cataloged tool* — Stryker/Tautest mutation verdicts, coverage numbers, `audit-test`
 > confirmed/likely/unexamined labels, Playwright/Cypress results — into **one evidence bundle and
-> one gate decision.** It does not compete with any single tool; it is the place the whole map
-> converges. This is the "single source of truth plus workflow orchestration" win, built directly
-> into a tool.
+> one gate decision.** It does not compete with any single tool; it is where the whole map's
+> evidence comes together. This combines one authoritative artifact with workflow orchestration,
+> built directly into a tool.
 
 So Gate plays two roles:
 1. **The stage-7 gate tool** for E2E release confidence (its original scope).
 2. **The orchestration substrate** — the evidence contract and gate that the rest of the map
    feeds into. This is the stronger, more defensible position.
 
-**Honest caveats — carry these forward; they are load-bearing:**
+**Honest caveats — carry these forward; they are critical:**
 - On the **ambiguous hard-failure** cases that carry the real E2E-triage burden, Gate's extra
   value over "read the Playwright `flaky` status and check the trace" is **nil-to-negative**
   today. Its `classifyFlaky` function only runs on a test that fails, then passes on retry. Its
@@ -295,10 +295,10 @@ So Gate plays two roles:
   test. *Do not sell Gate as a better classifier.*
 - Gate sits **downstream of the review-burden problem** that actually drives adoption — a green
   Gate score over low-quality tests is manufactured confidence. Gate assumes trustworthy tests
-  already exist, which is stages 3–5's job. **Gate without the earlier stages is theater.** That
+  already exist, which is stages 3–5's job. **Gate without the earlier stages is not meaningful on its own.** That
   is exactly why Gate belongs *at the end of an orchestrated pipeline*, not on its own.
-- The **calibration loop** (log human overrides, track judge agreement, revise) is what earns
-  Gate the right to own the verdict. It is rigor no other QA-AI tool has. Without it, a 0–100
+- The **calibration loop** (log human overrides, track judge agreement, revise) is what qualifies
+  Gate to own the verdict. It is rigor no other QA-AI tool has. Without it, a 0–100
   score is exactly the false precision this repo's own honesty rules exist to fight.
 - Gate now ingests **both** Playwright (JSON report) and **Cypress** (Module API
   `CypressRunResult`) on one worst-wins execution axis (ADR-0030) — Cypress's instability signal
@@ -323,7 +323,7 @@ stages 3–5.
 - `gate`'s decision is categorical — `ship`, `canary`, or `hold` — never a numeric confidence
   score.
 - A tool cataloged as outside this project's lane (thermo-nuclear, TEA's governance gate) still
-  gets its due: the map states where it wins, not only where it loses.
+  gets its due: the map states where it is the better choice, not only where it is not.
 
 If a recommendation here ever asserts "use X over Y" with no provenance label, or a claim sits at
 **Unexamined** but reads like advice, that is a bug in this document — file it. See
