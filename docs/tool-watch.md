@@ -17,14 +17,14 @@ raw-content are not scoped and work for any public repo. See the Notes section.
 
 | Tool | Check | Baseline | Last checked |
 |---|---|---|---|
-| StrykerJS | npm `@stryker-mutator/core` dist-tags.latest | 10.0.0 (114 versions, modified 2026-08-14) | 2026-09-28 |
-| Tautest | npm `tautest` dist-tags.latest | 2.0.2 (13 versions, modified 2026-09-28) | 2026-09-28 |
-| Exspec | npm `@mnapoli/exspec` dist-tags.latest | 0.1.7 (11 versions) | 2026-09-28 |
-| TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.27.2 | 2026-09-28 |
-| Playwright test agents | raw `microsoft/playwright` `main/docs/src/release-notes-js.md`, top `## Version` block + grep it for `planner`/`generator`/`healer`/`agent`; npm `@playwright/test` dist-tags.latest for the version number | v1.63.0 (agents feature landed 1.56; top block has no agent-keyword hit) | 2026-09-28 |
-| Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 16.1.1 at top of changelog (TypeScript now accepts an options object on six commands that previously errored; `docsUrl` on an `uncaught:exception` error now typed as `string \| string[]`; `proxy-addr` bumped to address a CVE) — no new AI/prompt feature in this block. Top 3 blocks are 16.1.1, 16.1.0, 16.0.0; no prompt/AI keyword hit in that window | 2026-09-28 |
+| StrykerJS | npm `@stryker-mutator/core` dist-tags.latest | 10.0.0 (114 versions, modified 2026-08-14) | 2026-10-05 |
+| Tautest | npm `tautest` dist-tags.latest | 2.0.5 (16 versions, modified 2026-09-29) | 2026-10-05 |
+| Exspec | npm `@mnapoli/exspec` dist-tags.latest | 0.1.7 (11 versions) | 2026-10-05 |
+| TEA (BMAD Test Architect) | raw `bmad-code-org/bmad-method-test-architecture-enterprise` `main/package.json` version | v1.27.2 | 2026-10-05 |
+| Playwright test agents | raw `microsoft/playwright` `main/docs/src/release-notes-js.md`, top `## Version` block + grep it for `planner`/`generator`/`healer`/`agent`; npm `@playwright/test` dist-tags.latest for the version number | v1.63.0 (agents feature landed 1.56; top block has no agent-keyword hit) | 2026-10-05 |
+| Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 16.1.2 at top of changelog (fixed a cookie-value regression from `cy.request()`/`cy.setCookie()`; TypeScript now types `cy.location()`'s `searchParams`; `shell-quote` and `simple-git` bumped to address CVEs) — no new AI/prompt feature in this block. Top 3 blocks are 16.1.2, 16.1.1, 16.1.0; no prompt/AI keyword hit in that window | 2026-10-05 |
 | Schema validators (sclavijosuero) — **recommended, not competitor** | npm `cypress-schema-validator`, `playwright-schema-validator`, `core-ajv-schema-validator` dist-tags.latest | cypress-schema-validator 2.0.0 (2026-06-07); playwright-schema-validator 1.0.0 (2025-08-03); core-ajv-schema-validator 1.0.0 (2025-04-06) | 2026-07-31 |
-| Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; raw `LambdaTest/evidence-cli` `HEAD/package.json` HTTP status (404 = repo still private/absent, 200 = went public); `evidence-cli.dev` DNS | kane-cli 0.8.18; evidence-cli 0.1.7 (6 versions); repo raw-status 200 (`LambdaTest/evidence-cli` still public); DNS still NXDOMAIN | 2026-09-28 |
+| Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; raw `LambdaTest/evidence-cli` `HEAD/package.json` HTTP status (404 = repo still private/absent, 200 = went public); `evidence-cli.dev` DNS | kane-cli 0.8.20; evidence-cli 0.1.7 (6 versions); repo raw-status 200 (`LambdaTest/evidence-cli` still public); DNS still NXDOMAIN | 2026-10-05 |
 | Matt Pocock's skills (`diagnosing-bugs` — a **dependency** watch) | raw `mattpocock/skills` `main/README.md`: (a) grep `diagnosing-bugs` — absent means the load-bearing route is gone; (b) diff the `` `/skill-name` `` inventory for a new QA/test-quality-shaped entry | `diagnosing-bugs` present; 9 skills listed — `code-review`, `diagnosing-bugs`, `grill-me`, `grill-with-docs`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `tdd`, `to-spec`, `triage` | 2026-07-31 |
 
 Notes:
