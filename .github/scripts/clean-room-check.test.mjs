@@ -17,3 +17,4 @@ test('Elastic license text in code fails', () => assert.equal(scanDiff(diffWith(
 test('the same words in Markdown are allowed', () => assert.deepEqual(scanDiff(diffWith('docs/map.md', 'mewt is AGPL-3.0, SPDX-License-Identifier: AGPL')), []));
 test('ordinary code passes', () => assert.deepEqual(scanDiff(diffWith('skills/x.mjs', 'export const a = 1;')), []));
 test('reports the line number', () => assert.match(scanDiff(diffWith('skills/x.mjs', 'GNU Affero General Public License'))[0], /skills\/x\.mjs:1 /));
+test('the check\'s own files are exempt', () => assert.deepEqual(scanDiff(diffWith('.github/scripts/clean-room-check.mjs', 'Elastic License')), []));

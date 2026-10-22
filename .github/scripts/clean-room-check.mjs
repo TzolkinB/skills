@@ -7,6 +7,9 @@ import { fileURLToPath } from 'node:url';
 
 const RESTRICTED = /SPDX-License-Identifier:\s*[^\n]*(AGPL|Elastic)|GNU Affero General Public License|Elastic License/i;
 
+// The check's own files necessarily contain the marker words it looks for.
+const SELF = /^\.github\/(scripts\/clean-room-check|workflows\/clean-room\.yml)/;
+
 export function checkBody(body = '') {
   if (/clean-room:\s*n\/a/i.test(body)) return [];
   const section = body.split(/^#+\s*Clean-room check/im)[1];
@@ -29,7 +32,7 @@ export function scanDiff(diff = '') {
     if (hunk) { line = Number(hunk[1]) - 1; continue; }
     if (text.startsWith('+') && !text.startsWith('+++')) {
       line += 1;
-      if (!/\.md$/i.test(file) && RESTRICTED.test(text)) {
+      if (!/\.md$/i.test(file) && !SELF.test(file) && RESTRICTED.test(text)) {
         problems.push(`${file}:${line} adds a restrictive-license marker (AGPL/Elastic). Do not paste code from those sources.`);
       }
     } else if (!text.startsWith('-')) line += 1;
