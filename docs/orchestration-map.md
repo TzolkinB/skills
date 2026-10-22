@@ -232,12 +232,12 @@ Evidence tiers: **T1** official docs, pricing and changelog read · **T2** claim
 |---|---|---|---|
 | StrykerJS | Apache-2.0 | Free | T1/T2 |
 | Tautest | MIT | Free | T2 |
-| Exspec — `morodomi/exspec` (linter) | MIT per its manifest; not confirmed in a LICENSE read | Free | T1 |
+| Exspec — `morodomi/exspec` (linter) | MIT (LICENSE file read) | Free | T1/T2 |
 | Exspec — npm `@mnapoli/exspec` (browser agent) | MIT | Free, but needs an authenticated Claude Code CLI | T2 |
 | mewt (Trail of Bits) | AGPL-3.0 | Free | T2 |
-| TEA (BMAD Test Architect) | MIT | Free; no paid tier found | T2 |
+| TEA (BMAD Test Architect) | MIT (BMad Code, LLC) | Free; no paid tier found in the repo or README | T1/T2 |
 | Playwright test agents | Apache-2.0 | Free, but you bring your own AI tool | T1/T2 |
-| Cypress AI (`cy.prompt`, Studio AI) | Cypress app MIT; the `cy.prompt` service license not found | **Metered** per execution in every Cypress Cloud plan since 2026-08-01; Free-plan quota not found | T1 |
+| Cypress AI (`cy.prompt`, Studio AI) | Cypress app MIT; the `cy.prompt` service license not found | **Metered** per execution in every Cypress Cloud plan since 2026-08-01. Free (Starter) plan: **100 `cy.prompt` executions per month**; Team 9k/year ($67/mo billed annually); Business 24k/year; Enterprise 60k/year. Every run counts, in open or run mode, local or CI. Behavior at the cap is not stated on the pricing page. Pricing page read 2026-10-22. | T1 |
 | Kane / `evidence-cli` | Apache-2.0 (both packages) | CLI free to install; runs spend KaneAI credits (vendor claim: 10,000 free for 30 days) | T1/T2 |
 | Explorbot | Elastic-2.0 (source-available) | Free to use; bring your own LLM key; no hosted-service resale | T2 |
 | Shiplight | MIT (npm packages) | MCP server free; `shiplight test` needs an LLM key; Cloud platform ends 2026-10-31 per its own README | T1/T2 |
