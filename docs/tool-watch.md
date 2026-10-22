@@ -25,6 +25,9 @@ raw-content are not scoped and work for any public repo. See the Notes section.
 | Cypress AI (`cy.prompt`) | raw `cypress-io/cypress` `develop/cli/CHANGELOG.md`, top version + grep recent entries for `prompt`/`AI` | 16.2.1 at top of changelog (bugfixes only: `cy.fixture()`/intercept fixture-path escape check, `.rightclick()` `buttons` value fix, `.trigger()` empty-string handling, a 16.0.0 shutdown-crash regression fix). The only `prompt`/`AI` hit in the top 3 blocks (16.2.1, 16.2.0, 16.1.1) is the same carried-forward bugfix line — "Fixed an issue where `cy.prompt` and Studio could fail to load" — for the existing `cy.prompt` feature, not a new AI capability | 2026-10-22 |
 | Schema validators (sclavijosuero) — **recommended, not competitor** | npm `cypress-schema-validator`, `playwright-schema-validator`, `core-ajv-schema-validator` dist-tags.latest | cypress-schema-validator 2.0.0 (2026-06-07); playwright-schema-validator 1.0.0 (2025-08-03); core-ajv-schema-validator 1.0.0 (2025-04-06) | 2026-07-31 |
 | Kane / LambdaTest (`kane-cli`, `evidence-cli`) | npm `@testmuai/kane-cli` + `@testmuai/evidence-cli` dist-tags.latest; raw `LambdaTest/evidence-cli` `HEAD/package.json` HTTP status (404 = repo still private/absent, 200 = went public); `evidence-cli.dev` DNS | kane-cli 0.9.0; evidence-cli 0.1.7 (6 versions); repo raw-status 200 (`LambdaTest/evidence-cli` still public); DNS still NXDOMAIN | 2026-10-22 |
+| Explorbot (testomatio) | npm `explorbot` dist-tags.latest | 0.5.8 (modified 2026-10-14); license Elastic-2.0 (source-available, not OSI open source) | 2026-10-22 |
+| mewt (Trail of Bits mutation tester) | raw `trailofbits/mewt` `HEAD/Cargo.toml` `version` | 4.0.0 | 2026-10-22 |
+| Shiplight AI (MCP server) | npm `@shiplightai/mcp` dist-tags.latest | 0.2.3 (modified 2026-09-28) | 2026-10-22 |
 | Matt Pocock's skills (`diagnosing-bugs` — a **dependency** watch) | raw `mattpocock/skills` `main/README.md`: (a) grep `diagnosing-bugs` — absent means the load-bearing route is gone; (b) diff the `` `/skill-name` `` inventory for a new QA/test-quality-shaped entry | `diagnosing-bugs` present; 9 skills listed — `code-review`, `diagnosing-bugs`, `grill-me`, `grill-with-docs`, `improve-codebase-architecture`, `setup-matt-pocock-skills`, `tdd`, `to-spec`, `triage` | 2026-07-31 |
 
 Notes:
@@ -98,3 +101,15 @@ only after a human adds a real check method.
 - 2026-09-01: **Sauce Labs AURA** — AI-Unified Release Assurance platform that authors, runs, and analyzes tests in a closed-loop agentic workflow with self-healing, launched 2026-07-22 and expanded with bring-your-own-model support in August 2026. [https://www.businesswire.com/news/home/20260722320853/en/Sauce-Labs-Launches-AURA-to-Close-the-AI-Code-Verification-Gap]. Why relevant: natural-language test generation / self-healing test automation.
 - 2026-09-01: **Explorbot** (testomatio) — open-source AI agent that autonomously explores a live web app (reading the UI, inferring the domain, choosing its own actions) and turns each discovery into a runnable Playwright/CodeceptJS spec. [https://github.com/testomatio/explorbot]. Why relevant: AI exploratory-testing agents.
 - 2026-10-01: **AxonQA** — AI-powered QA workspace that turns requirements into test cases and ties manual tests, browser automation, API checks, coverage, defects and requirement drift to an evidence-backed ship/no-ship verdict; founded 2026, UK. [https://www.producthunt.com/posts/1251949]. Why relevant: natural-language test generation / test-evidence or attestation bundles.
+
+Triage 2026-10-22 (manual, of the 2026-08-01 .. 2026-10-01 candidates above):
+- **Promoted to the table** (each has a deterministic npm/raw check): Explorbot, mewt, Shiplight. Explorbot's
+  license is Elastic-2.0, so the "open-source" wording above is wrong — it is source-available. mewt is the one
+  to read closely: it runs a configurable per-mutant test command and lists JavaScript/TypeScript among its
+  languages, which touches the "mutation tools are unit-only" claim in
+  [`comparisons/mutation-tools.md`](comparisons/mutation-tools.md). Not yet verified against its source; do not
+  change that doc until it is.
+- **Not promoted — closed SaaS, no deterministic check**: Revyl, Panto AI, Sauce Labs AURA, AxonQA. Left to the
+  monthly sweep. **AxonQA** is the closest to Gate's ship verdict (verdict values "ready" / "ready with accepted
+  risks" / "not ready" with evidence and accepted risks; people make the final call; 14-day trial, Pro about
+  £69/month) — vendor claims only, no docs on how the verdict is computed.
