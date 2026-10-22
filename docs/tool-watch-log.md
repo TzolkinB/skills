@@ -62,3 +62,12 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-07-23  evidence-cli 0.1.6 → 0.1.7 (6 versions)
 - 2026-07 → 2026-10  kane-cli 0.6.2 → 0.9.0 (weekly bumps; 0.9.0 on 2026-10-19)
 - Unchanged through 2026-10-19: `LambdaTest/evidence-cli` raw status 200; `evidence-cli.dev` NXDOMAIN
+
+## Explorbot (testomatio)
+- 2026-10-22  baseline 0.5.8 (promoted from the discovery log)
+
+## mewt (Trail of Bits)
+- 2026-10-22  baseline 4.0.0 (promoted from the discovery log)
+
+## Shiplight AI
+- 2026-10-22  baseline @shiplightai/mcp 0.2.3 (promoted from the discovery log)
