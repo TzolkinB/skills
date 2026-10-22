@@ -46,8 +46,9 @@ not fail when the code breaks. "Why not just run a mutation tool?" is a fair que
 | Tool                   | What it is                                                                         | Scope                                  | Executes?                                  |
 | ---------------------- | ---------------------------------------------------------------------------------- | -------------------------------------- | ------------------------------------------ |
 | **StrykerJS**          | Full mutation-testing framework for JS/TS                                          | **Unit** (Jest/Vitest/Jasmine/Karma/…) | **Yes** — mutates source, reruns the suite |
-| **Tautest**            | PR **diff-scoped** mutation (uses Stryker internally)                              | **Unit**, JS/TS                        | **Yes** — mutates only changed lines       |
-| **Exspec**             | Static test-quality linter (assertion-free / over-mocked / coupled tests)          | Multi-language, test files             | **No** — reads tests, never runs them      |
+| **Tautest**            | PR **diff-scoped** mutation (uses Stryker internally; 2.x adds `analyze`, `verify`, `--suggest`) | **Unit**, JS/TS (Vitest, Jest beta) | **Yes** — mutates only changed lines       |
+| **Exspec** (`morodomi/exspec`) | Static test-quality linter (assertion-free / over-mocked / coupled tests). *Not* the npm `@mnapoli/exspec`, which runs Gherkin specs in a browser with an AI agent | Multi-language, test files             | **No** — reads tests, never runs them      |
+| **mewt** (Trail of Bits, AGPL-3.0) | Language-agnostic mutation tester; runs a test command you give it per mutant | Any command — but see below | **Yes** — mutates files in place, one mutant at a time |
 | **Pitest / Arcmutate** | JVM mutation testing (Arcmutate = commercial extensions to the free Pitest engine) | **Unit**, JVM (Java/Kotlin)            | **Yes** — mutates bytecode, reruns JUnit   |
 
 For unit tests specifically, a mutation runner is the strongest tool that exists for proving a **unit** test
@@ -85,8 +86,8 @@ these tools cannot see.
 that one targeted mutation against a **dev-served** Playwright or Cypress test. It checks whether the
 test goes red. This proof comes from real execution, one layer up from where the mutation tools stop.
 
-> **How to check (Confirmed, 2026-07-12):** Clone Tautest. It is Stryker-only, wired to the Jest and
-> Vitest runners. Its source has zero Playwright or Cypress code, and its own docs route end-to-end
+> **How to check (Confirmed, re-verified 2026-10-22 against Tautest 2.1.5; first confirmed 2026-07-12 on 1.10.1):** Clone Tautest. It is Stryker-only, wired to the Jest and
+> Vitest runners (`packages/core/src/config/schema.ts`; Jest is beta). Its source has zero Playwright or Cypress code, and its own docs route end-to-end
 > testing _out_ of mutation scope. StrykerJS's mutate-model is verified at its docs: unit runners
 > only. For Pitest, check its runner list: JUnit and TestNG, no browser driver. See the Evidence
 > Ledger in [`../orchestration-map.md`](../orchestration-map.md) (Audit row, "reachability wall").
@@ -95,6 +96,19 @@ test goes red. This proof comes from real execution, one layer up from where the
 against" — _not_ "we out-trust execution." At the unit layer, execution beats this repo's own tools
 too. Claiming otherwise is the exact overclaim this repo exists to catch. The scope claim survives a
 hostile reviewer. The trust claim does not.
+
+## What "no browser-aware runner" means for your suite
+
+"Unit only" is shorthand. Here is what it means in practice if you have a Playwright or Cypress suite and are choosing a tool. All of this comes from each tool's docs and source (tier T1/T2); **none of it has been run against an E2E suite yet (no T3)**, and the cost figures are the tools' own.
+
+- **Runners are unit runners.** StrykerJS (10.0.0) and Tautest (2.1.5) rerun Vitest, Jest and similar. Neither has a runner that starts a browser, serves your app, or drives Playwright or Cypress. Tautest's own docs say to keep Playwright in your normal suite.
+- **A generic command runner exists, but it is a weak fit.** Stryker's `commandRunner` and mewt's per-mutant test command accept any shell command, so `npx playwright test` is *technically* allowed. In practice:
+  - **Every mutant reruns the whole command, one after another.** mewt has no parallelism flag; its docs work out 1 minute × 10 files × 100 mutants = about 16 hours and say not to run it in CI. An E2E suite is far slower than a unit suite, so the cost multiplies.
+  - **The mutated file must reach the running app.** If your app is served from a build or a dev server, nothing in these tools rebuilds or restarts it per mutant. A stale build means the test runs against unmutated code and the result is wrong. `audit-test` has a guard for this ([ADR-0016](../adr/0016-audit-test-reachability-guard.md)).
+  - **No targeting.** mewt has no coverage pre-pass, so it mutates code your E2E tests never touch. Tautest scopes to changed lines but only for the unit runners above.
+  - **Files are changed in place.** mewt edits your working tree with no isolation, so a crash or a kill can leave a mutated file behind. Run it on a throwaway branch or worktree.
+  - **A flaky E2E failure may look like a kill.** This is our inference, not something we observed: a mutation tool reads "test failed" as "mutant caught", and an E2E suite can fail for reasons unrelated to the change.
+- **What to use for what.** Unit tests: use Stryker, Tautest or Pitest. App-driven Playwright/Cypress tests: `audit-test` runs one targeted mutation on a dev-served app. mewt is the one to try if you want a generic tool and can afford the time on a small, fast suite; it is AGPL-3.0 and its README calls it a work in progress.
 
 ## How they fit together — orchestrate, do not replace
 
