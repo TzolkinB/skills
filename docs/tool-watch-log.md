@@ -35,6 +35,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-10-12  v1.27.2 → v2.0.1 ⚑ major — §3 re-read not yet done
 - 2026-10-19  v2.0.1 → v3.2.0 ⚑ major (workflows renamed `bmad-testarch-*` → `bmad-tea-*`) — §3 re-read not yet done
 - 2026-10-22  v3.2.0 → v3.4.0 — §3 re-read not yet done
+- 2026-10-22  v2.0.1 → v3.4.0 ⚑ major (baseline manually reset to v2.0.1 by #244 to test the trigger path; routine confirmed the major-bump trigger and restored the real baseline)
 
 ## Playwright test agents
 - 2026-07-23  baseline v1.61.1
