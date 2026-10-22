@@ -19,8 +19,11 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-10-19  2.0.5 → 2.1.3 (16 → 20 versions)
 - 2026-10-22  2.1.3 → 2.1.5 (20 → 22 versions)
 
-## Exspec
+## Exspec (npm `@mnapoli/exspec`)
 - 2026-07-23  baseline 0.1.7 (no change since)
+
+## Exspec (`morodomi/exspec`, the linter)
+- 2026-10-22  baseline crates.io 1.0.0 (README says v0.6.0; added after the tool-research pass found two tools sharing the name)
 
 ## TEA (BMAD Test Architect)
 - 2026-07-23  baseline v1.19.1
