@@ -17,6 +17,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-09-28  1.10.1 → 2.0.2 ⚑ major
 - 2026-10-05  2.0.2 → 2.0.5
 - 2026-10-19  2.0.5 → 2.1.3 (16 → 20 versions)
+- 2026-10-22  2.1.3 → 2.1.5 (20 → 22 versions)
 
 ## Exspec
 - 2026-07-23  baseline 0.1.7 (no change since)
@@ -33,6 +34,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-09-21  v1.26.0 → v1.27.2
 - 2026-10-12  v1.27.2 → v2.0.1 ⚑ major — §3 re-read not yet done
 - 2026-10-19  v2.0.1 → v3.2.0 ⚑ major (workflows renamed `bmad-testarch-*` → `bmad-tea-*`) — §3 re-read not yet done
+- 2026-10-22  v3.2.0 → v3.4.0 — §3 re-read not yet done
 
 ## Playwright test agents
 - 2026-07-23  baseline v1.61.1
