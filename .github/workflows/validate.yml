@@ -6,6 +6,10 @@ name: validate
 on:
   push:
     branches: [main]
+    # The tool-watch routine pushes to main weekly; those docs-only commits need no plugin validation.
+    paths-ignore:
+      - 'docs/tool-watch.md'
+      - 'docs/tool-watch-log.md'
   pull_request:
     branches: [main]
 
