@@ -1,6 +1,9 @@
 ## What and why
 
-## Clean-room check (only if this change was inspired by another tool)
+## Clean-room check
+
+Checked on every PR by CI (`clean-room`). If this change was not inspired by another tool, delete the boxes and write `Clean-room: n/a`.
+
 
 - [ ] Own code and wording; only the idea or behaviour was taken
 - [ ] The inspiration is cited in the ADR or doc, with evidence tiers on its claims

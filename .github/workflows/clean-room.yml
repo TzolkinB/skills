@@ -1,0 +1,32 @@
+name: clean-room
+
+# Every pull request is checked against the clean-room rule in CLAUDE.md:
+# the PR body must tick the four boxes (or say "Clean-room: n/a"), and no code
+# may carry an AGPL / Elastic license marker. Re-runs when the PR body is edited.
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+jobs:
+  clean-room:
+    name: clean-room check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Self-test the check
+        run: node --test .github/scripts/clean-room-check.test.mjs
+
+      - name: Check this pull request
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/clean-room-check.mjs

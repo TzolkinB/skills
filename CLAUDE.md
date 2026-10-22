@@ -16,3 +16,7 @@ before you finish, and say in your summary how it passes.
    other tool before you read its source with the intent to reuse it.
 
 If a change cannot pass these four rules, stop and ask the owner.
+
+The `clean-room` CI check runs on every pull request: the PR body must tick the four boxes (or say
+`Clean-room: n/a`), and no code may add an AGPL or Elastic license marker. Claude sessions check their own
+work against the four rules; CI checks the PR.
