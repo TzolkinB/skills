@@ -59,4 +59,8 @@ The goal is not a longer tool list; it is the cheapest route that still gives th
 
 ## What would change this review
 
-A T3 run of mewt or Stryker `commandRunner` against a small Playwright suite (turns "impractical" into a number), the `trace` real run in [#223](https://github.com/TzolkinB/skills/issues/223), and the [#264](https://github.com/TzolkinB/skills/issues/264) experiment.
+Each has an issue:
+
+- A T3 run of mewt and Stryker `commandRunner` against a small Playwright suite (turns "impractical" into a number) — [#250](https://github.com/TzolkinB/skills/issues/250).
+- The `trace` real run, now against TEA v3 — [#223](https://github.com/TzolkinB/skills/issues/223).
+- The generate-then-audit experiment — [#264](https://github.com/TzolkinB/skills/issues/264).
