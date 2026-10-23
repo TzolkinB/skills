@@ -46,6 +46,7 @@ These skills are the gap-fillers; at each of the seven QA stages the *best* tool
 | | | Playwright **Planner** agent (app → Markdown plan), **TEA** risk tables (P0–P3; TEA also serves the Gate) | advice · Confirmed (external) |
 | **2 · Author** | Write the tests | Playwright **Generator** agent, **Cypress AI** (Studio AI auto-assert; `cy.prompt()` **self-heals → caveat**) — first-party authoring (commodity) | advice · Confirmed (external) |
 | | Is what they wrote *testable*? | `/qa-review` | advice · Confirmed (own) |
+| | An AI tool wrote the tests — can I trust them? | Run `/audit-test` (or `/audit-orchestrator`) on them before you trust them; the AI writers aim for green, not for useful ([#264](https://github.com/TzolkinB/skills/issues/264)) | lead · Unexamined |
 | **3 · Audit** | Is this *passing* test real? | **unit JS/TS →** `Tautest` / `StrykerJS` · **app-driven →** `/audit-test` (let `/audit-orchestrator` pick) · static pre-screen: **Exspec** (structural smells, no mutation) | advice · Tautest / audit-test / Exspec **Confirmed**, Stryker **Likely** |
 | **4 · Coverage** | What's untested? | `/coverage-review` (assertion quality, app-driven paths) | advice · own |
 | | | *caveat-lead:* `coverage-guard` — auto-generates tests looping to 100% line coverage → **manufactured-confidence hazard**; pair with `/coverage-review` | hazard, not advice |

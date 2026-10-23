@@ -35,7 +35,7 @@ where to look. If a future TEA release closes one of these gaps, this note is wr
 | You need P0–P3 risk tiers and NFR planning before you write tests                | **TEA** `test-design`                                                                                                |
 | You want a static test-quality score with violations and fixes                   | **TEA** `test-review`                                                                                                |
 | You need a requirement→test traceability matrix and a governance/compliance gate | **TEA** `trace`                                                                                                      |
-| You need to scaffold a test framework, CI pipeline, or expand ATDD suites        | **TEA** `framework` / `ci` / `atdd` / `automate`                                                                     |
+| You need to scaffold a test framework, CI pipeline, or expand ATDD suites        | **TEA** `framework` (CI included) / `automate` (ATDD red + expand)                                                   |
 | You need to know whether a passing test actually fails when the code breaks      | **[`audit-test`](../audit-test.md)** — one targeted mutation, execution-grounded                                     |
 | You want to know if a P0 requirement's "covered" test is actually hollow         | **Gate's `--trace-json` join** — reads TEA's `trace` matrix, resolves each requirement against `audit-test` evidence |
 | You want one risk-weighted, calibrated ship/canary/hold call across both         | **[`gate`](../gate.md)** — design today; the calibration layer waits on a labeled history                            |
@@ -45,17 +45,18 @@ where to look. If a future TEA release closes one of these gaps, this note is wr
 TEA is the **BMAD Test Architect module**, created by Murat Ozcan
 ([`bmad-method-test-architecture-enterprise`](https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise),
 free). It is not a single-purpose tool. It is a near-complete testing **orchestration method**: a
-prompt-persona agent with nine workflows that span most of the same QA lifecycle this repo's map
+prompt-persona agent with eight workflows (v3.4.0; nine before the v3 restructure) that span most of the same QA lifecycle this repo's map
 covers. This is exactly why "why use yours, not just TEA?" is a real question. Its
-nine workflows:
+workflows (v3.0.0 renamed them from `bmad-testarch-*` to `bmad-tea-*`; the older names are kept in the historical notes below):
 
 | TEA workflow                             | What it does                                                           | Map stage it covers         |
 | ---------------------------------------- | ---------------------------------------------------------------------- | --------------------------- |
 | `test-design`                            | P0–P3 risk tiers + NFR planning                                        | 1 · Plan                    |
 | `test-review`                            | Static quality audit → 0–100 score + violations + fixes                | 2–3 · Static review         |
 | `trace`                                  | Requirement→test matrix + categorical gate (PASS/CONCERNS/FAIL/WAIVED) | 4 · Traceability / 7 · Gate |
-| `nfr-assess`                             | NFR evidence audit                                                     | 7 · Gate (governance)       |
-| `framework` / `ci` / `atdd` / `automate` | Scaffold, pipelines, ATDD, expand suites                               | Setup / authoring           |
+| `nfr` (was `nfr-assess`)                 | NFR evidence audit                                                     | 7 · Gate (governance)       |
+| `framework` (includes CI) / `automate` (includes ATDD) | Scaffold, pipelines, ATDD red + expand suites                | Setup / authoring           |
+| `teach-me-testing` / `evaluate`          | Learning workflow; evaluating AI features, prompts, skills and agents  | Outside the seven stages    |
 
 TEA states plainly what it targets: _"AI tests that rot."_ TEA is a **credibility-side ally**, not a tool
 that pushes for green results. For risk-ranked planning, static review, traceability,
@@ -71,6 +72,15 @@ now scaffolds a write-time enforcement hook (`tea-enforce.cjs`) that blocks a `.
 same presence/deduction scoring `criteria-registry.md` always ran. Neither runs the code. The three
 gaps below are unmoved by either addition.
 
+**Re-checked at v3.4.0 on 2026-10-22 (source read at the tag; nothing run).** TEA went through two major
+releases since the last check: v2.0.0 (2026-10-09, headless CLI made the primary entry point, with
+`--github` check runs and PR comments) and v3.0.0 (2026-10-14, workflows renamed `bmad-tea-*`, CLIs for every
+workflow, 20 bins in all, including a new `tea-trace`). v3.2 added `tea-unit-check` and Vitest/Jest verification
+in `tea-automate`, so TEA now *runs the unit tests it generates* — that is execution, but not mutation, and not
+of your existing tests. The new `tea-evaluate` workflow has real mutation-and-rollback machinery, but it
+mutates the *evaluation target* (a prompt, skill, agent, AI feature or workflow), not the code under test or your
+test suite. The three gaps below still hold; §3 has the line-level re-check.
+
 ## The three things TEA's own docs and source show it cannot do
 
 ### 1. Run a mutation to check a passing test — the strongest, clearest difference
@@ -84,13 +94,16 @@ It cannot tell you whether the test fails when the code breaks, because it never
 that one targeted mutation. It checks whether the test goes red — **execution-grounded, not
 reasoning.** A survived mutation is a counterexample: it proves the test does not fail when the code
 breaks. A killed mutation confirms the test works _against that one mutation_ — not a blanket
-guarantee the test is fine. TEA has no mutation step of any kind. This is the clearest, most settled
-point in the whole comparison: mutation-grounded evidence is a capability TEA's docs simply do not
-contain.
+guarantee the test is fine. TEA has no step that mutates the code under test. (Since v3.0 it does ship `tea-evaluate`, whose mutation
+machinery targets prompts, skills and agents, not your application or tests; TEA's own
+`test/eval-automate-generation.js` scores a generated suite against mutated service copies, but that harness is
+not in the published package.) This is the clearest, most settled point in the whole comparison:
+mutation-grounded evidence on *your* tests is a capability TEA's docs and source do not contain.
 
 > **How to check:** Search TEA's workflow docs for "mutation," "would this test fail," or "kill
-> score." `test-review` scores _test quality_ statically; nothing runs a mutation. (Verified
-> 2026-07-17.)
+> score." `test-review` scores _test quality_ statically; nothing runs a mutation on your tests. (Verified
+> 2026-07-17; re-checked 2026-10-22 at v3.4.0 — `tea-evaluate`'s mutation targets TEA's own evaluation
+> targets, see `skills/bmad-tea-evaluate/references/mutation.md`.)
 
 ### 2. A risk-weighted, calibrated release confidence that learns from overrides — Gate
 
@@ -125,7 +138,10 @@ while building the `trace`-to-Gate conversion ([#220](https://github.com/Tzolkin
 That re-read turned up two corrections, noted below. **Re-verified unchanged again at v1.24.0 on
 2026-09-04** (a routine recheck, not tied to a build) — that pass found one new overlay in Step 5's
 arithmetic and one new knowledge fragment that names hollow tests directly, both noted below as a
-third correction. Neither is a mutation or credibility input to the gate.
+third correction. Neither is a mutation or credibility input to the gate. **Re-verified unchanged at v3.4.0 on
+2026-10-22** across two major releases (see the v3.4.0 notes at the end of this section). Paths below are the
+v1.x ones (`src/workflows/testarch/bmad-testarch-trace/`); in v3 the same files live under
+`skills/bmad-tea-trace/steps-c/`.
 
 - **`steps-c/step-03-map-criteria.md`** marks each oracle item **FULL / PARTIAL / NONE** by mapping it
   to a _matching test_. Every validation rule in this step is a presence check: endpoint, auth,
@@ -195,6 +211,26 @@ _rejection_ test, it also satisfies Step 3's error-path-present and not-happy-pa
 > **Falsifier:** a TEA release that adds a credibility input to Step 5's arithmetic, or wires
 > `evidence-integrity.md` (or an equivalent) into `criteria-registry.md`'s scored rows.
 
+**v3.4.0 notes (2026-10-22, source read at the tag, nothing run):**
+
+- **Step 5 is unchanged in kind.** `skills/bmad-tea-trace/steps-c/step-05-gate-decision.md` (L286-359) still decides on
+  coverage percentages by priority (P0 below 100 FAIL; overall below 80 FAIL; P1 below 80 FAIL; P1 at 90 or above PASS;
+  80-89 CONCERNS) plus overlays that only *lower* a PASS to CONCERNS (synthetic oracle, fresh live failures,
+  live-only coverage). `WAIVED` is human-only and never derived. No input executes tests, mutates code or scores
+  whether a test is hollow. **The falsifier is not triggered.**
+- **One genuinely new thing, and what it is not.** Step 3 section 1a (`step-03-map-criteria.md` L64-85) now
+  *excludes* a test that names a criterion but whose assertions do not establish it, and lists it under "Considered and
+  rejected" (`rejectedEvidence`). This is the closest TEA gets to a credibility check. It is an LLM reading the test
+  text, not an execution: a test with plausible assertions that still never fails when the code breaks passes it.
+  How reliable the rejection is in practice is **Unexamined** (needs a run).
+- **`test-review` can name hollow shapes; `trace` does not read it.** `criteria-registry.md` has CRITICAL rows C3-C7
+  (tautological, no assertion, mock asserted against itself, unreachable assertion, optional-only outcome). They are
+  pattern-based, and `step-04` only prints a suggestion to run `test-review`; no `test-review` score feeds the gate.
+  `evidence-integrity.md` is still a knowledge fragment: neither `trace` nor the scoring rows name it, but it is
+  listed as core-tier in the knowledge index both skills load from (`tea-index.csv`), so an agent can load it at runtime
+  as advice. It remains advisory, not an arithmetic input. (A second reader re-checked the Step 5, Step 3 1a and
+  `tea-trace` claims above against the source and confirmed them; this index detail came from that check.)
+
 #### What `trace` actually writes (the machine-readable side)
 
 This matters because Gate _joins_ against this output. What the output does and does not contain
@@ -212,6 +248,8 @@ artifact — the Phase-1 JSON is real, machine-readable, and is what TEA's own s
 is also a **temp** file, which is the one real fragility in consuming it. That is what
 [`tea-to-trace-matrix.mjs`](../../skills/gate/tea-to-trace-matrix.mjs) converts, and why it never
 parses the Markdown ([ADR-0050](../adr/0050-tea-trace-converts-from-its-phase-1-json-never-its-markdown.md)).
+**At v3.4.0 (2026-10-22, source read):** the Phase-1 shape is unchanged (`phase: PHASE_1_COMPLETE`, `tempCoverageMatrixPath`, `requirements[].id/priority/coverage`, `tests[]`). Changed: the temp JSON is now `/tmp/tea-trace-coverage-matrix-{run_key}-{{timestamp}}.json` and the Markdown and summary files carry a `-{run_key}` suffix under `{test_artifacts}/trace/`; `tests[]` gained `id` and `status` fields and `level: 'live'` rows; `gate-decision.json` is `schema_version 0.1.0` and the summary `0.3.0`. New: a `tea-trace` headless CLI (`--gate-type`, `--fail-on`, `--json`, `--live-results`, `--waiver-register`), which makes a real capture feasible without hand-driving an agent ([#223](https://github.com/TzolkinB/skills/issues/223)). The converter has **not** been rechecked against a real v3 run.
+
 `e2e-trace-summary.json`'s `schema_version` moved to `0.2.0` at v1.22.1, adding a `live_evidence` block
 and a `coverage.by_level.live` bucket — both additive, and both live only in the aggregate file the
 converter never reads. The Phase-1 shape the converter actually consumes (`id`/`priority`/`coverage`/
@@ -298,5 +336,6 @@ _Evidence base and the two-seam design detail: issue #96. Map context:
 [`../orchestration-map.md`](../orchestration-map.md) (TEA sits at stages 1 and 7; the evidence-ledger
 row records the verified absences). This repo verified all TEA capability and absence claims against
 [TEA's published docs](https://bmad-code-org.github.io/bmad-method-test-architecture-enterprise/explanation/tea-overview/)
-on 2026-07-17, and re-verified §3 against the workflow source at v1.21.4 (2026-08-04) and again at
-v1.24.0 (2026-09-04). License re-checked 2026-07-31, unchanged._
+on 2026-07-17, and re-verified §3 against the workflow source at v1.21.4 (2026-08-04) again at
+v1.24.0 (2026-09-04), and again at v3.4.0 (2026-10-22, source at the tag, nothing run). License re-checked
+2026-10-22 (MIT, BMad Code, LLC), unchanged. TEA has no paid tier in its repo or README (website not checked)._
