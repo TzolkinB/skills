@@ -11,6 +11,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 ## StrykerJS
 - 2026-07-23  baseline 9.6.1
 - 2026-08-17  9.6.1 → 10.0.0 ⚑ major
+- 2026-10-26  10.0.0 → 10.1.1 (114 → 115 versions)
 
 ## Tautest
 - 2026-07-23  baseline 1.10.1
@@ -68,9 +69,13 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 
 ## Explorbot (testomatio)
 - 2026-10-22  baseline 0.5.8 (promoted from the discovery log)
+- 2026-10-26  0.5.8 → 0.5.9
 
 ## mewt (Trail of Bits)
 - 2026-10-22  baseline 4.0.0 (promoted from the discovery log)
 
 ## Shiplight AI
 - 2026-10-22  baseline @shiplightai/mcp 0.2.3 (promoted from the discovery log)
+
+## Schema validators (sclavijosuero)
+- 2026-10-26  playwright-schema-validator 1.0.0 → 1.1.0
