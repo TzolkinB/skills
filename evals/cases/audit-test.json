@@ -191,6 +191,42 @@
           "anchors": { "any": ["add a new test", "new tests to add", "propose new tests", "additional test cases"] }
         }
       ]
+    },
+    {
+      "id": "constant-input-passthrough",
+      "invoke": "/audit-test fixtures/audit-test/create-booking.spec.js fixtures/audit-test/create-booking.js",
+      "workspace": "isolated",
+      "fixture_files": [
+        "fixtures/audit-test/create-booking.spec.js",
+        "fixtures/audit-test/create-booking.js"
+      ],
+      "dry_run_sample": "samples/audit-test.constant-input-passthrough.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.constant-input-passthrough.fail.md",
+      "expect_verdict": "🔴",
+      "must_surface": [
+        {
+          "claim": "Names the constant-input smell: every call passes the same value (`staff: false`), so the expected values match what the code returns if it ignores the input.",
+          "anchors": { "any": ["constant-input", "every call", "same value", "staff: false", "ignores `staff`"] }
+        },
+        {
+          "claim": "Notes the other branch is never exercised: no test passes `staff: true`, so the confirmed/true path is untested.",
+          "anchors": { "any": ["staff: true", "admin path", "never exercised", "untested", "other branch"] }
+        },
+        {
+          "claim": "Proves it by execution: hardcodes status and createdByStaff to the tested values, reruns just this test, and it still passes.",
+          "anchors": { "any": ["still passed", "still passes", "hardcoded", "hard-coded"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT propose deleting the test (that is prune-tests' job).",
+          "anchors": { "any": ["delete the test", "deleting the test", "remove the test", "should be deleted"] }
+        },
+        {
+          "claim": "Must NOT propose new tests to add (that is coverage-review's job).",
+          "anchors": { "any": ["add a new test", "new tests to add", "propose new tests", "additional test cases"] }
+        }
+      ]
     }
   ]
 }

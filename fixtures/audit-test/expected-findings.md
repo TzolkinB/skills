@@ -51,8 +51,16 @@ Run: `/audit-test fixtures/audit-test/notify-confirmed.spec.js fixtures/audit-te
   empty-rooms guard before `sendEmail`. The test was valid until that guard was added.
 - A real test returns a room, then asserts the send was attempted and the error logged.
 
-## Candidate, not yet a case
-A passthrough field asserted against a fixture value equal to its default (`purpose: null` →
-`null`) survives mutating the field to `null`. Same family; add a fixture if it recurs.
+## `create-booking.spec.js` — "sets status and the staff flag from the caller"
+Run: `/audit-test fixtures/audit-test/create-booking.spec.js fixtures/audit-test/create-booking.js`
+Second sighting of the family first noted as `purpose: null` → `null`; now a case.
+- 🔴 **Constant-input.** Every call passes `staff: false`, so `'pending'` / `false` are what the
+  code returns even if it ignores `staff`. Hardcoding both fields survives (checked under jest 29).
+- A real test also passes `staff: true` and asserts `confirmed` / `true`.
 
-Boundary: neither case proposes deleting the test or adding new ones.
+## Seen in the same run, not yet cases
+Guards that survived deletion because no test reached them: a schema rule (`endTime > startTime`),
+HTML-escaping of a group name, and an invalid-date guard in a confirmation email. Same
+"unreached guard" family as the stale-stub case; add a fixture if one recurs.
+
+Boundary: no case proposes deleting the test or adding new ones.
