@@ -30,3 +30,29 @@ Set `findOverlapping` to return a non-empty array and assert that `svc.book(...)
 ## Boundary notes (what the skill should NOT do)
 - Not propose new tests (that's `coverage-review`).
 - Not propose deleting the test (that's `prune-tests`) — the fix is to *strengthen* it.
+
+---
+
+# Expected findings — audit-test / notifier fixtures
+
+Two small fixtures lifted from a real qa-review + qa-pass run on a booking-notification PR. In
+that run a self-review had called the new tests acceptable; only the mutation run found them hollow.
+Both survive "delete the try/catch" under jest 29 (checked by hand).
+
+## `confirm-booking.spec.js` — "still returns 200 when the notifier throws"
+Run: `/audit-test fixtures/audit-test/confirm-booking.spec.js fixtures/audit-test/confirm-booking.js`
+- 🔴 **Overmocked.** The module mock never rejects, so the `catch` is never entered; the `200`
+  assertion holds with or without it.
+- A real test makes the notifier mock reject and asserts the call still returns 200.
+
+## `notify-confirmed.spec.js` — "resolves and logs when the email send rejects"
+Run: `/audit-test fixtures/audit-test/notify-confirmed.spec.js fixtures/audit-test/notify-confirmed.js`
+- 🔴 **Stale stub / focal path unreached.** `db.rooms` resolves `[]`, so the function returns at the
+  empty-rooms guard before `sendEmail`. The test was valid until that guard was added.
+- A real test returns a room, then asserts the send was attempted and the error logged.
+
+## Candidate, not yet a case
+A passthrough field asserted against a fixture value equal to its default (`purpose: null` →
+`null`) survives mutating the field to `null`. Same family; add a fixture if it recurs.
+
+Boundary: neither case proposes deleting the test or adding new ones.

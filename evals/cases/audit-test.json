@@ -119,6 +119,78 @@
           "anchors": { "any": ["seems overmocked", "looks weak", "reads as hollow", "appears hollow"] }
         }
       ]
+    },
+    {
+      "id": "overmocked-notifier-catch",
+      "invoke": "/audit-test fixtures/audit-test/confirm-booking.spec.js fixtures/audit-test/confirm-booking.js",
+      "workspace": "isolated",
+      "fixture_files": [
+        "fixtures/audit-test/confirm-booking.spec.js",
+        "fixtures/audit-test/confirm-booking.js"
+      ],
+      "dry_run_sample": "samples/audit-test.overmocked-notifier-catch.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.overmocked-notifier-catch.fail.md",
+      "expect_verdict": "🔴",
+      "must_surface": [
+        {
+          "claim": "Names the overmocked smell: the notifier is module-mocked and never made to throw, so the test's named failure path is never exercised.",
+          "anchors": { "any": ["overmocked", "auto-mock", "never throws", "never made to throw", "never entered"] }
+        },
+        {
+          "claim": "Notes the assertion is true regardless of the guard: `status === 200` holds with or without the catch.",
+          "anchors": { "any": ["regardless", "whether or not", "with or without", "still returns 200"] }
+        },
+        {
+          "claim": "Proves it by execution: deletes the try/catch around the notify call, reruns just this test, and it still passes.",
+          "anchors": { "any": ["still passed", "still passes", "deleted the `try/catch`", "deleted the try/catch"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT propose deleting the test (that is prune-tests' job).",
+          "anchors": { "any": ["delete the test", "deleting the test", "remove the test", "should be deleted"] }
+        },
+        {
+          "claim": "Must NOT propose new tests to add (that is coverage-review's job).",
+          "anchors": { "any": ["add a new test", "new tests to add", "propose new tests", "additional test cases"] }
+        }
+      ]
+    },
+    {
+      "id": "stale-stub-early-return",
+      "invoke": "/audit-test fixtures/audit-test/notify-confirmed.spec.js fixtures/audit-test/notify-confirmed.js",
+      "workspace": "isolated",
+      "fixture_files": [
+        "fixtures/audit-test/notify-confirmed.spec.js",
+        "fixtures/audit-test/notify-confirmed.js"
+      ],
+      "dry_run_sample": "samples/audit-test.stale-stub-early-return.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.stale-stub-early-return.fail.md",
+      "expect_verdict": "🔴",
+      "must_surface": [
+        {
+          "claim": "Names the stale-stub smell: the `db.rooms` stub returns no rooms, so the function exits at the empty-rooms guard before the send is ever reached.",
+          "anchors": { "any": ["empty-rooms", "returns `[]`", "no rooms", "stale", "early return", "before it calls"] }
+        },
+        {
+          "claim": "Notes the rejecting mailer is never invoked, so the error path the test is named for never runs.",
+          "anchors": { "any": ["never invoked", "never reached", "never calls", "not reached"] }
+        },
+        {
+          "claim": "Proves it by execution: deletes the try/catch around sendEmail, reruns just this test, and it still passes.",
+          "anchors": { "any": ["still passed", "still passes", "deleted the `try/catch`", "deleted the try/catch"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT propose deleting the test (that is prune-tests' job).",
+          "anchors": { "any": ["delete the test", "deleting the test", "remove the test", "should be deleted"] }
+        },
+        {
+          "claim": "Must NOT propose new tests to add (that is coverage-review's job).",
+          "anchors": { "any": ["add a new test", "new tests to add", "propose new tests", "additional test cases"] }
+        }
+      ]
     }
   ]
 }
