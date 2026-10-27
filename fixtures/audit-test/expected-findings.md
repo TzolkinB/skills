@@ -36,7 +36,9 @@ Set `findOverlapping` to return a non-empty array and assert that `svc.book(...)
 # Expected findings — audit-test / notifier fixtures
 
 Two small fixtures lifted from a real qa-review + qa-pass run on a booking-notification PR. In
-that run a self-review had called the new tests acceptable; only the mutation run found them hollow.
+that run a self-review had called the new tests acceptable; hand-run mutations found them hollow.
+Those mutations were done by hand (edit, run jest, restore), **not** by `/audit-test`, so the original
+report's "confirmed" label was not skill evidence. The fixtures here were reproduced independently.
 Both survive "delete the try/catch" under jest 29 (checked by hand).
 
 ## `confirm-booking.spec.js` — "still returns 200 when the notifier throws"
