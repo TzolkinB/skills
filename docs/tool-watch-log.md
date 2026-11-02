@@ -40,6 +40,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-10-19  v2.0.1 → v3.2.0 ⚑ major (workflows renamed `bmad-testarch-*` → `bmad-tea-*`) — §3 re-read not yet done
 - 2026-10-22  v3.2.0 → v3.4.0 — §3 re-read not yet done
 - 2026-10-22  v2.0.1 → v3.4.0 ⚑ major (baseline manually reset to v2.0.1 by #244 to test the trigger path; routine confirmed the major-bump trigger and restored the real baseline)
+- 2026-11-02  v3.4.0 → v3.6.0
 
 ## Playwright test agents
 - 2026-07-23  baseline v1.61.1
@@ -60,16 +61,19 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-10-05  16.1.0 → 16.1.2
 - 2026-10-12  16.1.2 → 16.2.0 (`cy.getByRole()`; only `prompt` hit is a bugfix)
 - 2026-10-19  16.2.0 → 16.2.1 (bugfixes)
+- 2026-11-02  16.2.1 → 16.2.2 (bugfixes + new `CYPRESS_AGENT_MODE` CLI ergonomics for AI coding agents; `cy.prompt` bugfix line again carried forward, no new AI capability)
 
 ## Kane / LambdaTest
 - 2026-07-23  baseline kane-cli 0.6.2; evidence-cli 0.1.6
 - 2026-07-23  evidence-cli 0.1.6 → 0.1.7 (6 versions)
 - 2026-07 → 2026-10  kane-cli 0.6.2 → 0.9.0 (weekly bumps; 0.9.0 on 2026-10-19)
 - Unchanged through 2026-10-19: `LambdaTest/evidence-cli` raw status 200; `evidence-cli.dev` NXDOMAIN
+- 2026-11-02  evidence-cli 0.1.7 → 0.2.0 (6 → 7 versions) ⚑ version changed; kane-cli also bumped 0.9.0 → 0.10.0 (routine)
 
 ## Explorbot (testomatio)
 - 2026-10-22  baseline 0.5.8 (promoted from the discovery log)
 - 2026-10-26  0.5.8 → 0.5.9
+- 2026-11-02  0.5.9 → 0.6.0 ⚑ minor version changed (0.x)
 
 ## mewt (Trail of Bits)
 - 2026-10-22  baseline 4.0.0 (promoted from the discovery log)
