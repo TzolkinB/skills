@@ -45,9 +45,9 @@ Then compare the run to that fixture's `expected-findings.md`.
 
 | Skill | Known-bad input | Planted smell the skill should surface |
 |---|---|---|
-| `qa-review` | `pricing.js` | Hard-coded prod URL, `new Date()` / `Math.random()` in logic, inline `fetch`, uncontrolled `setTimeout`, fragile string match — untestable in isolation |
+| `qa-review` | `pricing.js`, `booking-notifier.ts` | Hard-coded prod URL, `new Date()` / `Math.random()` in logic, inline `fetch`, uncontrolled `setTimeout`, fragile string match — untestable in isolation; plus a notifier that silently drops unresolved room ids and reports failure only via `console.error` |
 | `coverage-review` | `refund.spec.js` + `refund.js` | Loose assertions (`toBeDefined`/`toBeTruthy`) over a happy path; untested guards, error paths, and the full-refund boundary |
-| `audit-test` | `booking.spec.js` + `booking.js` | Overmocked "rejects overlapping bookings" — stubs away the overlap, asserts `save()` was called; passes even if the guard is deleted (mutation-provable) |
+| `audit-test` | `booking.spec.js` + `booking.js`, `confirm-booking.*`, `notify-confirmed.*`, `create-booking.*` | Overmocked "rejects overlapping bookings" — stubs away the overlap, asserts `save()` was called; passes even if the guard is deleted (mutation-provable); plus a notifier-catch test that never makes the notifier throw, and one whose stale stub exits at an early-return guard before the send, and one whose every call passes the same value so a hardcoded result survives |
 | `prune-tests` | `cart.spec.js` + `cart.js` | Redundant pair to merge, over-mock of an internal collaborator, a stale name/intent mismatch, and one genuine keeper |
 | `prune-tests` (`--audit-evidence`, #192) | `checkout.spec.js` + `checkout.js` + `checkout.audit-evidence.json` | Two hand-off candidates deferred to `audit-test`; the paired `gate-audit-test/v0.3` emission names one `confirmedHollow` by a `runs[]`-matched mutation (promotes to **Confirmed Prune**) and the other only `likelyHollow` (no match, stays **Deferred**) |
 | `debug-test` | `checkout.spec.ts` | Failing Playwright test with a missing `await` on a web-first assertion — caught by Step 2 heuristics, no routing |

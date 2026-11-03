@@ -34,6 +34,30 @@
           "anchors": { "any": ["missing test", "add a test", "untested path", "test coverage", "coverage gap"] }
         }
       ]
+    },
+    {
+      "id": "notifier-silent-drop",
+      "invoke": "/qa-review fixtures/qa-review/booking-notifier.ts",
+      "workspace": "isolated",
+      "fixture_files": ["fixtures/qa-review/booking-notifier.ts"],
+      "dry_run_sample": "samples/qa-review.booking-notifier.pass.md",
+      "dry_run_negative_sample": "samples/qa-review.booking-notifier.fail.md",
+      "must_surface": [
+        {
+          "claim": "Flags that `byId.get(id) ?? []` silently drops a room id with no matching row, so the confirmation can list fewer rooms than were booked.",
+          "anchors": { "any": ["?? []", "silently drop", "fewer rooms", "unresolved", "no matching row"] }
+        },
+        {
+          "claim": "Flags that failure is only observable through `console.error` because both catch blocks swallow the error and the promise always resolves.",
+          "anchors": { "any": ["console.error", "swallow", "always resolves", "cannot tell", "failure is not observable"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT critique the quality of existing tests or mocks — test credibility is `/audit-test`'s job; qa-review reads code only.",
+          "anchors": { "any": ["existing test", "mock promises", "flush before", "test credibility"] }
+        }
+      ]
     }
   ]
 }
