@@ -41,6 +41,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-10-22  v3.2.0 → v3.4.0 — §3 re-read not yet done
 - 2026-10-22  v2.0.1 → v3.4.0 ⚑ major (baseline manually reset to v2.0.1 by #244 to test the trigger path; routine confirmed the major-bump trigger and restored the real baseline)
 - 2026-11-02  v3.4.0 → v3.6.0
+- 2026-11-09  v3.6.0 → v4.0.0 ⚑ major
 
 ## Playwright test agents
 - 2026-07-23  baseline v1.61.1
@@ -49,6 +50,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-09-07  v1.62.1 → v1.63.0
 - 2026-10-12  v1.63.0 → v1.64.0 ⚑ agent-keyword hit (WebMCP: `Page.webmcp`, `webmcp_<tool>`)
 - 2026-10-19  v1.64.0 → v1.64.1 (same 1.64 block, patch only)
+- 2026-11-09  v1.64.1 → v1.65.0 (new block, headlined by running the test runner under Bun; no agent-keyword hit, so not a trigger)
 
 ## Cypress AI (`cy.prompt`)
 - 2026-07-23  baseline 15.19.1
@@ -62,6 +64,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-10-12  16.1.2 → 16.2.0 (`cy.getByRole()`; only `prompt` hit is a bugfix)
 - 2026-10-19  16.2.0 → 16.2.1 (bugfixes)
 - 2026-11-02  16.2.1 → 16.2.2 (bugfixes + new `CYPRESS_AGENT_MODE` CLI ergonomics for AI coding agents; `cy.prompt` bugfix line again carried forward, no new AI capability)
+- 2026-11-09  16.2.2 → 16.3.0 (further bugfixes extending the existing `CYPRESS_AGENT_MODE` auto-detection; `cy.prompt` bugfix line again carried forward, no new AI capability)
 
 ## Kane / LambdaTest
 - 2026-07-23  baseline kane-cli 0.6.2; evidence-cli 0.1.6
@@ -69,11 +72,13 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-07 → 2026-10  kane-cli 0.6.2 → 0.9.0 (weekly bumps; 0.9.0 on 2026-10-19)
 - Unchanged through 2026-10-19: `LambdaTest/evidence-cli` raw status 200; `evidence-cli.dev` NXDOMAIN
 - 2026-11-02  evidence-cli 0.1.7 → 0.2.0 (6 → 7 versions) ⚑ version changed; kane-cli also bumped 0.9.0 → 0.10.0 (routine)
+- 2026-11-09  kane-cli 0.10.0 → 0.10.3 (routine); evidence-cli unchanged at 0.2.0 (7 versions); repo raw-status unchanged 200; DNS still NXDOMAIN
 
 ## Explorbot (testomatio)
 - 2026-10-22  baseline 0.5.8 (promoted from the discovery log)
 - 2026-10-26  0.5.8 → 0.5.9
 - 2026-11-02  0.5.9 → 0.6.0 ⚑ minor version changed (0.x)
+- 2026-11-09  0.6.0 → 0.6.2 (patch only, same minor; routine)
 
 ## mewt (Trail of Bits)
 - 2026-10-22  baseline 4.0.0 (promoted from the discovery log)
