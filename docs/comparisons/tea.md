@@ -139,7 +139,8 @@ That re-read turned up two corrections, noted below. **Re-verified unchanged aga
 2026-09-04** (a routine recheck, not tied to a build) — that pass found one new overlay in Step 5's
 arithmetic and one new knowledge fragment that names hollow tests directly, both noted below as a
 third correction. Neither is a mutation or credibility input to the gate. **Re-verified unchanged at v3.4.0 on
-2026-10-22** across two major releases (see the v3.4.0 notes at the end of this section). Paths below are the
+2026-10-22** across two major releases (see the v3.4.0 notes at the end of this section). **Re-verified unchanged at v4.0.2 on 2026-11-17** across the v3.6.0 to v4.0.0 major bump (see the v4.0.2 notes
+at the end of this section). Paths below are the
 v1.x ones (`src/workflows/testarch/bmad-testarch-trace/`); in v3 the same files live under
 `skills/bmad-tea-trace/steps-c/`.
 
@@ -230,6 +231,26 @@ _rejection_ test, it also satisfies Step 3's error-path-present and not-happy-pa
   listed as core-tier in the knowledge index both skills load from (`tea-index.csv`), so an agent can load it at runtime
   as advice. It remains advisory, not an arithmetic input. (A second reader re-checked the Step 5, Step 3 1a and
   `tea-trace` claims above against the source and confirmed them; this index detail came from that check.)
+
+**v4.0.2 notes (2026-11-17, source read at the tag, nothing run):**
+
+- **Falsifier not triggered.** v4.0.0 is a major bump for migration reasons: renamed skills, red-mode and CI
+  settings moved under `[workflow.red]` and `[workflow.ci]`, a three-file config merge. The trace diff from
+  v3.6.0 to v4.0.2 touches six files. `step-05-gate-decision.md` now compares integer counts instead of
+  rounded percentages (displayed percentages round down), and rejects malformed fresh live-failure counts. The
+  thresholds, the overlays that only lower a PASS to CONCERNS, and the inputs are unchanged. No input executes
+  tests, mutates code or scores whether a test is hollow. A grep for `mutation`, `hollow`, `would fail` and
+  `kill score` across `skills/bmad-tea-trace/` returns nothing.
+- **`test-review` still has no hollow-test input from `evidence-integrity.md`.** `criteria-registry.md` does not
+  name `hollow` or `evidence-integrity`. The v4.0.1 changelog widens the pattern checks (tautology C3 in more
+  languages, disabled-test C1 in more frameworks). These are pattern checks over test text, not execution.
+- **New: `bmad-tea-evaluate` names mutation.** Its docs describe clean and mutated trials and `preflight` to
+  qualify mutations. Its target is an agent, skill or MCP server being evaluated ("evaluate this agent"), not an
+  application's test suite. Whether it can aim at an app test suite is **Unexamined**; the SKILL.md opening
+  and the changelog point the other way.
+- **Phase-1 shape and converter.** `step-04`'s `safePct` change is the only edit in the Phase-1 side. The
+  `requirements[]` and `tests[]` fields the converter reads were not diffed against a real v4 run. Still
+  not rechecked against a real run (see v3.4.0 notes above).
 
 #### What `trace` actually writes (the machine-readable side)
 
