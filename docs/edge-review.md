@@ -9,7 +9,7 @@
 | First-party agents absorb authoring, planning and healing | Playwright planner/generator/healer unchanged since 1.56 but now with WebMCP (1.64); Cypress `cy.prompt` is metered, 100 free runs a month (T1). They push toward green and audit nothing. |
 | Mutation tools add an AI repair loop | Tautest 2.x writes a fix prompt for a surviving mutant and verifies a candidate test kills it by rerunning Stryker (T2). Still unit-only (Vitest/Jest). |
 | TEA moves from planning toward a CI gate and self-evaluation | v3.4.0 has a headless review gate with a verdict and `--github` check runs, plus an evaluation harness (T2). Its `trace` gate still counts coverage only (presence gap holds). |
-| Verdict SaaS appears | AxonQA: ready / ready with accepted risks / not ready, with evidence (T1, vendor claims; rules not public). Kane: open `.evidence` pack, no signing, no hollow-test audit (T2). |
+| Verdict SaaS appears | AxonQA: ready / ready with accepted risks / not ready, with evidence (T1, vendor claims; rules not public). Kane: open `.evidence` pack; `evidence-cli` 0.2.0 adds `evidence verdict`, which judges a sealed pack against a policy of gates over run metrics (pass rate, failures, flaky flag) and writes a separate verdict file. No cryptographic signing (the pack is hashed and zipped, not signed) and no check that a passing test would fail on broken code (T2, read 2026-11-17). |
 
 ## Where we win today
 

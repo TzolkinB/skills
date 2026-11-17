@@ -43,6 +43,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-11-02  v3.4.0 → v3.6.0
 - 2026-11-09  v3.6.0 → v4.0.0 ⚑ major
 - 2026-11-16  v4.0.0 → v4.0.1 (patch only; routine)
+- 2026-11-17  v4.0.1 → v4.0.2 (manual; `comparisons/tea.md` §3 re-read at v4.0.2, covers the v4.0.0 major: falsifier not triggered, presence gap unchanged, #281)
 
 ## Playwright test agents
 - 2026-07-23  baseline v1.61.1
@@ -77,6 +78,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-11-02  evidence-cli 0.1.7 → 0.2.0 (6 → 7 versions) ⚑ version changed; kane-cli also bumped 0.9.0 → 0.10.0 (routine)
 - 2026-11-09  kane-cli 0.10.0 → 0.10.3 (routine); evidence-cli unchanged at 0.2.0 (7 versions); repo raw-status unchanged 200; DNS still NXDOMAIN
 - 2026-11-16  kane-cli 0.10.3 → 0.10.4 (routine); evidence-cli unchanged at 0.2.0 (7 versions); repo raw-status unchanged 200; DNS still NXDOMAIN
+- 2026-11-17  manual read of evidence-cli 0.2.0 source (#280): new `evidence verdict` command (policy gates over pack metrics, separate verdict file). Still no cryptographic signing, no hollow-test audit; `edge-review.md` Verdict SaaS row updated (T2)
 
 ## Explorbot (testomatio)
 - 2026-10-22  baseline 0.5.8 (promoted from the discovery log)
@@ -84,6 +86,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-11-02  0.5.9 → 0.6.0 ⚑ minor version changed (0.x)
 - 2026-11-09  0.6.0 → 0.6.2 (patch only, same minor; routine)
 - 2026-11-16  0.6.2 → 0.6.6 (patch only, same minor; routine)
+- 2026-11-17  manual read of 0.6.0 release notes (#279; Elastic-2.0, behaviour only): planning, blocked-page recovery, late-render waits; output still Playwright/CodeceptJS specs. Author-row text holds, no edit
 
 ## mewt (Trail of Bits)
 - 2026-10-22  baseline 4.0.0 (promoted from the discovery log)
