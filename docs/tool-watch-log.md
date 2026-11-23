@@ -44,6 +44,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-11-09  v3.6.0 → v4.0.0 ⚑ major
 - 2026-11-16  v4.0.0 → v4.0.1 (patch only; routine)
 - 2026-11-17  v4.0.1 → v4.0.2 (manual; `comparisons/tea.md` §3 re-read at v4.0.2, covers the v4.0.0 major: falsifier not triggered, presence gap unchanged, #281)
+- 2026-11-23  v4.0.2 → v4.3.1 (routine; major unchanged at 4, §3 not re-read)
 
 ## Playwright test agents
 - 2026-07-23  baseline v1.61.1
@@ -69,6 +70,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-11-02  16.2.1 → 16.2.2 (bugfixes + new `CYPRESS_AGENT_MODE` CLI ergonomics for AI coding agents; `cy.prompt` bugfix line again carried forward, no new AI capability)
 - 2026-11-09  16.2.2 → 16.3.0 (further bugfixes extending the existing `CYPRESS_AGENT_MODE` auto-detection; `cy.prompt` bugfix line again carried forward, no new AI capability)
 - 2026-11-16  16.3.0 → 16.4.0 (`webpack-dev-server` 6 support for Angular 22.2, perf/bugfixes; no `prompt`/`AI` mention in top block; routine)
+- 2026-11-23  16.4.0 → 16.4.0 ⚑ same unreleased `develop` version block grew: new `cypress open --headless` + `cypress tap` session support explicitly so "an AI coding agent" can drive tests (PR #35376) — a new Feature, not a bugfix
 
 ## Kane / LambdaTest
 - 2026-07-23  baseline kane-cli 0.6.2; evidence-cli 0.1.6
@@ -79,6 +81,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 - 2026-11-09  kane-cli 0.10.0 → 0.10.3 (routine); evidence-cli unchanged at 0.2.0 (7 versions); repo raw-status unchanged 200; DNS still NXDOMAIN
 - 2026-11-16  kane-cli 0.10.3 → 0.10.4 (routine); evidence-cli unchanged at 0.2.0 (7 versions); repo raw-status unchanged 200; DNS still NXDOMAIN
 - 2026-11-17  manual read of evidence-cli 0.2.0 source (#280): new `evidence verdict` command (policy gates over pack metrics, separate verdict file). Still no cryptographic signing, no hollow-test audit; `edge-review.md` Verdict SaaS row updated (T2)
+- 2026-11-23  kane-cli 0.10.4 → 0.10.8 (routine); evidence-cli unchanged at 0.2.0 (7 versions); repo raw-status unchanged 200; DNS still NXDOMAIN
 
 ## Explorbot (testomatio)
 - 2026-10-22  baseline 0.5.8 (promoted from the discovery log)
@@ -93,6 +96,7 @@ Kane's `kane-cli` weekly bumps are summarised, not listed one by one.
 
 ## Shiplight AI
 - 2026-10-22  baseline @shiplightai/mcp 0.2.3 (promoted from the discovery log)
+- 2026-11-23  0.2.3 → 0.2.4 (routine patch bump) ⚑ license changed MIT → Elastic-2.0 on this release — not covered by the numbered version-trigger rule, flagged separately for clean-room relevance
 
 ## Schema validators (sclavijosuero)
 - 2026-10-26  playwright-schema-validator 1.0.0 → 1.1.0
