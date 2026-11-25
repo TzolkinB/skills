@@ -43,7 +43,7 @@ The test for a future leaf: if it can write, delete, execute project code or dec
   exactly as before when the user types them. The change adds model-started runs; it removes nothing.
 - **Less reliance on the router for discovery.** The router, `/qa-compass`, stays model-invoked and keeps its
   map. These four skills can now also surface from their own descriptions.
-- **The safety line is a rule, not a lock.** "Read-only" holds because each skill's own steps contain no write or
+- **The safety line is a rule, not a lock (see the addendum: file-tool writes are now blocked, Bash writes are not).** "Read-only" holds because each skill's own steps contain no write or
   execute path. All four still list `Bash` in `allowed-tools` for read commands (`ls`, `find`, `stat`, `git`),
   and Claude Code does not restrict Bash to those commands. Nothing in this repo enforces the boundary.
 - **`evals/lint.mjs` reports each of these skills as `review`** ("model-invoked, confirm intended"). This ADR is
@@ -58,3 +58,37 @@ The test for a future leaf: if it can write, delete, execute project code or dec
 - **Make every leaf model-invoked.** Rejected: that gives the model execution and file-changing skills
   (`audit-test`, `prune-tests --apply`, `gate`) with only prose between it and the working tree.
 - **Include `prune-tests` and rely on its in-skill safeguards.** Rejected for now, for the reason above.
+
+## Addendum: partial guard, resolves #286 (2026-11-25)
+
+[#286](https://github.com/TzolkinB/skills/issues/286) asked whether to add a hard guard. Decision: add the
+cheap, enforced part and a lint, and accept that Bash is still a rule, not a lock.
+
+**What Claude Code gives us** (T1 docs: code.claude.com skills, hooks and permissions pages; T3 run on
+Claude Code 2.1.332, 2026-11-25):
+
+- `allowed-tools` only pre-approves tools. It does not restrict the others. Narrowing it to
+  `Bash(ls:*)`-style patterns would not be a lock either; the permissions page calls Bash argument
+  patterns fragile.
+- `disallowed-tools` in skill frontmatter removes tools while the skill is active. T3: a skill with
+  `disallowed-tools: [Write, Edit, NotebookEdit]` asked to create a file had the `Write` call denied; a
+  control skill without the field created the file. A Bash `echo x > file` in a skill with the field still
+  worked.
+- Permission `deny` rules are global in `settings.json`. They cannot be tied to "while this skill runs", so
+  they would also block the user's normal work.
+
+**Decision.**
+
+- The four skills in this ADR set `disallowed-tools: [Write, Edit, NotebookEdit]`. File-tool writes are
+  blocked by Claude Code, not by the model's good manners.
+- `evals/lint.mjs` fails (error) if any of the four drops that field, or if its text names a write path
+  (`--apply`, `git commit`/`push`/`reset`/`checkout`/`clean`/`stash`/`rebase`/`merge`, `rm`, package installs,
+  `sed -i`). A future edit that adds a write path is caught in review, not after a user hits it. The lint
+  list of skills is `READ_ONLY_LEAVES` in `evals/lint.mjs`; add a skill there when it joins this ADR.
+- **Not guarded:** writes made through `Bash` (`>`, `rm`, `git`). They still rely on the skill text and the
+  lint. A PreToolUse hook could block them, but it would ship executable code to every user and I have not
+  confirmed how long skill-scoped hooks stay active, so it is not part of this change.
+- `prune-tests --apply` stays as described above. Splitting it into a user-only skill is a separate
+  decision; no issue filed yet.
+
+Reversible: remove the field from the four skills and the lint list.

@@ -3,6 +3,7 @@ name: qa-review
 description: Review code from a QA/testability angle — is this even testable?
 argument-hint: "[file path to review] [--digest] [--explain]"
 allowed-tools: [Read, Bash]
+disallowed-tools: [Write, Edit, NotebookEdit]
 ---
 
 **Owns:** whether the *source code* can be tested at all — hidden deps, non-determinism, coupling — judged before any test exists.
