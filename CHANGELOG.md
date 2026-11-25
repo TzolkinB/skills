@@ -25,7 +25,7 @@ change can be traced back to its source without a git-log search.
 
 ### Changed
 
-- **Four read-only skills are now model-invocable** — [ADR-0054](docs/adr/0054-read-only-leaf-skills-are-model-invoked.md).
+- [#287](https://github.com/TzolkinB/skills/pull/287) `f39e48b` **Four read-only skills are now model-invocable** — [ADR-0054](docs/adr/0054-read-only-leaf-skills-are-model-invoked.md).
   `/coverage-review`, `/e2e-impact`, `/qa-review` and `/test-plan` no longer set `disable-model-invocation`,
   so Claude can run them without a slash command. Each only reads code and prints a report. `/prune-tests`
   (its `--apply` mode deletes tests) and the skills that execute code or decide a release (`/audit-test`,
