@@ -21,6 +21,15 @@ change can be traced back to its source without a git-log search.
 
 ## [Unreleased]
 
+### Changed
+
+- [#297](https://github.com/TzolkinB/skills/pull/297) `c555bbd` **Shiplight is listed as Elastic-2.0** in the orchestration map (MIT through 0.2.3), so it joins the restrictive license tier. Closes #285.
+
+### Fixed
+
+- [#297](https://github.com/TzolkinB/skills/pull/297) `c555bbd` **`/audit-test` now says how to run one test whose path has `[ ] ( )`.** Jest: `--runTestsByPath` or escape. Vitest: pass the bare path (escaping breaks it). Playwright: escape. All three checked. Closes #274.
+- [#298](https://github.com/TzolkinB/skills/pull/298) `9b13445` **`/qa-pass` no longer writes "audit ran" unless `/audit-test` ran.** Without a run the audit section reads "not run" and the verdict is capped at CAUTION. Hand-made checks go under a labelled commentary line. New eval case `audit-not-run-not-claimed`. Closes #278.
+
 ## [2.1.0] - 2026-11-25
 
 ### Changed
