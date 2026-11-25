@@ -44,6 +44,19 @@ const NOOP_PATTERNS = [
   /\bbe sure to (carefully|properly)\b/i,
 ];
 
+// ADR-0054: these model-invoked leaves are read-only by rule. The lint is the guard that
+// catches a future edit giving one a write path. `disallowed-tools` is enforced by Claude Code
+// (checked 2026-11-25: a skill-scoped Write call was denied); Bash writes are NOT blocked by it.
+const READ_ONLY_LEAVES = new Set(['coverage-review', 'e2e-impact', 'qa-review', 'test-plan']);
+const REQUIRED_DISALLOWED = ['Write', 'Edit', 'NotebookEdit'];
+const WRITE_PATH_PATTERNS = [
+  /--apply\b/,
+  /\bgit (commit|push|reset|checkout|clean|stash|rebase|merge)\b/,
+  /\brm (-|\S)/,
+  /\b(npm|pnpm|yarn) (install|i|add)\b/,
+  /\bsed -i\b/,
+];
+
 const targets = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const strict = process.argv.includes('--strict');
 const selfTest = process.argv.includes('--self-test');
@@ -63,9 +76,10 @@ report(findings, skillFiles.length);
 if (selfTest) {
   const reviews = findings.filter((f) => f.level === 'review').length;
   const errors = findings.filter((f) => f.level === 'error').length;
-  const passed = reviews >= 1 && errors >= 1;
+  const roErrors = findings.filter((f) => f.level === 'error' && /read-only leaf/.test(f.msg)).length;
+  const passed = reviews >= 1 && errors >= 1 && roErrors >= 2;
   console.log(
-    `\nself-test: seeded no-op detected=${reviews >= 1}, dead link detected=${errors >= 1} → ${passed ? 'OK' : 'BROKEN'}`,
+    `\nself-test: seeded no-op detected=${reviews >= 1}, dead link detected=${errors >= 1}, read-only-leaf guard detected=${roErrors >= 2} → ${passed ? 'OK' : 'BROKEN'}`,
   );
   process.exit(passed ? 0 : 1);
 }
@@ -98,6 +112,22 @@ function lintSkill(file) {
       add('review', fm.lineOf('name') ?? 1, "model-invoked (no `disable-model-invocation`) — always-on description; confirm intended (ADR-0020)");
     else if (dmi !== 'true')
       add('warn', fm.lineOf('disable-model-invocation'), `\`disable-model-invocation\` should be \`true\` or omitted, got \`${dmi}\``);
+  }
+
+  // read-only leaves (ADR-0054): must carry the enforced tool block and no write path in the text
+  if (fm && READ_ONLY_LEAVES.has(fm.values.name)) {
+    const dis = fm.values['disallowed-tools'] ?? '';
+    const missing = REQUIRED_DISALLOWED.filter((t) => !new RegExp(`\\b${t}\\b`).test(dis));
+    if (missing.length)
+      add('error', fm.lineOf('disallowed-tools') ?? 1, `read-only leaf (ADR-0054) must set \`disallowed-tools\` to include ${missing.join(', ')}`);
+    if (fm.values['disable-model-invocation'] === undefined)
+      lines.forEach((ln, i) => {
+        if (i === 0) return;
+        for (const re of WRITE_PATH_PATTERNS) {
+          const m = ln.match(re);
+          if (m) add('error', i + 1, `read-only leaf (ADR-0054) mentions a write path: “${m[0]}” — move it to a user-invoked skill or reword`);
+        }
+      });
   }
 
   // line ceiling (informational)

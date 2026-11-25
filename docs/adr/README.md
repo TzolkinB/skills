@@ -95,7 +95,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0051](0051-live-eval-fixtures-materialize-as-a-permanent-git-ref.md) | A `--live` eval fixture needing real, runnable code materializes as a permanent, never-merged git ref; `fixture_ref` checks it out instead of `HEAD` | Accepted 2026-08-06 |
 | [0052](0052-rename-sentinel-skills-to-qa-compass-qa-pass.md) | Rename `/ask-sentinel` → `/qa-compass` and `/sentinel` → `/qa-pass` — the last two "Sentinel" skill identifiers | Accepted 2026-08-06 |
 | [0053](0053-drop-the-prototype-self-label-for-v2.md) | Drop the "prototype" self-label for v2 — state the engineering rigor, keep the honest solo-maintainer caveats | Accepted 2026-08-07 |
-| [0054](0054-read-only-leaf-skills-are-model-invoked.md) | Read-only leaf skills are model-invoked; anything that executes or writes stays user-invoked (partly supersedes 0020) | Accepted 2026-11-25 |
+| [0054](0054-read-only-leaf-skills-are-model-invoked.md) | Read-only leaf skills are model-invoked; anything that executes or writes stays user-invoked (partly supersedes 0020) | Accepted 2026-11-25 (addendum: file-tool guard + lint, #286) |
 
 ## By area
 
