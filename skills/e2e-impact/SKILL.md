@@ -3,7 +3,6 @@ name: e2e-impact
 description: Map a working/PR diff to the Playwright/Cypress E2E specs it plausibly hits — via test-import, route, and selector/test-id signals — with a confidence per spec and an honest run-all fallback when a change can't be traced. Emits a source→spec relevance map.
 argument-hint: "[base ref or diff — defaults to main...HEAD plus the working tree]"
 allowed-tools: [Read, Bash, Glob]
-disable-model-invocation: true
 ---
 
 **Owns:** which E2E specs a diff plausibly exercises — the app-driven test-impact map. **Selection, not execution.**

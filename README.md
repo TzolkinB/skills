@@ -60,7 +60,7 @@ This is the core idea of this plugin. A high **test coverage** number shows that
 
 - **[`/audit-test`](./skills/audit-test/SKILL.md)** _(user-invoked)_
   If a test passes and you do not trust it, run this skill. It runs one targeted mutation with a real effect on behavior, and reports the result. A caught mutation confirms that the test catches that one break; it does not confirm the test catches other breaks. An uncaught mutation is proof, from real execution, that the test checks nothing real. The skill labels each finding as **Confirmed** or **Likely**, and never gives an invented score. It runs on dev-served Playwright and Cypress tests, the layer unit-mutation tools like Stryker and Tautest can&apos;t reach. Point the skill at a whole file or at a directory; batch mode then triages every test in it. Proof of one flagged Cypress test needs a one-test spec, or the `@cypress/grep` plugin. Without one of these, `cypress run --spec` runs the whole file, and the deep-audited test falls back to a 🟡 rating.
-- **[`/coverage-review`](./skills/coverage-review/SKILL.md)** _(user-invoked)_
+- **[`/coverage-review`](./skills/coverage-review/SKILL.md)** _(model-invoked)_
   After AI writes tests, run this skill. It finds missing test cases. It finds assertions that pass even when the code is wrong.
 - **[`/audit-orchestrator`](./skills/audit-orchestrator/SKILL.md)** _(user-invoked)_
   If a passing test looks suspicious, run this skill. It routes the test to the tool that proves it: Tautest or StrykerJS at the unit layer, or `/audit-test` for app-driven tests.
@@ -69,9 +69,9 @@ This is the core idea of this plugin. A high **test coverage** number shows that
 
 ### Before the Code Exists
 
-- **[`/test-plan`](./skills/test-plan/SKILL.md)** _(user-invoked)_
+- **[`/test-plan`](./skills/test-plan/SKILL.md)** _(model-invoked)_
   Use this skill to define what to test, and at which layer: `unit`, `component`, `integration`, or `e2e`.
-- **[`/qa-review`](./skills/qa-review/SKILL.md)** _(user-invoked)_
+- **[`/qa-review`](./skills/qa-review/SKILL.md)** _(model-invoked)_
   During code review, run this skill. It finds code that is not testable, before you ship it.
 - **[`/threat-model`](./skills/threat-model/SKILL.md)** _(user-invoked)_
   Before you ship something risky, run this skill. It shows what breaks in production. It ranks each risk by how long a failure stays unseen.
@@ -87,7 +87,7 @@ This is the core idea of this plugin. A high **test coverage** number shows that
 
 ### Around a PR
 
-- **[`/e2e-impact`](./skills/e2e-impact/SKILL.md)** _(user-invoked)_
+- **[`/e2e-impact`](./skills/e2e-impact/SKILL.md)** _(model-invoked)_
   Run this skill to find which user journeys a PR affects. It maps the diff to the Playwright and Cypress specs it probably affects. When it is not sure, it says so and tells you to run every spec, instead of giving a guess with false confidence.
 - **[`/qa-pass`](./skills/qa-pass/SKILL.md)** _(model-invoked)_
   Before you merge, this skill runs one QA judgment pass over your branch. It reports one of three colors: 🟢, 🟡, or 🔴. Use the color to decide your next step. It is not a release gate.
