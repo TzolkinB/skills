@@ -248,7 +248,7 @@ Evidence tiers: **T1** official docs, pricing and changelog read · **T2** claim
 | Cypress AI (`cy.prompt`, Studio AI) | Cypress app MIT; the `cy.prompt` service license not found | **Metered** per execution in every Cypress Cloud plan since 2026-08-01. Free (Starter) plan: **100 `cy.prompt` executions per month**; Team 9k/year ($67/mo billed annually); Business 24k/year; Enterprise 60k/year. Every run counts, in open or run mode, local or CI. Behavior at the cap is not stated on the pricing page. Pricing page read 2026-10-22. | T1 |
 | Kane / `evidence-cli` | Apache-2.0 (both packages) | CLI free to install; runs spend KaneAI credits (vendor claim: 10,000 free for 30 days) | T1/T2 |
 | Explorbot | Elastic-2.0 (source-available) | Free to use; bring your own LLM key; no hosted-service resale | T2 |
-| Shiplight | MIT (npm packages) | MCP server free; `shiplight test` needs an LLM key; Cloud platform ends 2026-10-31 per its own README | T1/T2 |
+| Shiplight | Elastic-2.0 (source-available) from `@shiplightai/mcp` 0.2.4; MIT through 0.2.3 | MCP server free; `shiplight test` needs an LLM key; Cloud platform ends 2026-10-31 per its own README | T1/T2 |
 | AxonQA | Closed SaaS | 14-day trial, Pro about £69/month (vendor site) | T1 |
 
 ## Evidence ledger: why this recommendation, and is it proven?
