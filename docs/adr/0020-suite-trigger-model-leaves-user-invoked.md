@@ -1,6 +1,6 @@
 # Suite trigger model: leaf skills are user-invoked, discovery goes through the router
 
-**Status: Accepted (2026-07-14).** Prompted by a checklist audit of the suite against Matt Pocock's *writing-great-skills* rubric — specifically its **trigger** axis (how a skill is invoked). A cross-cutting decision for all ten skills, not a single-skill refinement.
+**Status: Accepted (2026-07-14); partly superseded by [ADR-0054](0054-read-only-leaf-skills-are-model-invoked.md) (2026-11-25) for `coverage-review`, `e2e-impact`, `qa-review` and `test-plan`.** Prompted by a checklist audit of the suite against Matt Pocock's *writing-great-skills* rubric — specifically its **trigger** axis (how a skill is invoked). A cross-cutting decision for all ten skills, not a single-skill refinement.
 
 ## Context
 

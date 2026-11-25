@@ -21,6 +21,21 @@ change can be traced back to its source without a git-log search.
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-25
+
+### Changed
+
+- [#287](https://github.com/TzolkinB/skills/pull/287) `f39e48b` **Four read-only skills are now model-invocable** — [ADR-0054](docs/adr/0054-read-only-leaf-skills-are-model-invoked.md).
+  `/coverage-review`, `/e2e-impact`, `/qa-review` and `/test-plan` no longer set `disable-model-invocation`,
+  so Claude can run them without a slash command. Each only reads code and prints a report. `/prune-tests`
+  (its `--apply` mode deletes tests) and the skills that execute code or decide a release (`/audit-test`,
+  `/audit-orchestrator`, `/gate`, `/debug-test`, `/contract-guard`, `/bug-report`, `/threat-model`) stay
+  user-invoked. Typing any of these skills by name works as before.
+
+- [#269](https://github.com/TzolkinB/skills/pull/269) `93b858a` **`/qa-compass` routes AI-written tests to
+  `/audit-test`** — new row at stage 2 (Author): "an AI tool wrote the tests, can I trust them?" points to
+  `/audit-test` or `/audit-orchestrator` before you trust them.
+
 ## [2.0.0] - 2026-08-17
 
 ### Changed
