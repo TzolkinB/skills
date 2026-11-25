@@ -13,7 +13,8 @@ Loaded from Step 4 (deep audit). "Run just that one test" is framework-specific 
 
 **Paths with `[`, `]`, `(`, `)` or other regex characters** (Next.js routes such as `bookings/[id]/route.test.ts`): some runners read the file argument as a regex, so a bare path can match **zero files** or the wrong one.
 - **Jest:** use `jest --runTestsByPath '<file>' -t '<test name>'`, or escape the characters (`\[id\]`). Verified: a bare bracketed path listed no tests; both fixes listed exactly the one file.
-- **Vitest and Playwright:** file filters are substring/regex matches too, so escape the characters, quote the path, and confirm with `vitest list` / `--list` before you mutate. *Not yet run against a bracketed path — treat as unverified.*
+- **Vitest:** the filter is a plain substring, so pass the path **as is** and quote it. Do **not** escape — `\[id\]` matches nothing. Verified with `vitest list`: bare listed the test, escaped listed none.
+- **Playwright:** file args are regexes, so a bare `[id]` matches nothing ("Total: 0 tests"). Escape the characters (`'src/\[id\]/a.spec.ts'`). Verified with `--list`: escaped listed exactly one test.
 - Whatever the runner, the rule below still decides: if you cannot confirm exactly one test ran, fall back to 🟡.
 
 If the name is ambiguous (duplicate names, parametrized cases), target by file + name and **confirm the run executed exactly one test**. A selector that matches zero tests "passes" vacuously and would fake a 🟢 — if you can't confirm exactly one test ran, fall back to 🟡.
