@@ -68,6 +68,9 @@ A: Only partially. The assertion-diff signal needs a diff to compare against, so
 **Q: In `--changed` mode, does an old test in a file I touched count against Gate's floor?**
 A: Not by itself. `--changed` audits the tests whose lines changed. If you change shared code, the tests it can reach count, and the report says so: a hook or helper inside a `describe` brings in that describe's tests; a top-level helper or a changed import brings in the whole file; a modified page object or fixture brings in the test files that import it. New imports and brand-new support files bring in nothing. This keeps a big e2e spec from blocking every PR. To baseline a mature suite that has never been audited, run `/audit-test <directory>` once on purpose ([ADR-0055](./adr/0055-audit-test-changed-counts-tests-with-changed-lines.md)).
 
+**Q: How does audit-test know a mutation was in the right place?**
+A: Before it runs one, it names the test's entry call, shows the line it will change and that line's function, and checks the function is on the path the test calls. A change in another handler is rejected, even if someone suggested it. After the run, a 🟢 needs an assertion failure in that test, not a syntax or import crash ([ADR-0056](./adr/0056-audit-test-checks-the-mutation-is-on-the-tests-path.md)).
+
 **Q: Can audit-test consume Stryker's own survivor report instead of running its own mutation?**
 A: Not yet. That ingestion seam — Stryker supplying the proof, audit-test supplying the taxonomy and fix — is deferred, not built ([ADR-0004](./adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)). Today audit-test always runs its own targeted mutation.
 

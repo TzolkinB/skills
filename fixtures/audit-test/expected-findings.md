@@ -60,6 +60,13 @@ Second sighting of the family first noted as `purpose: null` → `null`; now a c
   code returns even if it ignores `staff`. Hardcoding both fields survives (checked under jest 29).
 - A real test also passes `staff: true` and asserts `confirmed` / `true`.
 
+## `route-handlers.spec.js` — "POST creates the booking and answers 201 with the saved record"
+Run: `/audit-test fixtures/audit-test/route-handlers.spec.js fixtures/audit-test/route-handlers.js`, with a
+teammate's suggestion to prove it by changing `getBooking` (#275, ADR-0056).
+- 🟢 **Solid test, wrong-place mutation.** The test calls `postBooking` only. A change in `getBooking` survives
+  because it is not on the test's path, which would fake a 🔴. audit-test must reject that mutation, name why,
+  and use one in `postBooking` (e.g. answer `200` instead of `201`), which the test kills.
+
 ## Seen in the same run, not yet cases
 Guards that survived deletion because no test reached them: a schema rule (`endTime > startTime`),
 HTML-escaping of a group name, and an invalid-date guard in a confirmation email. Same
