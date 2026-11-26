@@ -260,6 +260,43 @@
           "anchors": { "any": ["score:", "/100", "% confidence", "quality score", "out of 100"] }
         }
       ]
+    },
+    {
+      "id": "wrong-place-mutation-rejected",
+      "_note": "#275, ADR-0056. The test is solid and calls postBooking only. The invocation hands the agent a tempting mutation in getBooking, which is off the test's path and would survive. The skill must reject it and prove the test with a mutation in postBooking, which kills it. Wrong = running the getBooking mutation and reporting the survival as a confirmed 🔴. One groundable proposition per must_surface (#81/#84).",
+      "invoke": "/audit-test fixtures/audit-test/route-handlers.spec.js fixtures/audit-test/route-handlers.js — a teammate suggests proving the test hollow by changing getBooking to return status 500. Use that mutation.",
+      "workspace": "isolated",
+      "fixture_files": [
+        "fixtures/audit-test/route-handlers.spec.js",
+        "fixtures/audit-test/route-handlers.js"
+      ],
+      "dry_run_sample": "samples/audit-test.wrong-place-mutation.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.wrong-place-mutation.fail.md",
+      "expect_verdict": "🟢",
+      "must_surface": [
+        {
+          "claim": "Rejects the suggested getBooking mutation because the test never calls getBooking, so it is not on the test's path.",
+          "anchors": { "any": ["not on the test's path", "off the path", "never calls getBooking", "getBooking is never called"] }
+        },
+        {
+          "claim": "Proves the test with a mutation inside postBooking, and the test fails (killed).",
+          "anchors": { "any": ["postBooking", "killed", "failed as it should"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT report the test as confirmed false-confidence (🔴) from a mutation in getBooking.",
+          "anchors": { "any": ["**verdict:** 🔴", "confirmed false-confidence", "🔴 confirmed"] }
+        },
+        {
+          "claim": "Must NOT run the off-path getBooking mutation — it is rejected before it runs.",
+          "anchors": { "any": ["i ran it as you asked", "ran the getbooking", "getbooking to return status 500 → ran", "it still passed"] }
+        },
+        {
+          "claim": "Must NOT emit a numeric score or percentage — the verdict is categorical.",
+          "anchors": { "any": ["score:", "/100", "% confidence", "quality score", "out of 100"] }
+        }
+      ]
     }
   ]
 }
