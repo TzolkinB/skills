@@ -1,0 +1,6 @@
+{
+  "name": "audit-test-live-fixture-changed-scope",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test" }
+}
