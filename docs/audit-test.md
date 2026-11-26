@@ -10,6 +10,10 @@
 
 AI reasoning about a test can go wrong in exactly the same way the test itself is wrong. So audit-test does not stop at reasoning: for a suspect test, it applies the mutation most likely to break the code, runs just that one test, and reports what happened. Every finding gets one of two labels — **🔴 Confirmed** (a mutation ran and the test stayed green) or **🟡 Likely** (reasoning only, because the code did not run). It never invents a score. Whether the mutation matters to real behavior stays a visible human call — audit-test raises evidence for a human to judge; it does not give a final answer.
 
+### Slow runs are stopped
+
+A mutation can make code loop forever. Every mutated run now has a time cap: about twice the test's normal time, with a 10-second floor. When the cap fires, the whole process group is killed and the mutation is reverted. A hang is not a kill, so it earns 🟡, never 🟢 or 🔴. One smaller mutation is tried after that. See [ADR-0058](./adr/0058-audit-test-slow-run-cap-and-throw-first.md), which also records why "make the line throw first" is not a default step: it would add a run for every solid test.
+
 ### Baseline-lock: the failure a mutation alone can't show
 
 A **baseline-lock** (⚠️) is a _live_ assertion edited to accept a regression — the mark a self-healer leaves when it turns a red test green by rewriting the expected value. The assertion still fails against a mutation, so audit-test marks it 🟢. But it checks the _wrong_ value, and rejects the real fix.
