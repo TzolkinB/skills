@@ -4,7 +4,7 @@ import { refundCharge } from '../src/refund.js';
 
 function makeGateway() {
   const calls = [];
-  return { calls, refund: (id, amount) => { calls.push([id, amount]); return { ok: true }; } };
+  return { calls, currency: 'usd', refund: (id, amount) => { calls.push([id, amount]); return { ok: true }; } };
 }
 
 test('refunds part of a charge', () => {
