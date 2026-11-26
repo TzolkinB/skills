@@ -97,6 +97,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0053](0053-drop-the-prototype-self-label-for-v2.md) | Drop the "prototype" self-label for v2 — state the engineering rigor, keep the honest solo-maintainer caveats | Accepted 2026-08-07 |
 | [0054](0054-read-only-leaf-skills-are-model-invoked.md) | Read-only leaf skills are model-invoked; anything that executes or writes stays user-invoked (partly supersedes 0020) | Accepted 2026-11-25 (addendum: file-tool guard + lint, #286) |
 | [0055](0055-audit-test-changed-counts-tests-with-changed-lines.md) | `/audit-test --changed` counts the tests whose lines changed, with a whole-file fallback (amends 0035/0038's `--changed` population) | Accepted 2026-11-25 |
+| [0056](0056-audit-test-checks-the-mutation-is-on-the-tests-path.md) | `audit-test` checks the mutation is on the test's path, and that a kill came from the target (adds to 0016) | Accepted 2026-11-25 |
 
 ## By area
 
