@@ -15,16 +15,22 @@ Batch mode judges tests exactly as single-test mode does; it does **not** know o
 
 1. Get changed line ranges: `git diff -U0 main...HEAD -- <test files>` plus the working tree. Use the **new-file** line ranges.
 2. For each discovered test, find its line span (from `test(` / `it(` / `def test_` / `func Test` through its closing line). A test is **in scope** if a changed range overlaps its span.
-3. **File fallback.** If a changed range falls **outside every test span** in that file (imports, `beforeEach`/`afterAll`, a shared helper, a `describe`-level constant or fixture, a page object defined in the file), it can change many tests at once. Then **every test in that file** is in scope, and the tally says so.
+3. **Fallback for shared code.** A changed range outside every test span can affect more than one test. Widen it to what it can reach, no further:
+   - **Inside a `describe` block, outside any test** (a hook, a local helper, a constant): every test in the **innermost enclosing describe**.
+   - **At file top level, outside any test or describe** (a shared constant, a top-level hook or helper, a **changed or removed** import): **every test in the file**.
+   - **A newly added `import` line does not count.** It can only serve code that was added with it, and that code is already in scope.
 4. A file with changes only inside test spans contributes only those tests. A new file contributes all its tests. A deleted test contributes nothing.
 5. The population is set **mechanically from the diff, before triage**. It is not chosen by suspicion, so this does not reopen the flagged-population exploit that [ADR-0038](../../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md) Decision 1 closed.
-6. If you cannot tell which tests changed (a rename-only diff, a generated file, a language you cannot parse spans for), use the whole file and say `file-level (could not resolve test spans)` in the scope.
+6. **Changed support files.** A *modified or deleted* non-test file counts as *test support* when it sits under a test directory (`tests/`, `e2e/`, `cypress/`, `__tests__/`, `spec/`, `fixtures/`, `support/`) or is plainly a page object, fixture or helper. Every discovered test file that **imports it directly** (one hop) is brought in whole, and the scope says `via changed support file`. A support file that is **newly added** brings in nothing: no existing test imported it, and the tests that use it are new, so already in scope. Support the runner loads **without an import** (`cypress/support/e2e.*`, `playwright.config.*`, a global setup file, a Jest/Vitest `setupFiles` entry) cannot be narrowed: the population is the whole suite, and the scope says so. **Application source is not support.** Do not expand a changed `src/` file into the specs that exercise it; mapping app changes to specs is `/e2e-impact`'s job.
+7. If you cannot tell which tests changed (a rename-only diff, a generated file, a language you cannot parse spans for), use the whole file and say `file-level (could not resolve test spans)` in the scope.
 
-Say what you did in the tally and `scope`: `--changed (6 of 50 tests in 2 files: 4 by changed lines, 2 via whole-file fallback)`. `audited` counts the in-scope tests, so Gate's floor is `deepAudited / audited` over that population. Gate reads the `scope` text but never decides on it.
+Say what you did in the tally and `scope`, one count per route: `--changed (7 of 12 tests in 3 files: 2 by changed lines, 3 via whole-file fallback, 2 via changed support file)`. `audited` counts the in-scope tests, so Gate's floor is `deepAudited / audited` over that population. Gate reads the `scope` text but never decides on it.
 
 **Not for adopting a mature suite.** `--changed` says nothing about older tests that were never audited. To baseline an existing suite, run `/audit-test <directory>` (or `--certify` on the directory) once, deliberately. A PR that only touches a few tests should not carry that backlog.
 
-**Not covered:** a changed page object, fixture or helper in a *different* file than the tests that use it. `--changed` only lists test files today, so tests that depend on such a file are out of scope. Say so in the report when a changed non-test file is imported by the changed specs.
+**Still not covered:** tests that reach a changed support file only through a second import (a barrel file or a helper that re-exports another). The reference stops at one hop. If you see that chain, say so in the report.
+
+**Base ref.** `--changed` diffs against `main`. Pass `--base=<ref>` to use another base (`master`, `develop`, a release branch, or a commit). The scope names the base when it is not `main`.
 
 ## Batch output (provenance tally)
 
