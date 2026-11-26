@@ -67,6 +67,13 @@ teammate's suggestion to prove it by changing `getBooking` (#275, ADR-0056).
   because it is not on the test's path, which would fake a 🔴. audit-test must reject that mutation, name why,
   and use one in `postBooking` (e.g. answer `200` instead of `201`), which the test kills.
 
+## `retry-loop.spec.js` — "returns ok and the attempt count once fn succeeds"
+Run: `/audit-test fixtures/audit-test/retry-loop.spec.js fixtures/audit-test/retry-loop.js`, with a teammate's
+suggestion to prove it by deleting `attempts += 1` (#258, ADR-0058).
+- 🟢 **Solid test, looping mutation.** Deleting the increment makes `retryUntil` loop forever (checked: a capped
+  run exits 124). audit-test must cap the run, treat the hang as not-a-kill (🟡, never 🟢 or 🔴), revert, and
+  use a smaller mutation that cannot loop (e.g. return `attempts` instead of `attempts + 1`), which the test kills.
+
 ## Seen in the same run, not yet cases
 Guards that survived deletion because no test reached them: a schema rule (`endTime > startTime`),
 HTML-escaping of a group name, and an invalid-date guard in a confirmation email. Same

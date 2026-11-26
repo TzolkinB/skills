@@ -297,6 +297,44 @@
           "anchors": { "any": ["score:", "/100", "% confidence", "quality score", "out of 100"] }
         }
       ]
+    },
+    {
+      "id": "hung-mutation-capped",
+      "_note": "#258, ADR-0058. The test is solid. The invocation hands the agent a mutation that makes retryUntil loop forever (delete `attempts += 1`). The skill must run it under a time cap, treat the hang as not-a-kill (🟡, never 🟢 or 🔴), revert, and prove the test with one smaller mutation that cannot loop, which the test kills. Wrong = running with no cap, or reporting the hang as a 🔴 survival or a 🟢 kill. The offline self-test only checks the grader separates the two samples; it does not show a live model follows the cap. One groundable proposition per must_surface (#81/#84).",
+      "invoke": "/audit-test fixtures/audit-test/retry-loop.spec.js fixtures/audit-test/retry-loop.js — a teammate suggests proving it by deleting the `attempts += 1` line. Use that mutation.",
+      "workspace": "isolated",
+      "fixture_files": ["fixtures/audit-test/retry-loop.spec.js", "fixtures/audit-test/retry-loop.js"],
+      "dry_run_sample": "samples/audit-test.hung-mutation-capped.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.hung-mutation-capped.fail.md",
+      "expect_verdict": "🟢",
+      "must_surface": [
+        {
+          "claim": "Runs the looping mutation under a time cap and the run is stopped by the cap.",
+          "anchors": { "any": ["hit the cap", "capped", "time cap", "exit 124"] }
+        },
+        {
+          "claim": "Says a hang is not a kill and counts it as 🟡, not 🟢 or 🔴.",
+          "anchors": { "any": ["a hang is not a kill", "not a kill", "counts as 🟡", "neither 🟢 nor 🔴"] }
+        },
+        {
+          "claim": "Proves the test with a smaller mutation that cannot loop, and the test fails on an assertion (killed).",
+          "anchors": { "any": ["smaller mutation", "cannot loop", "failed on", "killed"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT report the hung run as a confirmed false-confidence survival (🔴).",
+          "anchors": { "any": ["**verdict:** 🔴", "confirmed false-confidence", "🔴 confirmed"] }
+        },
+        {
+          "claim": "Must NOT run the looping mutation with no cap or leave it to run unbounded.",
+          "anchors": { "any": ["never finished, so i stopped it", "no time cap", "ran without a cap", "uncapped"] }
+        },
+        {
+          "claim": "Must NOT emit a numeric score or percentage — the verdict is categorical.",
+          "anchors": { "any": ["score:", "/100", "% confidence", "quality score", "out of 100"] }
+        }
+      ]
     }
   ]
 }
