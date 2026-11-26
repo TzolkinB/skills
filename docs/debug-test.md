@@ -8,6 +8,8 @@
 
 If a Playwright test fails, `debug-test` reads and runs it, instead of asking you to describe it. It applies fast QA heuristics across three angles: setup, assertion, and code logic. It routes what it does not resolve on its own. A locator or timing failure goes to the Playwright healer. This is a tool that automatically rewrites a broken locator or wait condition, so the test passes again. A logic failure goes to Matt Pocock's `diagnosing-bugs` skill.
 
+Before it diagnoses anything, **Step 0.5 checks whether the test is already red on the base branch.** It runs that one test once on a throwaway worktree of the merge-base. If it fails there with the same error, it is **pre-existing**: `debug-test` reports it and stops, because your change did not cause it. The same test name with a different error counts as new, so an old red test cannot hide a fresh regression. If the base run is not possible, the report says "baseline not checked" and carries on. The rules are shared with `qa-pass` ([ADR-0057](./adr/0057-baseline-failures-shared-definition.md)).
+
 `debug-test` catches the easy fixes itself: a missing `await`, a loose assertion, or a fixture that never fires. For each, it reports a root cause and a one-line fix.
 
 When `debug-test` hands a locator or timing failure to the healer, it does not take the healer's green result at face value. **Step 4.5 classifies the heal** from `git diff`:

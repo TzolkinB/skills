@@ -11,6 +11,7 @@ QA Pass is the **orchestrator**: it runs no original analysis of its own — it 
 
 1. Parse the branch/path from $ARGUMENTS. Also parse:
    - `--sacred=<glob>` (repeatable, or comma-separated) — the **sacred paths** for this run: code/test paths critical enough that a *confirmed* false-confidence there is un-overridable. If absent, no path is sacred and the verdict stays a pure gradient (see Sacred-Path FAIL Override).
+   - `--known-failures=<file>` — tests already red on the base branch (title, error first line, owner per entry). See [baseline-failures](../shared/baseline-failures.md). If absent, every failure counts as new and the report says "no baseline supplied".
    - `--explain` — walkthrough mode.
 2. Find all test files and code files in the change
 3. If `--explain` is present in $ARGUMENTS, pass it through to every sub-skill call below, and append your own "Why This Matters" section at the end (see Explain Mode).
@@ -18,7 +19,7 @@ QA Pass is the **orchestrator**: it runs no original analysis of its own — it 
    - Run `/test-plan` on the feature description (from commit message or ask) — this section is **reasoned-only** (Likely provenance): its criteria are generated from the commit message, not graded against a written spec, so it never *forces* a verdict on its own
    - Run `/coverage-review` (test vs code)
    - Run `/qa-review` (testability issues)
-   - Run `/debug-test` on any failing tests found in the change
+   - Run `/debug-test` on any failing tests found in the change — except those matched by `--known-failures` (same test, same error first line), which are reported as **pre-existing** and not diagnosed. A failing test with a different error from its baseline entry is **new**.
 5. **Run `/audit-test --changed`** in batch mode over the branch's changed test files (pass `--explain` through if set). Collect its flagged findings — each carries a verdict (🔴 confirmed / 🟡 likely) and the **file path** it lives in. This is the False-Confidence Audit; it answers "do the *passing* tests in this change actually guard anything?", which none of the other four skills ask.
    - **The audit section must come from an `/audit-test` run made in this session.** Mutations you try by hand are not that run — never report them as audit-test output, and never write "audit ran" for them. If `/audit-test` did not run (unavailable, declined, errored, or skipped), the False-Confidence Audit section reads **"not run"**, the provenance line says `audit NOT run`, and the verdict follows the INCONCLUSIVE rule below (CAUTION at best). Hand-checks may be mentioned only under a clearly labelled **"Agent's own commentary"** line, with no 🔴/🟢 labels ([ADR-0013](../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). When the audit did run, include audit-test's per-test report (Verdict / How it fails / Proof) for each 🔴 finding — not a paraphrase.
 6. Aggregate layer recommendations from the `/test-plan` output and compute a one-line layer distribution summary (`unit/component/integration/e2e`)
@@ -27,6 +28,7 @@ QA Pass is the **orchestrator**: it runs no original analysis of its own — it 
    - 🟢 **PASS**: no major coverage gaps, no testability blockers, no false-confidence findings — **and the False-Confidence Audit actually ran via `/audit-test`** (not INCONCLUSIVE, not skipped). PASS is a statement of *static judgment*, never a claim the tests were confirmed; it carries a mandatory provenance line (see Output Format) and never dresses Unexamined tests up as confirmed-solid.
    - 🟡 **CAUTION**: Minor gaps, loose assertions, or an isolated 🟡 likely-false-confidence finding — shippable with notes
    - 🔴 **FAIL**: Major untested paths, brittleness risks, assertions that make no sense, **enough confirmed false-confidence to sink the change** (see How audit-test findings shift the verdict — a lone non-sacred confirmed finding is CAUTION, not FAIL), or a fired Sacred-Path Override
+   - **Pre-existing failures neither raise nor lower the verdict.** Only new failures drive it. The pre-existing count is always printed (see Output Format), so a red base branch stays visible.
    - The False-Confidence Audit shifts the verdict categorically (see How audit-test findings shift the verdict). A fired Sacred-Path Override is an **un-overridable FAIL** — it cannot be softened to CAUTION regardless of how solid the rest of the branch looks.
 9. Output a **QA Pass Report** with risk summary
 10. If `--digest` is present in $ARGUMENTS, emit the [shared digest card](../shared/digest-format.md) **instead of** the full report — the verdict line plus at most three cards for the findings that actually drove it. QA Pass composes and originates no evidence of its own, so its confidence label is **worst-wins**: the weakest label among the inputs behind the verdict. A PASS carried by four reasoned reads is `Likely`, and a mostly-Unexamined audit tally is reported as such, never as confirmed-solid. `--digest` never changes the verdict — it changes how much of the report you read to reach it.
@@ -65,6 +67,7 @@ Guardrails that keep this honest:
 **Verdict:** 🟡 CAUTION  
 **Provenance:** static judgment — 0 confirmed-solid · 1 confirmed-hollow · 1 likely-hollow · 4 unexamined (audit ran via `/audit-test --changed`; not INCONCLUSIVE — or `audit NOT run` if it did not)  
 **Risk Level:** Medium  
+**Failures:** 0 new · 9 pre-existing (owner: #33, from `--known-failures`) — or `no baseline supplied`; pre-existing never moves the verdict  
 **Sacred paths:** `src/payments/**` (1 designated) — none tripped (the flagged tests cover booking, not payments)
 
 ---
