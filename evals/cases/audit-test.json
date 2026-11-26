@@ -227,6 +227,39 @@
           "anchors": { "any": ["add a new test", "new tests to add", "propose new tests", "additional test cases"] }
         }
       ]
+    },
+    {
+      "id": "changed-scope-population",
+      "_note": "#276, ADR-0055. Live fixture branch fixture/audit-test-changed-scope (never merged; base = its first commit, hence --base=...~1). The change commit adds 2 tests to booking.test.js (5 old), edits only the shared makeGateway helper in refund.test.js (3 tests, none touched) and edits tests/helpers/clock.js, which cancel.test.js (2 tests) imports. Right population = 2 + 3 + 2 = 7 of 12 tests in 3 files. Wrong = all 12 (file-level, the old rule) or only the 2 new tests (no fallback, no support files). One groundable proposition per must_surface (#81/#84).",
+      "invoke": "/audit-test --changed --base=fixture/audit-test-changed-scope~1",
+      "workspace": "isolated",
+      "fixture_ref": "fixture/audit-test-changed-scope",
+      "dry_run_sample": "samples/audit-test.changed-scope.pass.md",
+      "dry_run_negative_sample": "samples/audit-test.changed-scope.fail.md",
+      "must_surface": [
+        {
+          "claim": "Audits only 7 of the 12 tests in the three changed files, not every test in them.",
+          "anchors": { "any": ["7 of 12", "audited 7", "Audited 7"] }
+        },
+        {
+          "claim": "Brings in all of refund.test.js through the whole-file fallback, because only its shared makeGateway helper changed and no test body did.",
+          "anchors": { "any": ["refund.test.js", "whole-file fallback"] }
+        },
+        {
+          "claim": "Brings in cancel.test.js because it imports the changed support file tests/helpers/clock.js.",
+          "anchors": { "any": ["clock.js", "changed support file"] }
+        }
+      ],
+      "must_not": [
+        {
+          "claim": "Must NOT audit all 12 tests, which is the old file-level rule.",
+          "anchors": { "any": ["audited 12", "Audited 12", "12 of 12", "all 12 tests"] }
+        },
+        {
+          "claim": "Must NOT emit a numeric score or percentage — the verdict is categorical.",
+          "anchors": { "any": ["score:", "/100", "% confidence", "quality score", "out of 100"] }
+        }
+      ]
     }
   ]
 }

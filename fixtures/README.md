@@ -77,7 +77,9 @@ against situations, not a fixture.
 - **Live branch fixture** — a scenario/prompt fixture's real counterpart: a permanent, dedicated git
   ref (never merged into `main`) carrying real, runnable committed code with a genuine merge-base, for
   the `--live` eval tier to check out via a case's `fixture_ref` ([`evals/run-eval.mjs`](../evals/run-eval.mjs))
-  instead of always HEAD. `qa-pass`'s `fixture/sentinel-payments-refund` (#210) is the first: it's what
+  instead of always HEAD. `audit-test`'s `fixture/audit-test-changed-scope` (#276) is the second: two commits (a
+  base and a change), so `/audit-test --changed --base=fixture/audit-test-changed-scope~1` has a real diff to
+  scope. `qa-pass`'s `fixture/sentinel-payments-refund` (#210) is the first: it's what
   makes the `--live` run actually exercise the skill against real files, rather than grading a recorded
   transcript.
 

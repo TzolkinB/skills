@@ -1,7 +1,7 @@
 ---
 name: audit-test
 description: Audit a passing test for false confidence — would it still pass if the code it covers broke? — by running a targeted mutation and reporting what actually happened, not by reasoning alone
-argument-hint: "[test name, test file, test + its code, or a directory/glob/--changed for batch] [--digest] [--explain]"
+argument-hint: "[test name, test file, test + its code, or a directory/glob/--changed for batch] [--base=<ref>] [--digest] [--explain]"
 allowed-tools: [Read, Bash, Glob]
 disable-model-invocation: true
 ---
@@ -23,7 +23,7 @@ Every verdict below is this skill's own account of a mutation it actually ran in
    - **a single named test** → deep-audit that one test.
    - **a test file** → triage every test in it, deep-audit only the flagged ones.
    - **a test *and* its code** (both paths given) → deep-audit, code-aware. The first-class mode — full confidence needs the code.
-   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run [Batch mode](reference/batch-mode.md). Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns. This is the mode `/qa-pass` calls over a branch's changed tests.
+   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run [Batch mode](reference/batch-mode.md). Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns, then (against `--base=<ref>` if given, default `main`) narrow the audited population to **the tests whose lines changed** (hunk-level, with a whole-file fallback) as set out in the **`--changed` population** section of [Batch mode](reference/batch-mode.md) — read that section before you count. This is the mode `/qa-pass` calls over a branch's changed tests.
    - **nothing** → default to the whole suite (same patterns) and run [Batch mode](reference/batch-mode.md).
 
    Batch mode runs **diagnostic** (default — deep-audit only the flagged suspects) or **certification** (`--certify` — deep-audit a floor-sized random sample ∪ the suspects, the opt-in path to an honest `ship`); [Batch mode](reference/batch-mode.md) specifies both.
@@ -108,7 +108,7 @@ prose scrape and never a confidence number; Gate derives the category itself
 {
   "schema": "gate-audit-test/v0.4",
   "producer": "audit-test",
-  "scope": "--changed",
+  "scope": "--changed (7 of 12 tests in 3 files: 2 by changed lines, 3 via whole-file fallback, 2 via changed support file)",
   "commitSha": "a1b2c3d4e5f6...",
   "dirty": false,
   "audited": 47,

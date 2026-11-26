@@ -4,6 +4,8 @@
 of `docs/roadmap.md`. Same shape as [ADR-0029](0029-witness-parsed-audit-test-graduation.md)'s B→A change: a
 real design decision on when the existing gate function returns `ship`, not new capability.
 
+> **Amended 2026-11-25 by [ADR-0055](0055-audit-test-changed-counts-tests-with-changed-lines.md):** `--changed` now audits the tests whose lines changed (whole-file fallback), not every test in a changed file. The floor and denominator rules below are unchanged.
+
 ## Context
 
 Finding A3 of a hostile external review (`references/critique-synthesis.md`) named the sharpest gap left after

@@ -69,6 +69,8 @@ and they have very different answers.
 verification-trust (Gate re-executing), it is its own future ADR with its own justification — never something
 reached one "tighten the self-report" PR at a time.
 
+> **Amended 2026-11-25 by [ADR-0055](0055-audit-test-changed-counts-tests-with-changed-lines.md):** `--changed` now audits the tests whose lines changed (whole-file fallback), not every test in a changed file. The floor and denominator rules below are unchanged.
+
 ### Decision 1 — the examined-floor's population *(decided: Option B — reframe + build the certification mode)*
 
 The denominator must **not** change to the flagged/suspect population. If `deepAudited` were measured against
