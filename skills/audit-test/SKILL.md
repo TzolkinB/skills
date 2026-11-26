@@ -23,7 +23,7 @@ Every verdict below is this skill's own account of a mutation it actually ran in
    - **a single named test** → deep-audit that one test.
    - **a test file** → triage every test in it, deep-audit only the flagged ones.
    - **a test *and* its code** (both paths given) → deep-audit, code-aware. The first-class mode — full confidence needs the code.
-   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run [Batch mode](reference/batch-mode.md). Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns. This is the mode `/qa-pass` calls over a branch's changed tests.
+   - **a directory, glob, or `--changed`** → resolve to a set of test files, then run [Batch mode](reference/batch-mode.md). Discover test files with the **multi-ecosystem patterns** below; for `--changed`, list files changed against the merge-base (`git diff --name-only main...HEAD`) filtered to those same patterns, then narrow the audited population to **the tests whose lines changed** (hunk-level, with a whole-file fallback) as set out in [Batch mode → `--changed` population](reference/batch-mode.md#--changed-population-hunk-level-with-a-file-fallback). This is the mode `/qa-pass` calls over a branch's changed tests.
    - **nothing** → default to the whole suite (same patterns) and run [Batch mode](reference/batch-mode.md).
 
    Batch mode runs **diagnostic** (default — deep-audit only the flagged suspects) or **certification** (`--certify` — deep-audit a floor-sized random sample ∪ the suspects, the opt-in path to an honest `ship`); [Batch mode](reference/batch-mode.md) specifies both.
@@ -108,7 +108,7 @@ prose scrape and never a confidence number; Gate derives the category itself
 {
   "schema": "gate-audit-test/v0.4",
   "producer": "audit-test",
-  "scope": "--changed",
+  "scope": "--changed (6 of 50 tests in 2 files: 4 by changed lines, 2 via whole-file fallback)",
   "commitSha": "a1b2c3d4e5f6...",
   "dirty": false,
   "audited": 47,

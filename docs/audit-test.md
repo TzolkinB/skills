@@ -65,6 +65,9 @@ A: No. The discriminator is _lockstep_: audit-test only raises the finding when 
 **Q: Does baseline-lock detection work outside `--changed` mode?**
 A: Only partially. The assertion-diff signal needs a diff to compare against, so it is `--changed`-mode only. In whole-suite mode, audit-test falls back to the in-code source-of-truth signal — and if neither signal applies, it states the gap plainly rather than raising a finding it can't support ([ADR-0017](./adr/0017-audit-test-baseline-lock-suspected.md)).
 
+**Q: In `--changed` mode, does an old test in a file I touched count against Gate's floor?**
+A: Not by itself. `--changed` audits the tests whose lines changed. If you change something that can affect every test in the file (a shared setup, helper or import), the whole file counts, and the report says so. This keeps a big e2e spec from blocking every PR. To baseline a mature suite that has never been audited, run `/audit-test <directory>` once on purpose ([ADR-0055](./adr/0055-audit-test-changed-counts-tests-with-changed-lines.md)).
+
 **Q: Can audit-test consume Stryker's own survivor report instead of running its own mutation?**
 A: Not yet. That ingestion seam — Stryker supplying the proof, audit-test supplying the taxonomy and fix — is deferred, not built ([ADR-0004](./adr/0004-audit-test-is-judgment-not-a-stryker-substitute.md)). Today audit-test always runs its own targeted mutation.
 

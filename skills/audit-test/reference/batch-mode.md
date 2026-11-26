@@ -9,6 +9,23 @@ Loaded from Step 1 when the target is a directory, glob, `--changed`, or nothing
 
 Batch mode judges tests exactly as single-test mode does; it does **not** know or care about sacred paths or branch verdicts — that's the caller's synthesis.
 
+## `--changed` population: hunk-level, with a file fallback
+
+`--changed` audits **the tests this change touched**, not every test in a touched file ([ADR-0055](../../../docs/adr/0055-audit-test-changed-counts-tests-with-changed-lines.md), #276). A spec file with 50 tests where 6 changed is a population of 6, so the examined-floor measures what the PR changed.
+
+1. Get changed line ranges: `git diff -U0 main...HEAD -- <test files>` plus the working tree. Use the **new-file** line ranges.
+2. For each discovered test, find its line span (from `test(` / `it(` / `def test_` / `func Test` through its closing line). A test is **in scope** if a changed range overlaps its span.
+3. **File fallback.** If a changed range falls **outside every test span** in that file (imports, `beforeEach`/`afterAll`, a shared helper, a `describe`-level constant or fixture, a page object defined in the file), it can change many tests at once. Then **every test in that file** is in scope, and the tally says so.
+4. A file with changes only inside test spans contributes only those tests. A new file contributes all its tests. A deleted test contributes nothing.
+5. The population is set **mechanically from the diff, before triage**. It is not chosen by suspicion, so this does not reopen the flagged-population exploit that [ADR-0038](../../../docs/adr/0038-gate-trust-boundary-and-examined-floor-population.md) Decision 1 closed.
+6. If you cannot tell which tests changed (a rename-only diff, a generated file, a language you cannot parse spans for), use the whole file and say `file-level (could not resolve test spans)` in the scope.
+
+Say what you did in the tally and `scope`: `--changed (6 of 50 tests in 2 files: 4 by changed lines, 2 via whole-file fallback)`. `audited` counts the in-scope tests, so Gate's floor is `deepAudited / audited` over that population. Gate reads the `scope` text but never decides on it.
+
+**Not for adopting a mature suite.** `--changed` says nothing about older tests that were never audited. To baseline an existing suite, run `/audit-test <directory>` (or `--certify` on the directory) once, deliberately. A PR that only touches a few tests should not carry that backlog.
+
+**Not covered:** a changed page object, fixture or helper in a *different* file than the tests that use it. `--changed` only lists test files today, so tests that depend on such a file are out of scope. Say so in the report when a changed non-test file is imported by the changed specs.
+
 ## Batch output (provenance tally)
 
 Show flagged findings plus a **provenance tally** — never a flat "hold up" count, which hides the difference between a test confirmed solid and one never examined ([ADR-0013](../../../docs/adr/0013-evidence-provenance-sentinel-labels-not-gates.md)). Only deep-audited tests can be 🟢; every test that never left triage is **Unexamined**, counted separately and never as green. Each line carries the test's **file path**:
