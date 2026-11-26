@@ -99,6 +99,7 @@ The four ADRs that are **not yet in force**. This is the list worth sweeping at 
 | [0055](0055-audit-test-changed-counts-tests-with-changed-lines.md) | `/audit-test --changed` counts the tests whose lines changed, with a whole-file fallback (amends 0035/0038's `--changed` population) | Accepted 2026-11-25 |
 | [0056](0056-audit-test-checks-the-mutation-is-on-the-tests-path.md) | `audit-test` checks the mutation is on the test's path, and that a kill came from the target (adds to 0016) | Accepted 2026-11-25 |
 | [0057](0057-baseline-failures-shared-definition.md) | Baseline failures: one shared definition of "pre-existing", caller supplies the list (`debug-test`, `qa-pass`; Gate deferred) | Accepted 2026-11-25 |
+| [0058](0058-audit-test-slow-run-cap-and-throw-first.md) | `audit-test` caps slow runs (2× normal, process-group kill); throw-first declined as a default step | Accepted 2026-11-25 |
 
 ## By area
 
