@@ -23,6 +23,7 @@ change can be traced back to its source without a git-log search.
 
 ### Changed
 
+- [#300](https://github.com/TzolkinB/skills/pull/300) `4cb0eb4` **The four model-invoked read-only skills now block file-tool writes.** `/coverage-review`, `/e2e-impact`, `/qa-review` and `/test-plan` set `disallowed-tools: [Write, Edit, NotebookEdit]`, and `evals/lint.mjs` fails if one drops it or names a write path in its text. Bash writes are not blocked. [ADR-0054](docs/adr/0054-read-only-leaf-skills-are-model-invoked.md) addendum. Closes #286.
 - [#297](https://github.com/TzolkinB/skills/pull/297) `c555bbd` **Shiplight is listed as Elastic-2.0** in the orchestration map (MIT through 0.2.3), so it joins the restrictive license tier. Closes #285.
 
 ### Fixed
