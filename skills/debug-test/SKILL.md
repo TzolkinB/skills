@@ -22,6 +22,9 @@ Get the test file path or test name from $ARGUMENTS.
 - If a file path: read it directly; pass it **positionally** to the run commands below (`playwright test path/to/file.spec.ts`).
 - If a test name: `grep -r "$ARGUMENTS" tests/ --include="*.spec.*" -l`, then select it in every run command below with **`-g "$TEST_NAME"`** — Playwright's title filter. A bare positional arg is a *filename* regex, not a title: passing a test name positionally matches **zero** files, runs 0 tests, and reports 0 failures — which reads as a false "not flaky." Always `-g` for a name.
 
+### 0.5 Baseline check
+Before diagnosing, find out whether the test is already red on the base commit. A test that fails the same way there is **pre-existing**: report it and stop. Don't heal it, and don't blame this change. A new, flaky or unknown result continues below. → follow [reference/baseline-check.md](reference/baseline-check.md) (labels defined in [baseline-failures](../shared/baseline-failures.md)). Skipped for `--flake` and `--drift`.
+
 ### 1. Flakiness check first
 Before single-run analysis, rule out non-determinism using the framework's **own** burn mechanism — never a hand-rolled loop. With Playwright, `--repeat-each` runs the same test N times in one invocation:
 ```bash
@@ -106,6 +109,15 @@ Invoke [Matt Pocock's diagnosing-bugs skill](https://github.com/mattpocock/skill
   4. Code logic regression — behavior changed, test not updated
 
 ## Output Format
+
+### Already red on the base commit (Step 0.5)
+```
+## debug-test: [Test Name / file]
+
+### Pre-existing failure
+Fails on base `[short SHA]` with the same error: `[error first line]` (one run). Owner: [issue or name | unowned].
+This change did not cause it. Not healed, not diagnosed.
+```
 
 ### Not a Playwright test (Step 0)
 ```
